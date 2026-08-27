@@ -97,9 +97,7 @@ const Inventory = () => {
                         <tr>
                             <th>ID</th>
                             <th>Name</th>
-                            <th>Category</th>
                             <th>Quantity/Unit</th>
-                            <th>Location</th>
                             <th>Stock Status</th>
                             <th>Actions</th>
                         </tr>
@@ -112,9 +110,7 @@ const Inventory = () => {
                                 <tr key={item.inventoryId}>
                                     <td><strong>{item.inventoryId}</strong></td>
                                     <td>{item.name}</td>
-                                    <td>{item.category}</td>
                                     <td>{item.quantity} {item.unit}</td>
-                                    <td>{item.location}</td>
                                     <td>
                                         {isOut ? <span className="badge badge-danger">Out of Stock</span> :
                                             isLow ? <span className="badge badge-warning"><AlertTriangle size={12} /> Low Stock</span> :
