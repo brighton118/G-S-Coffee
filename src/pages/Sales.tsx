@@ -44,8 +44,6 @@ const Sales = () => {
             notes: `Sold to ${formData.customer}`
         });
 
-        await db.activityLogs.add({ user: 'System', action: 'Created Sale', module: 'Sales', recordIdentifier: formData.batchId, date: today, description: `Sold ${formData.quantity} plants to ${formData.customer}` });
-
         setShowSaleForm(false);
         setFormData({ batchId: '', customer: '', quantity: 0, price: 0 });
     };
@@ -140,3 +138,4 @@ const Sales = () => {
 };
 
 export default Sales;
+

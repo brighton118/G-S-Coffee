@@ -55,3 +55,4 @@ export const createFirestoreTables = async () => {
         console.error('Error seeding Firebase:', error);
     }
 };
+

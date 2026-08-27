@@ -43,9 +43,6 @@ const Sidebar = ({ isOpen, setIsOpen }: SidebarProps) => {
                 <NavLink to="/notifications" onClick={handleClose} className={({ isActive }) => `nav-item ${isActive ? 'active' : ''}`}>
                     <Bell size={20} /> Notifications
                 </NavLink>
-                <NavLink to="/activity" onClick={handleClose} className={({ isActive }) => `nav-item ${isActive ? 'active' : ''}`}>
-                    <ScrollText size={20} /> Activity Logs
-                </NavLink>
                 <NavLink to="/settings" onClick={handleClose} className={({ isActive }) => `nav-item ${isActive ? 'active' : ''}`}>
                     <Settings size={20} /> Settings
                 </NavLink>
@@ -55,3 +52,4 @@ const Sidebar = ({ isOpen, setIsOpen }: SidebarProps) => {
 };
 
 export default Sidebar;
+

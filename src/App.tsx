@@ -65,7 +65,6 @@ const App = () => {
                     <Route path="/sales" element={<Sales />} />
                     <Route path="/reports" element={<Reports />} />
                     <Route path="/notifications" element={<Notifications />} />
-                    <Route path="/activity" element={<div>Activity Logs Page</div>} />
                     <Route path="/settings" element={<div>Settings Page</div>} />
                 </Routes>
             </Layout>
@@ -74,3 +73,4 @@ const App = () => {
 };
 
 export default App;
+

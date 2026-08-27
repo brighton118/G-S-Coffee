@@ -49,8 +49,6 @@ const CloneProduction = () => {
             quantityEntering: Number(obtainFormData.quantity),
         });
 
-        await db.activityLogs.add({ user: 'System', action: 'Created', module: 'Clone', recordIdentifier: newId, date: today, description: 'Obtained cuttings' });
-
         setShowObtainForm(false);
         setObtainFormData({ variety: '', sourceFarm: '', sourceMotherPlant: '', quantity: 0, person: '', notes: '' });
     };
@@ -133,8 +131,6 @@ const CloneProduction = () => {
             currentStage: nextStage,
             currentQuantity: nextStage === 'Sorted' ? 0 : (nextStage === 'Ready for Sorting' ? advancingBatch.currentQuantity : quantityEntering)
         });
-
-        await db.activityLogs.add({ user: 'System', action: 'Stage Advance', module: 'Clone', recordIdentifier: advancingBatch.batchId, date: today, description: `Moved to ${nextStage}` });
 
         setAdvancingBatch(null);
         setAdvanceFormData({ chamberOrSection: '', currentQuantity: 0, healthy: 0, weak: 0, lost: 0, notes: '', retained: 0, sale: 0, rejected: 0, rejectedReason: '' });
@@ -334,3 +330,4 @@ const CloneProduction = () => {
 };
 
 export default CloneProduction;
+

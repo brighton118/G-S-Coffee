@@ -38,8 +38,6 @@ const Workers = () => {
             qrCode: newId
         });
 
-        await db.activityLogs.add({ user: 'System', action: 'Created Worker', module: 'Workers', recordIdentifier: newId, date: new Date().toISOString(), description: `Registered ${formData.fullName}` });
-
         setShowAddForm(false);
         setFormData({ fullName: '', gender: 'Male', phone: '', position: '', department: '', emergency: '' });
     };
@@ -176,3 +174,4 @@ const Workers = () => {
 };
 
 export default Workers;
+

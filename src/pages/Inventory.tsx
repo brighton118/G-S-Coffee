@@ -52,8 +52,6 @@ const Inventory = () => {
             notes: ''
         });
 
-        await db.activityLogs.add({ user: 'Admin', action: 'Created', module: 'Inventory', recordIdentifier: newId, date: today, description: `Added ${formData.name}` });
-
         setShowAddForm(false);
     };
 
@@ -184,3 +182,4 @@ const Inventory = () => {
 };
 
 export default Inventory;
+

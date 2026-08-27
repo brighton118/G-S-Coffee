@@ -43,7 +43,7 @@ export async function seedDemoData() {
     ]);
 
     // Seed Activity Log
-    await db.activityLogs.add({ user: 'admin', action: 'System Initialized', module: 'System', recordIdentifier: 'Seed', date: new Date().toISOString(), description: 'Demo data was successfully generated.' });
 
     console.log("Demo Data Seeded!");
 }
+

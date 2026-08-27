@@ -70,12 +70,6 @@ const ScanAttendance = () => {
                 status: isLate ? 'Late' : 'Present',
                 isLate
             });
-
-            await db.activityLogs.add({
-                user: 'System QR', action: 'Time In', module: 'Attendance',
-                recordIdentifier: worker.workerId, date: new Date().toISOString(),
-                description: `Auto Time In at ${now}`
-            });
             finalRecord = await db.attendance.where({ workerId, date: today }).first();
             setTodayAttendance(finalRecord);
             setScanState('success');
@@ -90,11 +84,6 @@ const ScanAttendance = () => {
                 setScanState('early_scan');
             } else {
                 await db.attendance.update(existingRecord.id!, { timeOut: now });
-                await db.activityLogs.add({
-                    user: 'System QR', action: 'Time Out', module: 'Attendance',
-                    recordIdentifier: worker.workerId, date: new Date().toISOString(),
-                    description: `Auto Time Out at ${now}`
-                });
                 finalRecord = await db.attendance.get(existingRecord.id!);
                 setTodayAttendance(finalRecord);
                 setScanState('success');
@@ -225,3 +214,4 @@ const ScanAttendance = () => {
 };
 
 export default ScanAttendance;
+
