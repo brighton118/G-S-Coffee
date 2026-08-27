@@ -74,7 +74,6 @@ const Workers = () => {
                             <th>ID</th>
                             <th>Name</th>
                             <th>Department</th>
-                            <th>Position</th>
                             <th>Status</th>
                             <th>Actions</th>
                         </tr>
@@ -85,7 +84,6 @@ const Workers = () => {
                                 <td><strong>{w.workerId}</strong></td>
                                 <td>{w.fullName}</td>
                                 <td>{w.department}</td>
-                                <td>{w.position}</td>
                                 <td>
                                     <span className={`badge ${w.status === 'Active' ? 'badge-success' : 'badge-danger'}`}>
                                         {w.status === 'Active' ? 'Present' : w.status}
