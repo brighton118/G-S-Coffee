@@ -10,10 +10,12 @@ import Sales from './pages/Sales';
 import Reports from './pages/Reports';
 import WorkerProfile from './pages/WorkerProfile';
 import { seedDemoData } from './seed';
+import { createFirestoreTables } from './seedFirestore';
 
 const App = () => {
     useEffect(() => {
         seedDemoData();
+        createFirestoreTables();
     }, []);
 
     return (
