@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Html5QrcodeScanner } from 'html5-qrcode';
+import { Html5QrcodeScanner, Html5QrcodeScanType } from 'html5-qrcode';
 import { db } from '../db';
 import { format } from 'date-fns';
 import { CheckCircle2, AlertTriangle, UserCircle2 } from 'lucide-react';
@@ -15,7 +15,11 @@ const ScanAttendance = () => {
     useEffect(() => {
         if (scanState === 'scanning') {
             const scannerId = "reader";
-            html5QrcodeScanner = new Html5QrcodeScanner(scannerId, { fps: 10, qrbox: { width: 250, height: 250 } }, false);
+            html5QrcodeScanner = new Html5QrcodeScanner(scannerId, {
+                fps: 10,
+                qrbox: { width: 250, height: 250 },
+                supportedScanTypes: [Html5QrcodeScanType.SCAN_TYPE_CAMERA]
+            }, false);
 
             html5QrcodeScanner.render(
                 async (decodedText: string) => {

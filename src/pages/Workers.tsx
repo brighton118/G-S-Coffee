@@ -157,7 +157,7 @@ const Workers = () => {
                         <div className="farm-card" style={{ textAlign: 'center', padding: '1rem', border: '2px solid var(--color-primary)', borderRadius: '12px', background: 'var(--color-surface)' }}>
                             <h2 style={{ color: 'var(--color-primary-dark)', letterSpacing: '2px', marginBottom: '1.5rem' }}>G$S COFFEE FARM</h2>
                             <div style={{ background: 'white', padding: '1rem', display: 'inline-block', borderRadius: '8px', marginBottom: '1rem' }}>
-                                <QRCodeSVG value={`${window.location.origin}/worker/${selectedWorker.workerId}`} size={150} level="H" />
+                                <QRCodeSVG value={`${window.location.origin}/worker/${selectedWorker.workerId}`} size={200} level="H" />
                             </div>
                             <h3 style={{ margin: '0', fontSize: '1.5rem' }}>{selectedWorker.fullName}</h3>
                             <p style={{ color: 'var(--color-text-light)', margin: '0 0 1rem 0' }}>{selectedWorker.workerId}</p>
