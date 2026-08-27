@@ -117,6 +117,15 @@ export interface ActivityLog {
     description: string;
 }
 
+export interface AppNotification {
+    id?: number;
+    type: string;
+    title: string;
+    message: string;
+    date: string;
+    read: number;
+}
+
 // --- Database Configuration ---
 
 const db = new Dexie('GS_CoffeeFarm_DB') as Dexie & {
@@ -129,7 +138,8 @@ const db = new Dexie('GS_CoffeeFarm_DB') as Dexie & {
     inventoryTransactions: EntityTable<InventoryTransaction, 'id'>,
     plantletSales: EntityTable<PlantletSale, 'id'>,
     plantletSortings: EntityTable<PlantletSort, 'batchId'>,
-    activityLogs: EntityTable<ActivityLog, 'id'>
+    activityLogs: EntityTable<ActivityLog, 'id'>,
+    notifications: EntityTable<AppNotification, 'id'>
 };
 
 db.version(1).stores({
@@ -143,6 +153,10 @@ db.version(1).stores({
     plantletSales: '++id, batchId, date',
     plantletSortings: 'batchId, date',
     activityLogs: '++id, module, date'
+});
+
+db.version(2).stores({
+    notifications: '++id, date, read, type'
 });
 
 export { db };
