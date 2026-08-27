@@ -186,7 +186,7 @@ const ScanAttendance = () => {
                             <p><strong>Department:</strong> {scannedWorker.department}</p>
                             <p><strong>Phone:</strong> {scannedWorker.phoneNumber}</p>
                             <p><strong>Date Joined:</strong> {scannedWorker.dateJoined}</p>
-                            <p><strong>Status:</strong> {scannedWorker.status}</p>
+                            <p><strong>Status:</strong> {todayAttendance?.status || 'Present'}</p>
                         </div>
 
                         <div className="attendance-status-box">
