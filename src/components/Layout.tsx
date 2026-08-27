@@ -1,5 +1,5 @@
-import React, { ReactNode, useState } from 'react';
-import Sidebar from './Sidebar';
+import { ReactNode, useState } from 'react';
+import Sidebar from './Sidebar.tsx';
 import { Menu } from 'lucide-react';
 import './MobileLayout.css';
 
@@ -7,7 +7,7 @@ interface LayoutProps {
     children: ReactNode;
 }
 
-const Layout: React.FC<LayoutProps> = ({ children }) => {
+const Layout = ({ children }: LayoutProps) => {
     const [isSidebarOpen, setIsSidebarOpen] = useState(false);
 
     return (
