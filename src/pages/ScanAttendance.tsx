@@ -6,7 +6,7 @@ import { CheckCircle2, AlertTriangle, UserCircle2 } from 'lucide-react';
 import './ScanAttendance.css';
 
 const ScanAttendance = () => {
-    const [scanState, setScanState] = useState<'scanning' | 'identifying' | 'identified' | 'success' | 'error' | 'inactive'>('scanning');
+    const [scanState, setScanState] = useState<'scanning' | 'identifying' | 'identified' | 'success' | 'error' | 'inactive' | 'early_scan'>('scanning');
     const [scannedWorker, setScannedWorker] = useState<any>(null);
     const [todayAttendance, setTodayAttendance] = useState<any>(null);
 
@@ -55,66 +55,66 @@ const ScanAttendance = () => {
         }
 
         const today = format(new Date(), 'yyyy-MM-dd');
+        const now = format(new Date(), 'HH:mm');
         const existingRecord = await db.attendance.where({ workerId, date: today }).first();
-        setTodayAttendance(existingRecord || null);
 
-        setScanState('identified');
+        let finalRecord = existingRecord;
+
+        if (!existingRecord) {
+            // Auto Time In
+            const isLate = now > '08:00';
+            await db.attendance.add({
+                workerId: worker.workerId,
+                date: today,
+                timeIn: now,
+                status: isLate ? 'Late' : 'Present',
+                isLate
+            });
+
+            await db.activityLogs.add({
+                user: 'System QR', action: 'Time In', module: 'Attendance',
+                recordIdentifier: worker.workerId, date: new Date().toISOString(),
+                description: `Auto Time In at ${now}`
+            });
+            finalRecord = await db.attendance.where({ workerId, date: today }).first();
+            setTodayAttendance(finalRecord);
+            setScanState('success');
+        } else if (existingRecord && !existingRecord.timeOut) {
+            // Auto Time Out protect against accidental immediate re-scans (7 hr minimum)
+            const timeInDate = new Date(`${today}T${existingRecord.timeIn}:00`);
+            const nowDate = new Date(`${today}T${now}:00`);
+            const hoursDiff = (nowDate.getTime() - timeInDate.getTime()) / (1000 * 60 * 60);
+
+            if (hoursDiff < 7) {
+                setTodayAttendance(existingRecord);
+                setScanState('early_scan');
+            } else {
+                await db.attendance.update(existingRecord.id!, { timeOut: now });
+                await db.activityLogs.add({
+                    user: 'System QR', action: 'Time Out', module: 'Attendance',
+                    recordIdentifier: worker.workerId, date: new Date().toISOString(),
+                    description: `Auto Time Out at ${now}`
+                });
+                finalRecord = await db.attendance.get(existingRecord.id!);
+                setTodayAttendance(finalRecord);
+                setScanState('success');
+            }
+        } else {
+            setTodayAttendance(finalRecord);
+            setScanState('success');
+        }
+
+        setTimeout(() => {
+            setScannedWorker(null);
+            setTodayAttendance(null);
+            setScanState('scanning');
+        }, 5000);
     };
 
     const resetScanner = () => {
         setScannedWorker(null);
         setTodayAttendance(null);
         setScanState('scanning');
-    };
-
-    const recordTimeIn = async () => {
-        if (!scannedWorker) return;
-        const today = format(new Date(), 'yyyy-MM-dd');
-        const now = format(new Date(), 'HH:mm');
-        const isLate = now > '08:00';
-
-        await db.attendance.add({
-            workerId: scannedWorker.workerId,
-            date: today,
-            timeIn: now,
-            status: isLate ? 'Late' : 'Present',
-            isLate
-        });
-
-        await db.activityLogs.add({
-            user: 'System QR', action: 'Time In', module: 'Attendance',
-            recordIdentifier: scannedWorker.workerId, date: new Date().toISOString(),
-            description: `Time in at ${now}`
-        });
-
-        const newRecord = await db.attendance.where({ workerId: scannedWorker.workerId, date: today }).first();
-        setTodayAttendance(newRecord);
-        setScanState('success');
-
-        setTimeout(() => {
-            resetScanner();
-        }, 3000);
-    };
-
-    const recordTimeOut = async () => {
-        if (!scannedWorker || !todayAttendance || !todayAttendance.id) return;
-        const now = format(new Date(), 'HH:mm');
-
-        await db.attendance.update(todayAttendance.id, { timeOut: now });
-
-        await db.activityLogs.add({
-            user: 'System QR', action: 'Time Out', module: 'Attendance',
-            recordIdentifier: scannedWorker.workerId, date: new Date().toISOString(),
-            description: `Time out at ${now}`
-        });
-
-        const newRecord = await db.attendance.get(todayAttendance.id);
-        setTodayAttendance(newRecord);
-        setScanState('success');
-
-        setTimeout(() => {
-            resetScanner();
-        }, 3000);
     };
 
     return (
@@ -151,12 +151,18 @@ const ScanAttendance = () => {
                     </div>
                 )}
 
-                {(scanState === 'identified' || scanState === 'success' || scanState === 'inactive') && scannedWorker && (
+                {(scanState === 'identified' || scanState === 'success' || scanState === 'inactive' || scanState === 'early_scan') && scannedWorker && (
                     <div className="worker-profile-modal">
                         {scanState === 'success' && (
                             <div className="success-banner">
                                 <CheckCircle2 size={20} style={{ marginRight: '8px' }} />
                                 {todayAttendance?.timeOut ? 'TIME OUT RECORDED' : 'ATTENDANCE RECORDED'}
+                            </div>
+                        )}
+                        {scanState === 'early_scan' && (
+                            <div className="success-banner" style={{ background: '#fef08a', color: '#854d0e', borderColor: '#eab308' }}>
+                                <AlertTriangle size={20} style={{ marginRight: '8px' }} />
+                                ALREADY TIMED IN (Requires full 7 hours to Time Out)
                             </div>
                         )}
 
@@ -199,19 +205,9 @@ const ScanAttendance = () => {
                             )}
                         </div>
 
-                        {scanState === 'identified' && (
+                        {(scanState === 'success' || scanState === 'early_scan') && (
                             <div className="action-buttons">
-                                {!todayAttendance && (
-                                    <button className="btn btn-primary btn-lg" onClick={recordTimeIn}>RECORD TIME IN</button>
-                                )}
-                                {todayAttendance && !todayAttendance.timeOut && (
-                                    <button className="btn btn-warning btn-lg" onClick={recordTimeOut}>RECORD TIME OUT</button>
-                                )}
-                                {todayAttendance && todayAttendance.timeOut && (
-                                    <div className="completed-state">Attendance Already Completed</div>
-                                )}
-                                <button className="btn btn-secondary" onClick={() => alert('Attendance history routing coming soon')}>VIEW ATTENDANCE HISTORY</button>
-                                <button className="btn btn-secondary" onClick={resetScanner}>Cancel / Scan Next</button>
+                                <button className="btn btn-secondary btn-lg" onClick={resetScanner}>Scan Next Now</button>
                             </div>
                         )}
 
