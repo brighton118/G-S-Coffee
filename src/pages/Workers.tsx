@@ -88,7 +88,7 @@ const Workers = () => {
                                 <td>{w.position}</td>
                                 <td>
                                     <span className={`badge ${w.status === 'Active' ? 'badge-success' : 'badge-danger'}`}>
-                                        {w.status}
+                                        {w.status === 'Active' ? 'Present' : w.status}
                                     </span>
                                 </td>
                                 <td>
