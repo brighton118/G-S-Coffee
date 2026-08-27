@@ -10,6 +10,7 @@ import Sales from './pages/Sales';
 import Reports from './pages/Reports';
 import WorkerProfile from './pages/WorkerProfile';
 import Notifications from './pages/Notifications';
+import Settings from './pages/Settings';
 import { seedDemoData } from './seed';
 import { createFirestoreTables } from './seedFirestore';
 import { format } from 'date-fns';
@@ -65,7 +66,7 @@ const App = () => {
                     <Route path="/sales" element={<Sales />} />
                     <Route path="/reports" element={<Reports />} />
                     <Route path="/notifications" element={<Notifications />} />
-                    <Route path="/settings" element={<div>Settings Page</div>} />
+                    <Route path="/settings" element={<Settings />} />
                 </Routes>
             </Layout>
         </Router>
