@@ -1,0 +1,10 @@
+.inventory-wrapper {
+    display: flex;
+    flex-direction: column;
+    gap: 1.5rem;
+}
+
+.actions-group {
+    display: flex;
+    gap: 1rem;
+}
