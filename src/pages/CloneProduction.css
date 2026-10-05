@@ -1,0 +1,140 @@
+.clones-wrapper {
+    display: flex;
+    flex-direction: column;
+    gap: 1.5rem;
+}
+
+.header-action {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.filters-bar {
+    display: flex;
+    gap: 1rem;
+    padding: 1rem;
+    align-items: center;
+}
+
+.search-group {
+    display: flex;
+    align-items: center;
+    flex: 1;
+    gap: 0.5rem;
+    padding: 0 0.5rem;
+    border: 1px solid var(--color-border);
+    border-radius: var(--border-radius);
+    background: var(--color-surface);
+}
+
+.search-input {
+    border: none;
+    padding: 0.5rem;
+}
+
+.search-input:focus {
+    border: none;
+    box-shadow: none;
+}
+
+.filter-select {
+    width: 200px;
+}
+
+.batches-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+    gap: 1.5rem;
+}
+
+.batch-card {
+    display: flex;
+    flex-direction: column;
+    gap: 1rem;
+}
+
+.batch-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    border-bottom: 1px solid var(--color-border);
+    padding-bottom: 0.75rem;
+}
+
+.batch-header h3 {
+    margin: 0;
+    font-size: 1.125rem;
+}
+
+.batch-info p {
+    margin-bottom: 0.25rem;
+    font-size: 0.875rem;
+}
+
+.batch-timeline-preview {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    font-size: 0.75rem;
+    color: var(--color-text-light);
+    background: var(--color-background);
+    padding: 0.5rem;
+    border-radius: var(--border-radius);
+}
+
+.batch-actions {
+    margin-top: auto;
+    display: flex;
+    gap: 0.5rem;
+    justify-content: space-between;
+}
+
+.btn-sm {
+    padding: 0.375rem 0.75rem;
+    font-size: 0.875rem;
+}
+
+.empty-state {
+    grid-column: 1 / -1;
+    text-align: center;
+    padding: 3rem;
+    color: var(--color-text-light);
+    background: var(--color-surface);
+    border-radius: var(--border-radius);
+    border: 1px dashed var(--color-border);
+}
+
+/* Modals */
+.modal-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: rgba(0, 0, 0, 0.5);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 1000;
+}
+
+.modal-content {
+    width: 100%;
+    max-width: 500px;
+    max-height: 90vh;
+    overflow-y: auto;
+    position: relative;
+}
+
+.modal-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 1.5rem;
+}
+
+.modal-header h2 {
+    margin: 0;
+    font-size: 1.25rem;
+}

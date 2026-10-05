@@ -1,0 +1,27 @@
+.table-responsive {
+    width: 100%;
+    overflow-x: auto;
+}
+
+.data-table {
+    width: 100%;
+    border-collapse: collapse;
+}
+
+.data-table th,
+.data-table td {
+    padding: 1rem;
+    text-align: left;
+    border-bottom: 1px solid var(--color-border);
+}
+
+.data-table th {
+    background-color: var(--color-background);
+    font-weight: 600;
+    color: var(--color-text-light);
+    font-size: 0.875rem;
+}
+
+.data-table tr:hover {
+    background-color: var(--color-background);
+}

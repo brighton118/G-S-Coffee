@@ -1,0 +1,8 @@
+node_modules
+dist
+.vscode
+.gemini
+*.log
+.DS_Store
+.firebase
+G-S-Coffee-main/
