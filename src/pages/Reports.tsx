@@ -1,164 +1,238 @@
 import React, { useState } from 'react';
 import { useLiveQuery } from 'dexie-react-hooks';
 import { db } from '../db';
-import { ScrollText, Download, X, Printer } from 'lucide-react';
-import { format } from 'date-fns';
+import { 
+    FileText, 
+    Download, 
+    Users, 
+    Calendar, 
+    Clock, 
+    DollarSign, 
+    Layers, 
+    Package, 
+    TrendingUp, 
+    ShieldCheck
+} from 'lucide-react';
+import {
+    generateWorkersMasterPDF,
+    generateAttendancePDF,
+    generateOvertimePDF,
+    generatePayrollMasterPDF,
+    generateCloneProductionSummaryPDF,
+    generateInventoryPDF,
+    generateSalesMasterPDF,
+    generateUniversalFarmAuditPDF
+} from '../utils/pdfGenerator';
+import { calculateInventoryValuation } from '../utils/calculations';
 
-const Reports = () => {
-    const [activeReport, setActiveReport] = useState<string | null>(null);
+const Reports: React.FC = () => {
+    const [selectedMonth, setSelectedMonth] = useState<string>(new Date().toISOString().substring(0, 7)); // YYYY-MM
+    const [isExporting, setIsExporting] = useState<string | null>(null);
 
     // Queries
     const workers = useLiveQuery(() => db.workers.toArray()) || [];
     const attendance = useLiveQuery(() => db.attendance.toArray()) || [];
+    const payrollRecords = useLiveQuery(() => db.payrollRecords.toArray()) || [];
+    const cloneBatches = useLiveQuery(() => db.cloneBatches.toArray()) || [];
+    const humidChambers = useLiveQuery(() => db.productionHumidChamber.toArray()) || [];
+    const sortings = useLiveQuery(() => db.productionSortings.toArray()) || [];
     const inventory = useLiveQuery(() => db.inventoryItems.toArray()) || [];
-    const sales = useLiveQuery(() => db.plantletSales.toArray()) || [];
+    const inventoryTransactions = useLiveQuery(() => db.inventoryTransactions.toArray()) || [];
+    const sales = useLiveQuery(() => db.salesOrders.toArray()) || [];
+    const activityLogs = useLiveQuery(() => db.activityLogs.toArray()) || [];
 
-    const todayDateStr = format(new Date(), 'yyyy-MM-dd');
-    const todayAttendance = attendance.filter(a => a.date === todayDateStr);
-
-    const handlePrint = () => {
-        window.print();
+    const handleExport = async (type: string) => {
+        setIsExporting(type);
+        try {
+            switch (type) {
+                case 'workers':
+                    generateWorkersMasterPDF(workers);
+                    break;
+                case 'attendance':
+                    generateAttendancePDF(attendance, `Monthly Attendance Report - ${selectedMonth}`);
+                    break;
+                case 'overtime':
+                    generateOvertimePDF(attendance, `Overtime & Shift Evaluation - ${selectedMonth}`);
+                    break;
+                case 'payroll': {
+                    const monthPayroll = payrollRecords.filter(p => p.payrollMonth === selectedMonth || p.payrollPeriod === selectedMonth);
+                    generatePayrollMasterPDF(monthPayroll.length > 0 ? monthPayroll : payrollRecords, selectedMonth);
+                    break;
+                }
+                case 'clones':
+                    generateCloneProductionSummaryPDF(cloneBatches, humidChambers, sortings);
+                    break;
+                case 'inventory':
+                    generateInventoryPDF(inventory, inventoryTransactions);
+                    break;
+                case 'sales': {
+                    generateSalesMasterPDF(sales, `Sales Report - ${selectedMonth}`);
+                    break;
+                }
+                case 'audit':
+                    generateUniversalFarmAuditPDF(activityLogs, 'Farm Operations Audit Trail');
+                    break;
+            }
+        } catch (err) {
+            console.error('Failed to generate PDF:', err);
+            alert('Failed to generate PDF. Check browser console for details.');
+        } finally {
+            setIsExporting(null);
+        }
     };
+
+    const reportCards = [
+        {
+            id: 'workers',
+            title: 'Workers Directory & Salary Schedule',
+            description: 'Comprehensive roster of all farm workers, contact numbers, base monthly salaries in UGX, and overtime hourly rates.',
+            icon: Users,
+            color: '#2563eb',
+            count: `${workers.length} registered workers`
+        },
+        {
+            id: 'attendance',
+            title: 'Attendance Timesheet & Exceptions',
+            description: 'Full scan records with clock-in/out stamps, scheduled vs actual hours, missing scans, and attendance status flags.',
+            icon: Calendar,
+            color: '#0d9488',
+            count: `${attendance.length} attendance logs`
+        },
+        {
+            id: 'overtime',
+            title: 'Overtime Ledger & Approval Audit',
+            description: 'Calculated overtime hours, shift rule evaluations, supervisor approval decisions, reasons, and estimated earnings.',
+            icon: Clock,
+            color: '#f59e0b',
+            count: `${attendance.filter(a => (a.overtimeHours || 0) > 0).length} overtime records`
+        },
+        {
+            id: 'payroll',
+            title: 'Monthly Master Payroll Report',
+            description: 'Official 5-column payroll table (S/M, Name, Monthly Salary, Overtime Earnings, Net Pay) with deductions in UGX.',
+            icon: DollarSign,
+            color: '#16a34a',
+            count: `${payrollRecords.length} payslip entries`
+        },
+        {
+            id: 'clones',
+            title: 'Coffee Clone Production & Nursery Report',
+            description: 'Complete 5-stage tracking (Cutting -> Humid Chamber -> 1st Hardening -> 2nd Hardening -> Sorting) for KR1 & KR3-KR10.',
+            icon: Layers,
+            color: '#8b5cf6',
+            count: `${cloneBatches.length} active clone batches`
+        },
+        {
+            id: 'inventory',
+            title: 'Inventory Valuation & Movements',
+            description: 'Complete stock breakdown for Fertilizers, Pesticides, Farm Tools, and Nursery Supplies with total UGX valuation.',
+            icon: Package,
+            color: '#0284c7',
+            count: `UGX ${calculateInventoryValuation(inventory).toLocaleString()} valuation`
+        },
+        {
+            id: 'sales',
+            title: 'Plantlet Sales & Revenue Invoicing',
+            description: 'Customer order ledger, clone variety sales, unit pricing, amount paid vs balances due, and dispatch tracking.',
+            icon: TrendingUp,
+            color: '#10b981',
+            count: `${sales.length} customer sales orders`
+        },
+        {
+            id: 'audit',
+            title: 'System Activity & Compliance Audit',
+            description: 'Timestamped audit logs of all user actions, edits, status overrides, and operational adjustments across all modules.',
+            icon: ShieldCheck,
+            color: '#64748b',
+            count: `${activityLogs.length} activity audit entries`
+        }
+    ];
 
     return (
         <div className="page-wrapper" style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
-            <style>
-                {`
-                @media print {
-                    .hide-on-print, .sidebar { display: none !important; }
-                    .report-container { border: none !important; margin: 0 !important; width: 100% !important; }
-                    body { background: white !important; }
-                }
-                `}
-            </style>
-            <div className="header-action" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                <div className="hide-on-print">
-                    <h1>System Reports</h1>
-                    <p className="text-light">Generate insights for Production, Attendance, and Sales.</p>
+            {/* Header */}
+            <div className="header-action" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '1rem' }}>
+                <div>
+                    <h1 style={{ margin: 0 }}>Reports & Executive PDF Center</h1>
+                    <p className="text-light" style={{ margin: '0.25rem 0 0 0' }}>
+                        Generate and download production-grade, formatted PDF summaries with official farm headers and tables.
+                    </p>
                 </div>
-                <div className="hide-on-print">
-                    <button className="btn btn-primary" onClick={handlePrint}><Download size={18} /> Export PDF / Print</button>
-                </div>
-            </div>
-
-            <div className="cards-grid hide-on-print">
-                <div className="card stat-card" style={{ cursor: 'pointer' }} onClick={() => setActiveReport('attendance')}>
-                    <span className="stat-label">Daily Attendance Report</span>
-                    <span className="stat-value text-info">View Details</span>
-                </div>
-                <div className="card stat-card" style={{ cursor: 'pointer' }} onClick={() => setActiveReport('inventory')}>
-                    <span className="stat-label">Live Inventory Report</span>
-                    <span className="stat-value text-warning">View Details</span>
-                </div>
-                <div className="card stat-card" style={{ cursor: 'pointer' }} onClick={() => setActiveReport('sales')}>
-                    <span className="stat-label">Historical Sales Report</span>
-                    <span className="stat-value text-primary">View Details</span>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+                    <label style={{ fontSize: '0.9rem', fontWeight: 600, color: 'var(--color-text-light)' }}>Reporting Month:</label>
+                    <input 
+                        type="month" 
+                        className="form-input" 
+                        value={selectedMonth}
+                        onChange={e => setSelectedMonth(e.target.value)}
+                        style={{ maxWidth: '160px' }}
+                    />
                 </div>
             </div>
 
-            {/* Print Friendly Report Section */}
-            {activeReport && (
-                <div className="card report-container" style={{ background: '#fff', border: '1px solid #ddd', minHeight: '500px' }}>
-                    <div className="hide-on-print" style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '2rem', borderBottom: '1px solid #eee', paddingBottom: '1rem' }}>
-                        <h2 style={{ margin: 0, color: 'var(--color-primary-dark)' }}>
-                            {activeReport === 'attendance' && 'Daily Attendance Logs'}
-                            {activeReport === 'inventory' && 'Universal Stock Inventory'}
-                            {activeReport === 'sales' && 'G$S Financial Sales Record'}
-                        </h2>
-                        <button className="btn btn-secondary btn-sm" onClick={() => setActiveReport(null)}><X size={16} /> Close Report</button>
-                    </div>
+            {/* Reports Grid */}
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(320px, 1fr))', gap: '1.25rem' }}>
+                {reportCards.map(card => {
+                    const IconComponent = card.icon;
+                    const loading = isExporting === card.id;
 
-                    <div className="print-header" style={{ textAlign: 'center', marginBottom: '2rem' }}>
-                        <h1 style={{ letterSpacing: '2px', margin: '0 0 0.5rem 0' }}>G$S COFFEE FARM</h1>
-                        <h3 style={{ textTransform: 'uppercase', margin: 0, color: '#555' }}>
-                            {activeReport === 'attendance' && `Daily Attendance Report | ${todayDateStr}`}
-                            {activeReport === 'inventory' && `Active Inventory Report | ${todayDateStr}`}
-                            {activeReport === 'sales' && `Sales Revenue Report | All Time`}
-                        </h3>
-                    </div>
+                    return (
+                        <div key={card.id} className="card" style={{ display: 'flex', flexDirection: 'column', justifyContent: 'space-between', padding: '1.5rem' }}>
+                            <div>
+                                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '1rem' }}>
+                                    <div style={{
+                                        width: '42px',
+                                        height: '42px',
+                                        borderRadius: '8px',
+                                        background: `${card.color}15`,
+                                        color: card.color,
+                                        display: 'flex',
+                                        alignItems: 'center',
+                                        justifyContent: 'center'
+                                    }}>
+                                        <IconComponent size={22} />
+                                    </div>
+                                    <span className="badge badge-secondary" style={{ fontSize: '0.75rem' }}>
+                                        {card.count}
+                                    </span>
+                                </div>
+                                <h3 style={{ margin: '0 0 0.5rem 0', fontSize: '1.1rem' }}>{card.title}</h3>
+                                <p className="text-light" style={{ fontSize: '0.875rem', lineHeight: '1.4', margin: '0 0 1.25rem 0' }}>
+                                    {card.description}
+                                </p>
+                            </div>
 
-                    {activeReport === 'attendance' && (
-                        <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left' }}>
-                            <thead>
-                                <tr style={{ borderBottom: '2px solid #333' }}>
-                                    <th style={{ padding: '0.75rem 0' }}>Worker ID</th>
-                                    <th>Name</th>
-                                    <th>Department</th>
-                                    <th>Time In</th>
-                                    <th>Time Out</th>
-                                    <th>Status</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                {workers.map(w => {
-                                    const rec = todayAttendance.find(a => a.workerId === w.workerId);
-                                    return (
-                                        <tr key={w.workerId} style={{ borderBottom: '1px solid #ddd' }}>
-                                            <td style={{ padding: '0.75rem 0' }}>{w.workerId}</td>
-                                            <td>{w.fullName}</td>
-                                            <td>{w.department}</td>
-                                            <td>{rec ? rec.timeIn : '—'}</td>
-                                            <td>{rec?.timeOut ? rec.timeOut : '—'}</td>
-                                            <td><strong>{rec ? rec.status : 'Absent'}</strong></td>
-                                        </tr>
-                                    );
-                                })}
-                            </tbody>
-                        </table>
-                    )}
+                            <button 
+                                className="btn btn-primary"
+                                style={{ width: '100%', display: 'flex', justifyContent: 'center', alignItems: 'center', gap: '0.5rem' }}
+                                onClick={() => handleExport(card.id)}
+                                disabled={loading}
+                            >
+                                {loading ? (
+                                    <span>Generating PDF...</span>
+                                ) : (
+                                    <>
+                                        <Download size={16} /> Download {card.id.toUpperCase()} PDF
+                                    </>
+                                )}
+                            </button>
+                        </div>
+                    );
+                })}
+            </div>
 
-                    {activeReport === 'inventory' && (
-                        <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left' }}>
-                            <thead>
-                                <tr style={{ borderBottom: '2px solid #333' }}>
-                                    <th style={{ padding: '0.75rem 0' }}>Item ID</th>
-                                    <th>Asset Name</th>
-                                    <th>Remaining Stock</th>
-                                    <th>Status Threshold</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                {inventory.map(i => (
-                                    <tr key={i.inventoryId} style={{ borderBottom: '1px solid #ddd' }}>
-                                        <td style={{ padding: '0.75rem 0' }}>{i.inventoryId}</td>
-                                        <td>{i.name}</td>
-                                        <td>{i.quantity} {i.unit}</td>
-                                        <td>{i.quantity === 0 ? 'Depleted' : (i.quantity <= i.minStockLevel ? 'Low Stock' : 'Sufficient')}</td>
-                                    </tr>
-                                ))}
-                            </tbody>
-                        </table>
-                    )}
-
-                    {activeReport === 'sales' && (
-                        <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left' }}>
-                            <thead>
-                                <tr style={{ borderBottom: '2px solid #333' }}>
-                                    <th style={{ padding: '0.75rem 0' }}>Date</th>
-                                    <th>Batch Ref</th>
-                                    <th>Customer ID</th>
-                                    <th>Quantity</th>
-                                    <th>Total Yield Revenue</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                {sales.map(s => (
-                                    <tr key={s.id} style={{ borderBottom: '1px solid #ddd' }}>
-                                        <td style={{ padding: '0.75rem 0' }}>{format(new Date(s.date), 'MM/dd/yyyy')}</td>
-                                        <td>{s.batchId}</td>
-                                        <td>{s.customer}</td>
-                                        <td>{s.quantitySold} units</td>
-                                        <td>${(s.quantitySold * s.pricePerPlantlet).toLocaleString()}</td>
-                                    </tr>
-                                ))}
-                            </tbody>
-                        </table>
-                    )}
+            {/* Print Friendly Information Note */}
+            <div className="card" style={{ background: 'var(--color-surface)', borderLeft: '4px solid var(--color-primary)', padding: '1rem 1.25rem' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '0.25rem' }}>
+                    <FileText size={18} color="var(--color-primary)" />
+                    <strong>Print-Ready Executive Reports:</strong>
                 </div>
-            )}
+                <p className="text-light" style={{ margin: 0, fontSize: '0.875rem' }}>
+                    All downloaded reports are compiled dynamically with vector graphics, auto-pagination, UGX currency formatting, and standard G&S Coffee Farm letterhead suitable for administrative filing, tax auditing, and bank reconciliation.
+                </p>
+            </div>
         </div>
     );
 };
 
 export default Reports;
-

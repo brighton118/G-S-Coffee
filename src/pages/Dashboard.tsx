@@ -54,11 +54,11 @@ const Dashboard = () => {
     const secondHardeningQty = secondHardeningBatches.reduce((acc, curr) => acc + curr.currentQuantity, 0);
 
     // Overdue Humid Chamber check
-    const overdueChamberBatches = humidChambers.filter(h => h.status === 'Overdue' || (h.status === 'In Chamber' && h.expectedCompletionDate < todayDateStr));
+    const overdueChamberBatches = humidChambers.filter(h => h.status === 'Overdue' || (h.status === 'In Chamber' && (h.targetExitDate || h.expectedCompletionDate || '') < todayDateStr));
 
     // Validated Commercial Stock available for sale
-    const totalSortedForSale = sortings.reduce((acc, curr) => acc + (curr.forSaleQuantity || 0), 0);
-    const totalSoldDeducted = sales.filter(s => s.stockDeducted).reduce((acc, curr) => acc + curr.quantityOrdered, 0);
+    const totalSortedForSale = sortings.reduce((acc, curr) => acc + (curr.readyForSale || curr.forSaleQuantity || 0), 0);
+    const totalSoldDeducted = sales.filter(s => s.stockDeducted).reduce((acc, curr) => acc + (curr.quantityOrdered || curr.quantity || 0), 0);
     const liveAvailableClones = Math.max(0, totalSortedForSale - totalSoldDeducted);
     const liveClonesValuation = liveAvailableClones * 2500; // Standard UGX 2,500
 
@@ -69,7 +69,7 @@ const Dashboard = () => {
 
     // Sales Financials
     const totalSalesRevenue = sales.reduce((acc, curr) => acc + (curr.amountPaid || 0), 0);
-    const totalOutstandingReceivables = sales.reduce((acc, curr) => acc + (curr.outstandingBalance || 0), 0);
+    const totalOutstandingReceivables = sales.reduce((acc, curr) => acc + (curr.balanceDue || curr.outstandingBalance || 0), 0);
 
     return (
         <div className="dashboard-wrapper" style={{ display: 'flex', flexDirection: 'column', gap: '1.75rem' }}>

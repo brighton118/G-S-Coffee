@@ -452,8 +452,9 @@ export async function seedDemoData() {
     const currentPeriod = format(new Date(), 'yyyy-MM');
     const seedPayroll: PayrollRecord[] = [
         {
+            payrollMonth: currentPeriod,
             payrollPeriod: currentPeriod,
-            serialNumber: 'SM-001',
+            serialNumber: 1,
             workerId: 'GSF-W-0001',
             workerName: 'John Kato',
             monthlySalary: 650000,
@@ -464,12 +465,12 @@ export async function seedDemoData() {
             netPay: 688000, // 650000 + 48000 - 10000
             status: 'Approved',
             approvedBy: 'Farm Director',
-            approvalDate: todayStr,
             generatedAt: new Date().toISOString()
         },
         {
+            payrollMonth: currentPeriod,
             payrollPeriod: currentPeriod,
-            serialNumber: 'SM-002',
+            serialNumber: 2,
             workerId: 'GSF-W-0002',
             workerName: 'Mary Nabirye',
             monthlySalary: 550000,
@@ -480,7 +481,6 @@ export async function seedDemoData() {
             netPay: 571000, // 550000 + 21000 - 0
             status: 'Approved',
             approvedBy: 'Farm Director',
-            approvalDate: todayStr,
             generatedAt: new Date().toISOString()
         }
     ];

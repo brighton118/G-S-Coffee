@@ -1,178 +1,672 @@
 import React, { useState } from 'react';
 import { useLiveQuery } from 'dexie-react-hooks';
-import { db } from '../db';
-import { ShoppingCart, Plus, Search, AlertTriangle, QrCode, X } from 'lucide-react';
-import './Inventory.css';
+import { db, InventoryItem } from '../db';
+import { 
+    Plus, 
+    Search, 
+    Download, 
+    AlertTriangle, 
+    DollarSign, 
+    Archive, 
+    RefreshCw,
+    Calendar,
+    X,
+    ArrowDownRight,
+    ArrowUpRight,
+    Wrench,
+    Bug,
+    Sparkles,
+    Sprout
+} from 'lucide-react';
+import { generateInventoryPDF } from '../utils/pdfGenerator';
+import { isStockLow, isExpiryNear, calculateInventoryValuation } from '../utils/calculations';
 
-const Inventory = () => {
+const CATEGORIES = [
+    { name: 'Fertilizers', icon: Sparkles, color: '#16a34a' },
+    { name: 'Pesticides', icon: Bug, color: '#ea580c' },
+    { name: 'Farm Tools', icon: Wrench, color: '#2563eb' },
+    { name: 'Nursery Supplies', icon: Sprout, color: '#0d9488' }
+];
+
+const PREDEFINED_NURSERY_SUPPLIES = [
+    'Black soil',
+    'Sand',
+    'Metal rods',
+    'UV polythene paper',
+    'Shade nets',
+    'Potting bags'
+];
+
+const Inventory: React.FC = () => {
+    const [selectedCategory, setSelectedCategory] = useState<string>('All');
     const [searchTerm, setSearchTerm] = useState('');
-    const [categoryFilter, setCategoryFilter] = useState('All');
-    const [showAddForm, setShowAddForm] = useState(false);
+    const [showAddModal, setShowAddModal] = useState(false);
+    const [showStockModal, setShowStockModal] = useState(false);
+    const [selectedItemForStock, setSelectedItemForStock] = useState<InventoryItem | null>(null);
+    const [stockAction, setStockAction] = useState<'IN' | 'OUT'>('IN');
+    const [stockChangeAmount, setStockChangeAmount] = useState<number>(10);
+    const [stockReason, setStockReason] = useState<string>('Routine Stock Purchase');
 
-    const [formData, setFormData] = useState({ name: '', category: 'Nursery supplies', barcode: '', unit: '', quantity: 0, minStock: 0, supplier: '', location: '' });
-
-    const inventory = useLiveQuery(() => db.inventoryItems.toArray()) || [];
-    const categories = Array.from(new Set(inventory.map(i => i.category)));
-
-    const filteredInventory = inventory.filter(item => {
-        const matchesSearch = item.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-            item.inventoryId.toLowerCase().includes(searchTerm.toLowerCase());
-        const matchesCategory = categoryFilter === 'All' || item.category === categoryFilter;
-        return matchesSearch && matchesCategory;
+    // Add form state
+    const [formData, setFormData] = useState<{
+        name: string;
+        category: string;
+        type: string;
+        unit: string;
+        quantity: number;
+        purchasePrice: number;
+        supplier: string;
+        minStockLevel: number;
+        expiryDate: string;
+        condition: string;
+        location: string;
+        notes: string;
+    }>({
+        name: '',
+        category: 'Fertilizers',
+        type: '',
+        unit: 'kg',
+        quantity: 50,
+        purchasePrice: 25000,
+        supplier: 'Uganda Crop Care Ltd',
+        minStockLevel: 10,
+        expiryDate: '',
+        condition: 'New',
+        location: 'Main Store Shelf A',
+        notes: ''
     });
 
-    const handleAddSubmit = async (e: React.FormEvent) => {
+    const items = useLiveQuery(() => db.inventoryItems.toArray()) || [];
+    const transactions = useLiveQuery(() => db.inventoryTransactions.toArray()) || [];
+
+    // Filter items
+    const filteredItems = items.filter(item => {
+        const matchesCategory = selectedCategory === 'All' || item.category === selectedCategory;
+        const matchesSearch = 
+            item.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+            item.inventoryId.toLowerCase().includes(searchTerm.toLowerCase()) ||
+            (item.supplier && item.supplier.toLowerCase().includes(searchTerm.toLowerCase()));
+        return matchesCategory && matchesSearch;
+    });
+
+    // Valuation and Stats
+    const totalValuation = calculateInventoryValuation(items);
+    const lowStockCount = items.filter(i => isStockLow(i.quantity, i.minStockLevel) && i.status === 'Active').length;
+    const expiringSoonCount = items.filter(i => isExpiryNear(i.expiryDate, 60) && i.status === 'Active').length;
+    const totalActiveItems = items.filter(i => i.status === 'Active').length;
+
+    const handleCreateItem = async (e: React.FormEvent) => {
         e.preventDefault();
-        const newId = `INV-${Math.floor(Math.random() * 9000) + 1000}`;
+        if (!formData.name.trim()) {
+            alert('Please specify an item name.');
+            return;
+        }
+
+        const count = await db.inventoryItems.count();
+        const categoryCode = formData.category.substring(0, 3).toUpperCase();
+        const newId = `GSF-INV-${categoryCode}-${(count + 1).toString().padStart(4, '0')}`;
         const today = new Date().toISOString();
 
-        await db.inventoryItems.add({
+        const newItem: InventoryItem = {
             inventoryId: newId,
-            name: formData.name,
+            name: formData.name.trim(),
             category: formData.category,
-            barcode: formData.barcode,
-            brand: 'Internal',
+            type: formData.type || undefined,
             unit: formData.unit,
-            quantity: Number(formData.quantity),
-            minStockLevel: Number(formData.minStock),
-            supplier: formData.supplier,
-            purchasePrice: 0,
-            purchaseDate: today,
-            location: formData.location,
-            status: 'Active'
+            quantity: Number(formData.quantity) || 0,
+            minStockLevel: Number(formData.minStockLevel) || 5,
+            supplier: formData.supplier || 'Direct Farm Purchase',
+            purchasePrice: Number(formData.purchasePrice) || 0,
+            purchaseDate: today.split('T')[0],
+            dateReceived: today.split('T')[0],
+            expiryDate: formData.expiryDate || undefined,
+            condition: formData.category === 'Farm Tools' ? (formData.condition as any) : undefined,
+            location: formData.location || 'Central Store',
+            status: 'Active',
+            notes: formData.notes
+        };
+
+        await db.inventoryItems.add(newItem);
+
+        // Initial Transaction Record
+        await db.inventoryTransactions.add({
+            inventoryId: newId,
+            itemName: newItem.name,
+            quantityChange: newItem.quantity,
+            type: 'Purchase',
+            unitPrice: newItem.purchasePrice,
+            totalCost: newItem.quantity * newItem.purchasePrice,
+            date: today,
+            user: 'Store Manager',
+            reason: 'Initial Stocking',
+            notes: formData.notes
+        });
+
+        setShowAddModal(false);
+        setFormData({
+            name: '',
+            category: 'Fertilizers',
+            type: '',
+            unit: 'kg',
+            quantity: 50,
+            purchasePrice: 25000,
+            supplier: 'Uganda Crop Care Ltd',
+            minStockLevel: 10,
+            expiryDate: '',
+            condition: 'New',
+            location: 'Main Store Shelf A',
+            notes: ''
+        });
+    };
+
+    const handleStockAdjustment = async (e: React.FormEvent) => {
+        e.preventDefault();
+        if (!selectedItemForStock || stockChangeAmount <= 0) return;
+
+        const isStockOut = stockAction === 'OUT';
+        if (isStockOut && selectedItemForStock.quantity < stockChangeAmount) {
+            alert(`Cannot issue ${stockChangeAmount} ${selectedItemForStock.unit}. Current stock is only ${selectedItemForStock.quantity} ${selectedItemForStock.unit}.`);
+            return;
+        }
+
+        const delta = isStockOut ? -stockChangeAmount : stockChangeAmount;
+        const newQuantity = selectedItemForStock.quantity + delta;
+        const today = new Date().toISOString();
+
+        await db.inventoryItems.update(selectedItemForStock.inventoryId, {
+            quantity: newQuantity
         });
 
         await db.inventoryTransactions.add({
-            inventoryId: newId,
-            quantityChange: Number(formData.quantity),
-            type: 'Purchase',
+            inventoryId: selectedItemForStock.inventoryId,
+            itemName: selectedItemForStock.name,
+            quantityChange: delta,
+            type: isStockOut ? 'Stock usage' : 'Stock addition',
+            unitPrice: selectedItemForStock.purchasePrice,
+            totalCost: Math.abs(delta) * selectedItemForStock.purchasePrice,
             date: today,
-            user: 'Admin',
-            reason: 'Initial Registration',
-            notes: ''
+            user: 'Store Manager',
+            reason: stockReason,
+            notes: `${isStockOut ? 'Issued for' : 'Received into'} nursery operations`
         });
 
-        setShowAddForm(false);
+        setShowStockModal(false);
+        setSelectedItemForStock(null);
+        setStockChangeAmount(10);
+    };
+
+    const handleArchiveItem = async (item: InventoryItem) => {
+        const nextStatus = item.status === 'Archived' ? 'Active' : 'Archived';
+        const actionLabel = nextStatus === 'Archived' ? 'archive (non-destructive)' : 'reactivate';
+        if (confirm(`Are you sure you want to ${actionLabel} ${item.name}? Historical transactions will be strictly preserved.`)) {
+            await db.inventoryItems.update(item.inventoryId, { status: nextStatus });
+        }
     };
 
     return (
-        <div className="inventory-wrapper">
-            <div className="header-action">
+        <div className="page-wrapper" style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
+            {/* Header */}
+            <div className="header-action" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '1rem' }}>
                 <div>
-                    <h1>Inventory Management</h1>
-                    <p className="text-light">Manage nursery supplies, fertilizers, and assets.</p>
+                    <h1 style={{ margin: 0 }}>Farm & Nursery Inventory</h1>
+                    <p className="text-light" style={{ margin: '0.25rem 0 0 0' }}>
+                        Track Fertilizers, Pesticides, Farm Tools, and Nursery Supplies with live valuation in UGX.
+                    </p>
                 </div>
-                <div className="actions-group">
-                    <button className="btn btn-secondary"><QrCode size={18} /> Scan Barcode</button>
-                    <button className="btn btn-primary" onClick={() => setShowAddForm(true)}><Plus size={18} /> New Item</button>
+                <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }}>
+                    <button 
+                        className="btn btn-secondary" 
+                        onClick={() => generateInventoryPDF(items, transactions)}
+                    >
+                        <Download size={16} /> Export Inventory PDF
+                    </button>
+                    <button className="btn btn-primary" onClick={() => setShowAddModal(true)}>
+                        <Plus size={18} /> Add Inventory Item
+                    </button>
                 </div>
             </div>
 
-            <div className="filters-bar card">
-                <div className="search-group">
-                    <Search size={18} className="text-light" />
-                    <input
-                        type="text"
-                        placeholder="Search items..."
-                        className="form-input search-input"
+            {/* KPI Cards */}
+            <div className="stats-grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: '1rem' }}>
+                <div className="stat-card card">
+                    <div className="stat-header">
+                        <span className="stat-title">Inventory Valuation</span>
+                        <DollarSign className="stat-icon text-success" size={20} />
+                    </div>
+                    <div className="stat-value" style={{ color: 'var(--color-primary)' }}>
+                        UGX {totalValuation.toLocaleString()}
+                    </div>
+                    <div className="stat-change text-light">{totalActiveItems} Active SKUs</div>
+                </div>
+
+                <div className="stat-card card">
+                    <div className="stat-header">
+                        <span className="stat-title">Low Stock Alerts</span>
+                        <AlertTriangle className="stat-icon text-warning" size={20} />
+                    </div>
+                    <div className="stat-value" style={{ color: lowStockCount > 0 ? '#ea580c' : 'var(--color-text)' }}>
+                        {lowStockCount}
+                    </div>
+                    <div className="stat-change text-light">Items at or below reorder level</div>
+                </div>
+
+                <div className="stat-card card">
+                    <div className="stat-header">
+                        <span className="stat-title">Expiry Warnings</span>
+                        <Calendar className="stat-icon text-danger" size={20} />
+                    </div>
+                    <div className="stat-value" style={{ color: expiringSoonCount > 0 ? '#dc2626' : 'var(--color-text)' }}>
+                        {expiringSoonCount}
+                    </div>
+                    <div className="stat-change text-light">Chemicals expiring &lt; 60 days</div>
+                </div>
+
+                <div className="stat-card card">
+                    <div className="stat-header">
+                        <span className="stat-title">Stock Movements</span>
+                        <RefreshCw className="stat-icon text-primary" size={20} />
+                    </div>
+                    <div className="stat-value">
+                        {transactions.length}
+                    </div>
+                    <div className="stat-change text-light">Audited stock transactions</div>
+                </div>
+            </div>
+
+            {/* Category Tabs */}
+            <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap', borderBottom: '1px solid var(--color-border)', paddingBottom: '0.5rem' }}>
+                <button 
+                    className={`btn ${selectedCategory === 'All' ? 'btn-primary' : 'btn-secondary'}`}
+                    onClick={() => setSelectedCategory('All')}
+                    style={{ padding: '0.4rem 0.85rem' }}
+                >
+                    All Categories ({items.length})
+                </button>
+                {CATEGORIES.map(cat => {
+                    const count = items.filter(i => i.category === cat.name).length;
+                    const IconComponent = cat.icon;
+                    return (
+                        <button 
+                            key={cat.name}
+                            className={`btn ${selectedCategory === cat.name ? 'btn-primary' : 'btn-secondary'}`}
+                            onClick={() => setSelectedCategory(cat.name)}
+                            style={{ display: 'inline-flex', alignItems: 'center', gap: '0.4rem', padding: '0.4rem 0.85rem' }}
+                        >
+                            <IconComponent size={16} />
+                            {cat.name} ({count})
+                        </button>
+                    );
+                })}
+            </div>
+
+            {/* Filters */}
+            <div className="card" style={{ padding: '0.75rem 1rem', display: 'flex', gap: '1rem', alignItems: 'center' }}>
+                <div style={{ position: 'relative', width: '100%', maxWidth: '400px' }}>
+                    <Search size={18} style={{ position: 'absolute', left: '10px', top: '50%', transform: 'translateY(-50%)', color: 'var(--color-text-light)' }} />
+                    <input 
+                        type="text" 
+                        className="form-input" 
+                        style={{ paddingLeft: '2.25rem', width: '100%' }}
+                        placeholder="Search by name, SKU, or supplier..."
                         value={searchTerm}
-                        onChange={(e) => setSearchTerm(e.target.value)}
+                        onChange={e => setSearchTerm(e.target.value)}
                     />
                 </div>
-                <select
-                    className="form-input filter-select"
-                    value={categoryFilter}
-                    onChange={(e) => setCategoryFilter(e.target.value)}
-                >
-                    <option value="All">All Categories</option>
-                    {categories.map(cat => <option key={cat!} value={cat}>{cat}</option>)}
-                </select>
             </div>
 
-            <div className="table-responsive card">
+            {/* Items Table */}
+            <div className="card table-responsive">
                 <table className="data-table">
                     <thead>
                         <tr>
-                            <th>ID</th>
-                            <th>Name</th>
-                            <th>Quantity/Unit</th>
-                            <th>Stock Status</th>
-                            <th>Actions</th>
+                            <th>Item Details</th>
+                            <th>Category</th>
+                            <th>Stock Level</th>
+                            <th>Unit Cost</th>
+                            <th>Total Valuation</th>
+                            <th>Supplier / Location</th>
+                            <th>Expiry / Condition</th>
+                            <th>Status</th>
+                            <th style={{ textAlign: 'right' }}>Actions</th>
                         </tr>
                     </thead>
                     <tbody>
-                        {filteredInventory.map(item => {
-                            const isOut = item.quantity === 0;
-                            const isLow = !isOut && item.quantity <= item.minStockLevel;
-                            return (
-                                <tr key={item.inventoryId}>
-                                    <td><strong>{item.inventoryId}</strong></td>
-                                    <td>{item.name}</td>
-                                    <td>{item.quantity} {item.unit}</td>
-                                    <td>
-                                        {isOut ? <span className="badge badge-danger">Out of Stock</span> :
-                                            isLow ? <span className="badge badge-warning"><AlertTriangle size={12} /> Low Stock</span> :
-                                                <span className="badge badge-success">Sufficient</span>}
-                                    </td>
-                                    <td>
-                                        <button className="btn btn-secondary btn-sm">Edit / Use</button>
-                                    </td>
-                                </tr>
-                            )
-                        })}
+                        {filteredItems.length === 0 ? (
+                            <tr>
+                                <td colSpan={9} style={{ textAlign: 'center', padding: '3rem', color: 'var(--color-text-light)' }}>
+                                    No inventory items found. Click "Add Inventory Item" to register supplies.
+                                </td>
+                            </tr>
+                        ) : (
+                            filteredItems.map(item => {
+                                const isLow = isStockLow(item.quantity, item.minStockLevel);
+                                const isExpiring = isExpiryNear(item.expiryDate, 60);
+
+                                return (
+                                    <tr key={item.inventoryId} style={{ opacity: item.status === 'Archived' ? 0.6 : 1 }}>
+                                        <td>
+                                            <div><strong>{item.name}</strong></div>
+                                            <div className="text-light" style={{ fontSize: '0.8rem' }}>{item.inventoryId} {item.type && `• ${item.type}`}</div>
+                                        </td>
+                                        <td>
+                                            <span className="badge badge-primary">{item.category}</span>
+                                        </td>
+                                        <td>
+                                            <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
+                                                <strong style={{ fontSize: '1rem', color: isLow ? '#ea580c' : 'var(--color-text)' }}>
+                                                    {item.quantity.toLocaleString()} {item.unit}
+                                                </strong>
+                                                {isLow && item.status === 'Active' && (
+                                                    <span className="badge badge-warning" style={{ fontSize: '0.7rem' }}>Low</span>
+                                                )}
+                                            </div>
+                                            <div className="text-light" style={{ fontSize: '0.75rem' }}>Min: {item.minStockLevel} {item.unit}</div>
+                                        </td>
+                                        <td>UGX {item.purchasePrice.toLocaleString()}</td>
+                                        <td><strong>UGX {(item.quantity * item.purchasePrice).toLocaleString()}</strong></td>
+                                        <td>
+                                            <div>{item.supplier || 'N/A'}</div>
+                                            <div className="text-light" style={{ fontSize: '0.75rem' }}>📍 {item.location || 'Store'}</div>
+                                        </td>
+                                        <td>
+                                            {item.expiryDate ? (
+                                                <div style={{ color: isExpiring ? '#dc2626' : 'var(--color-text)', fontSize: '0.85rem' }}>
+                                                    📅 {item.expiryDate}
+                                                    {isExpiring && <div style={{ fontSize: '0.7rem', fontWeight: 600 }}>Expiring Soon</div>}
+                                                </div>
+                                            ) : item.condition ? (
+                                                <span className="badge badge-secondary">{item.condition}</span>
+                                            ) : (
+                                                <span className="text-light">-</span>
+                                            )}
+                                        </td>
+                                        <td>
+                                            <span className={`badge ${item.status === 'Active' ? 'badge-success' : 'badge-secondary'}`}>
+                                                {item.status}
+                                            </span>
+                                        </td>
+                                        <td style={{ textAlign: 'right' }}>
+                                            <div style={{ display: 'inline-flex', gap: '0.35rem' }}>
+                                                <button 
+                                                    className="btn btn-secondary" 
+                                                    style={{ padding: '0.3rem 0.55rem', fontSize: '0.8rem' }}
+                                                    onClick={() => {
+                                                        setSelectedItemForStock(item);
+                                                        setStockAction('IN');
+                                                        setShowStockModal(true);
+                                                    }}
+                                                    title="Stock In / Out"
+                                                >
+                                                    <RefreshCw size={14} /> Stock In/Out
+                                                </button>
+                                                <button 
+                                                    className="btn btn-secondary" 
+                                                    style={{ padding: '0.3rem 0.55rem', fontSize: '0.8rem' }}
+                                                    onClick={() => handleArchiveItem(item)}
+                                                    title={item.status === 'Archived' ? 'Reactivate' : 'Archive'}
+                                                >
+                                                    <Archive size={14} />
+                                                </button>
+                                            </div>
+                                        </td>
+                                    </tr>
+                                );
+                            })
+                        )}
                     </tbody>
                 </table>
             </div>
 
-            {showAddForm && (
+            {/* Add Item Modal */}
+            {showAddModal && (
                 <div className="modal-overlay">
-                    <div className="modal-content card">
-                        <div className="modal-header">
-                            <h2>Add New Inventory Item</h2>
-                            <button className="btn btn-secondary" style={{ padding: '0.25rem', border: 'none' }} onClick={() => setShowAddForm(false)}><X size={18} /></button>
+                    <div className="modal-content card" style={{ maxWidth: '600px', width: '100%' }}>
+                        <div className="modal-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.25rem' }}>
+                            <h2 style={{ margin: 0 }}>Register New Inventory Item</h2>
+                            <button className="btn btn-secondary" style={{ padding: '0.25rem', border: 'none' }} onClick={() => setShowAddModal(false)}>
+                                <X size={18} />
+                            </button>
                         </div>
-                        <form onSubmit={handleAddSubmit}>
-                            <div className="form-group">
-                                <label className="form-label">Item Name *</label>
-                                <input required type="text" className="form-input" value={formData.name} onChange={e => setFormData({ ...formData, name: e.target.value })} />
-                            </div>
-                            <div className="form-group" style={{ display: 'flex', gap: '1rem' }}>
-                                <div style={{ flex: 1 }}>
+
+                        <form onSubmit={handleCreateItem} style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+                            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
+                                <div className="form-group">
                                     <label className="form-label">Category *</label>
-                                    <select className="form-input" value={formData.category} onChange={e => setFormData({ ...formData, category: e.target.value })}>
-                                        <option>Nursery supplies</option>
-                                        <option>Fertilizers</option>
-                                        <option>Crop protection</option>
-                                        <option>Planting materials</option>
-                                        <option>Farm tools</option>
+                                    <select 
+                                        className="form-input"
+                                        value={formData.category}
+                                        onChange={e => {
+                                            const cat = e.target.value;
+                                            setFormData({ 
+                                                ...formData, 
+                                                category: cat,
+                                                unit: cat === 'Fertilizers' || cat === 'Nursery Supplies' ? 'kg' : cat === 'Pesticides' ? 'Litres' : 'Pieces'
+                                            });
+                                        }}
+                                    >
+                                        <option value="Fertilizers">Fertilizers</option>
+                                        <option value="Pesticides">Pesticides</option>
+                                        <option value="Farm Tools">Farm Tools</option>
+                                        <option value="Nursery Supplies">Nursery Supplies</option>
                                     </select>
                                 </div>
-                                <div style={{ flex: 1 }}>
-                                    <label className="form-label">Barcode / QR</label>
-                                    <input type="text" className="form-input" value={formData.barcode} onChange={e => setFormData({ ...formData, barcode: e.target.value })} />
+
+                                <div className="form-group">
+                                    <label className="form-label">Item Name *</label>
+                                    {formData.category === 'Nursery Supplies' ? (
+                                        <div>
+                                            <input 
+                                                type="text" 
+                                                required 
+                                                list="nursery-supplies-suggestions"
+                                                className="form-input" 
+                                                placeholder="e.g. Black soil, Sand..."
+                                                value={formData.name}
+                                                onChange={e => setFormData({ ...formData, name: e.target.value })}
+                                            />
+                                            <datalist id="nursery-supplies-suggestions">
+                                                {PREDEFINED_NURSERY_SUPPLIES.map(s => (
+                                                    <option key={s} value={s} />
+                                                ))}
+                                            </datalist>
+                                        </div>
+                                    ) : (
+                                        <input 
+                                            type="text" 
+                                            required 
+                                            className="form-input" 
+                                            placeholder="e.g. NPK 17:17:17, Pruning Shears..."
+                                            value={formData.name}
+                                            onChange={e => setFormData({ ...formData, name: e.target.value })}
+                                        />
+                                    )}
                                 </div>
                             </div>
-                            <div className="form-group" style={{ display: 'flex', gap: '1rem' }}>
-                                <div style={{ flex: 1 }}>
+
+                            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '1rem' }}>
+                                <div className="form-group">
+                                    <label className="form-label">Unit of Measure *</label>
+                                    <input 
+                                        type="text" 
+                                        required 
+                                        className="form-input" 
+                                        placeholder="kg, Litres, Bags, Pieces"
+                                        value={formData.unit}
+                                        onChange={e => setFormData({ ...formData, unit: e.target.value })}
+                                    />
+                                </div>
+                                <div className="form-group">
                                     <label className="form-label">Initial Quantity *</label>
-                                    <input required type="number" min="0" className="form-input" value={formData.quantity || ''} onChange={e => setFormData({ ...formData, quantity: Number(e.target.value) })} />
+                                    <input 
+                                        type="number" 
+                                        required 
+                                        min="0"
+                                        className="form-input" 
+                                        value={formData.quantity || ''}
+                                        onChange={e => setFormData({ ...formData, quantity: Number(e.target.value) })}
+                                    />
                                 </div>
-                                <div style={{ flex: 1 }}>
-                                    <label className="form-label">Unit (e.g. Kg, roll) *</label>
-                                    <input required type="text" className="form-input" value={formData.unit} onChange={e => setFormData({ ...formData, unit: e.target.value })} />
+                                <div className="form-group">
+                                    <label className="form-label">Min Stock Threshold *</label>
+                                    <input 
+                                        type="number" 
+                                        required 
+                                        min="0"
+                                        className="form-input" 
+                                        value={formData.minStockLevel || ''}
+                                        onChange={e => setFormData({ ...formData, minStockLevel: Number(e.target.value) })}
+                                    />
                                 </div>
                             </div>
-                            <div className="form-group" style={{ display: 'flex', gap: '1rem' }}>
-                                <div style={{ flex: 1 }}>
-                                    <label className="form-label">Min Stock Level *</label>
-                                    <input required type="number" min="0" className="form-input" value={formData.minStock || ''} onChange={e => setFormData({ ...formData, minStock: Number(e.target.value) })} />
+
+                            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
+                                <div className="form-group">
+                                    <label className="form-label">Purchase Unit Price (UGX) *</label>
+                                    <input 
+                                        type="number" 
+                                        required 
+                                        min="0"
+                                        className="form-input" 
+                                        value={formData.purchasePrice || ''}
+                                        onChange={e => setFormData({ ...formData, purchasePrice: Number(e.target.value) })}
+                                    />
                                 </div>
-                                <div style={{ flex: 1 }}>
+                                <div className="form-group">
+                                    <label className="form-label">Supplier Name</label>
+                                    <input 
+                                        type="text" 
+                                        className="form-input" 
+                                        placeholder="e.g. Uganda Crop Care Ltd"
+                                        value={formData.supplier}
+                                        onChange={e => setFormData({ ...formData, supplier: e.target.value })}
+                                    />
+                                </div>
+                            </div>
+
+                            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
+                                {formData.category === 'Farm Tools' ? (
+                                    <div className="form-group">
+                                        <label className="form-label">Tool Condition</label>
+                                        <select 
+                                            className="form-input"
+                                            value={formData.condition}
+                                            onChange={e => setFormData({ ...formData, condition: e.target.value })}
+                                        >
+                                            <option value="New">New</option>
+                                            <option value="Good">Good</option>
+                                            <option value="Fair">Fair</option>
+                                            <option value="Needs Repair">Needs Repair</option>
+                                        </select>
+                                    </div>
+                                ) : (
+                                    <div className="form-group">
+                                        <label className="form-label">Expiry Date (if applicable)</label>
+                                        <input 
+                                            type="date" 
+                                            className="form-input" 
+                                            value={formData.expiryDate}
+                                            onChange={e => setFormData({ ...formData, expiryDate: e.target.value })}
+                                        />
+                                    </div>
+                                )}
+                                <div className="form-group">
                                     <label className="form-label">Storage Location</label>
-                                    <input type="text" className="form-input" value={formData.location} onChange={e => setFormData({ ...formData, location: e.target.value })} />
+                                    <input 
+                                        type="text" 
+                                        className="form-input" 
+                                        placeholder="e.g. Store Section 2"
+                                        value={formData.location}
+                                        onChange={e => setFormData({ ...formData, location: e.target.value })}
+                                    />
                                 </div>
                             </div>
-                            <button type="submit" className="btn btn-primary" style={{ width: '100%' }}>Save Item</button>
+
+                            <div style={{ display: 'flex', gap: '1rem', marginTop: '0.5rem' }}>
+                                <button type="button" className="btn btn-secondary" style={{ flex: 1 }} onClick={() => setShowAddModal(false)}>
+                                    Cancel
+                                </button>
+                                <button type="submit" className="btn btn-primary" style={{ flex: 1 }}>
+                                    Save Inventory Item
+                                </button>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+            )}
+
+            {/* Stock In / Out Modal */}
+            {showStockModal && selectedItemForStock && (
+                <div className="modal-overlay">
+                    <div className="modal-content card" style={{ maxWidth: '480px', width: '100%' }}>
+                        <div className="modal-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.25rem' }}>
+                            <h2 style={{ margin: 0 }}>Record Stock Movement</h2>
+                            <button className="btn btn-secondary" style={{ padding: '0.25rem', border: 'none' }} onClick={() => setShowStockModal(false)}>
+                                <X size={18} />
+                            </button>
+                        </div>
+
+                        <form onSubmit={handleStockAdjustment} style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+                            <div style={{ background: 'var(--color-background)', padding: '0.75rem 1rem', borderRadius: '4px' }}>
+                                <div><strong>{selectedItemForStock.name}</strong></div>
+                                <div className="text-light" style={{ fontSize: '0.85rem' }}>
+                                    Current Stock: <strong>{selectedItemForStock.quantity} {selectedItemForStock.unit}</strong> • Valuation: UGX {(selectedItemForStock.quantity * selectedItemForStock.purchasePrice).toLocaleString()}
+                                </div>
+                            </div>
+
+                            <div className="form-group">
+                                <label className="form-label">Movement Type *</label>
+                                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.75rem' }}>
+                                    <button 
+                                        type="button" 
+                                        className={`btn ${stockAction === 'IN' ? 'btn-primary' : 'btn-secondary'}`}
+                                        style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', gap: '0.4rem' }}
+                                        onClick={() => setStockAction('IN')}
+                                    >
+                                        <ArrowDownRight size={18} /> Stock In (Receive)
+                                    </button>
+                                    <button 
+                                        type="button" 
+                                        className={`btn ${stockAction === 'OUT' ? 'btn-danger' : 'btn-secondary'}`}
+                                        style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', gap: '0.4rem' }}
+                                        onClick={() => setStockAction('OUT')}
+                                    >
+                                        <ArrowUpRight size={18} /> Stock Out (Issue)
+                                    </button>
+                                </div>
+                            </div>
+
+                            <div className="form-group">
+                                <label className="form-label">Quantity ({selectedItemForStock.unit}) *</label>
+                                <input 
+                                    type="number" 
+                                    required 
+                                    min="1"
+                                    className="form-input" 
+                                    value={stockChangeAmount || ''}
+                                    onChange={e => setStockChangeAmount(Number(e.target.value))}
+                                />
+                            </div>
+
+                            <div className="form-group">
+                                <label className="form-label">Reason / Destination *</label>
+                                <input 
+                                    type="text" 
+                                    required 
+                                    className="form-input" 
+                                    placeholder={stockAction === 'IN' ? 'e.g. New Supplier Batch, Return' : 'e.g. Nursery Bed 4 Application, Spraying'}
+                                    value={stockReason}
+                                    onChange={e => setStockReason(e.target.value)}
+                                />
+                            </div>
+
+                            <div style={{ display: 'flex', gap: '1rem', marginTop: '0.5rem' }}>
+                                <button type="button" className="btn btn-secondary" style={{ flex: 1 }} onClick={() => setShowStockModal(false)}>
+                                    Cancel
+                                </button>
+                                <button type="submit" className="btn btn-primary" style={{ flex: 1 }}>
+                                    Commit Movement
+                                </button>
+                            </div>
                         </form>
                     </div>
                 </div>
@@ -182,4 +676,3 @@ const Inventory = () => {
 };
 
 export default Inventory;
-
