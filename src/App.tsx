@@ -11,6 +11,7 @@ import Reports from './pages/Reports';
 import WorkerProfile from './pages/WorkerProfile';
 import Notifications from './pages/Notifications';
 import Settings from './pages/Settings';
+import Payroll from './pages/Payroll';
 import { seedDemoData } from './seed';
 import { createFirestoreTables } from './seedFirestore';
 import { format } from 'date-fns';
@@ -62,6 +63,7 @@ const App = () => {
                     <Route path="/workers" element={<Workers />} />
                     <Route path="/worker/:workerId" element={<WorkerProfile />} />
                     <Route path="/scan" element={<ScanAttendance />} />
+                    <Route path="/payroll" element={<Payroll />} />
                     <Route path="/inventory" element={<Inventory />} />
                     <Route path="/sales" element={<Sales />} />
                     <Route path="/reports" element={<Reports />} />

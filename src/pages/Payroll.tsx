@@ -321,7 +321,7 @@ const Payroll: React.FC = () => {
                     </p>
                 </div>
                 <div style={{ display: 'flex', gap: '0.75rem', flexWrap: 'wrap' }}>
-                    <button 
+                    <button
                         className="btn btn-secondary" 
                         onClick={() => generatePayrollMasterPDF(currentMonthPayroll, selectedMonth)}
                     >
@@ -332,7 +332,7 @@ const Payroll: React.FC = () => {
 
             {/* Sub-tab Navigation */}
             <div style={{ display: 'flex', gap: '0.5rem', borderBottom: '1px solid var(--color-border)', paddingBottom: '0.5rem', flexWrap: 'wrap' }}>
-                <button 
+                <button
                     className={`btn ${activeSubTab === 'payments' ? 'btn-primary' : 'btn-secondary'}`}
                     onClick={() => setActiveSubTab('payments')}
                     style={{ display: 'inline-flex', alignItems: 'center', gap: '0.4rem', padding: '0.45rem 0.9rem' }}
@@ -489,29 +489,24 @@ const Payroll: React.FC = () => {
                 <table className="data-table">
                     <thead>
                         <tr>
-                            <th style={{ width: '50px' }}>S/M</th>
+                            <th style={{ width: '70px' }}>Number</th>
                             <th>Name</th>
                             <th>Monthly Salary</th>
                             <th>Overtime</th>
-                            <th>Deductions</th>
                             <th>Net Pay</th>
-                            <th>Amount Paid</th>
-                            <th>Balance</th>
-                            <th>Payment Status</th>
                             <th style={{ textAlign: 'right' }}>Actions</th>
                         </tr>
                     </thead>
                     <tbody>
                         {filteredRecords.length === 0 ? (
                             <tr>
-                                <td colSpan={10} style={{ textAlign: 'center', padding: '3rem', color: 'var(--color-text-light)' }}>
+                                <td colSpan={6} style={{ textAlign: 'center', padding: '3rem', color: 'var(--color-text-light)' }}>
                                     No payroll records found for {selectedMonth}.
                                 </td>
                             </tr>
                         ) : (
                             filteredRecords.map((record, index) => {
                                 const serial = record.serialNumber || (index + 1);
-                                const balance = record.balance ?? (record.netPay - (record.amountPaid || 0));
 
                                 return (
                                     <tr key={record.id || index}>
@@ -532,49 +527,21 @@ const Payroll: React.FC = () => {
                                             </div>
                                         </td>
                                         <td>
-                                            <div style={{ display: 'flex', alignItems: 'center', gap: '0.25rem' }}>
-                                                <span>{formatUGX(record.deductions || 0)}</span>
+                                            <strong style={{ color: 'var(--color-primary)' }}>
+                                                {formatUGX(record.netPay)}
+                                            </strong>
+                                        </td>
+                                        <td style={{ textAlign: 'right' }}>
+                                            <div style={{ display: 'inline-flex', gap: '0.35rem' }}>
                                                 <button 
-                                                    className="btn btn-secondary" 
-                                                    style={{ padding: '0.1rem 0.3rem', fontSize: '0.7rem' }}
+                                                    className="btn btn-secondary"
+                                                    style={{ padding: '0.3rem 0.55rem', fontSize: '0.8rem' }}
                                                     onClick={() => handleOpenDeduction(record)}
                                                     title="Adjust Deductions"
                                                 >
                                                     Edit
                                                 </button>
-                                            </div>
-                                        </td>
-                                        <td>
-                                            <strong style={{ color: 'var(--color-primary)' }}>
-                                                {formatUGX(record.netPay)}
-                                            </strong>
-                                        </td>
-                                        <td>
-                                            <div style={{ color: '#16a34a', fontWeight: 600 }}>
-                                                {formatUGX(record.amountPaid || 0)}
-                                            </div>
-                                        </td>
-                                        <td>
-                                            <div style={{ color: balance > 0 ? '#dc2626' : 'var(--color-text-light)', fontWeight: 600 }}>
-                                                {formatUGX(balance)}
-                                            </div>
-                                        </td>
-                                        <td>
-                                            <span 
-                                                className={`badge ${
-                                                    record.paymentStatus === 'Paid' 
-                                                        ? 'badge-success' 
-                                                        : record.paymentStatus === 'Partially Paid' 
-                                                        ? 'badge-warning' 
-                                                        : 'badge-danger'
-                                                }`}
-                                            >
-                                                {record.paymentStatus || 'Pending'}
-                                            </span>
-                                        </td>
-                                        <td style={{ textAlign: 'right' }}>
-                                            <div style={{ display: 'inline-flex', gap: '0.35rem' }}>
-                                                <button 
+                                                <button
                                                     className="btn btn-primary"
                                                     style={{ padding: '0.3rem 0.55rem', fontSize: '0.8rem' }}
                                                     onClick={() => handleOpenPayment(record)}
@@ -617,29 +584,15 @@ const Payroll: React.FC = () => {
                 ) : (
                     filteredRecords.map((record, index) => {
                         const serial = record.serialNumber || (index + 1);
-                        const balance = record.balance ?? (record.netPay - (record.amountPaid || 0));
 
                         return (
                             <div key={record.id || index} className="card" style={{ padding: '1.25rem', display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
-                                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
-                                    <div>
-                                        <span className="badge badge-secondary" style={{ marginRight: '0.5rem' }}>S/M: {serial}</span>
-                                        <strong style={{ fontSize: '1.05rem' }}>{record.workerName}</strong>
-                                        <div className="text-light" style={{ fontSize: '0.8rem', marginTop: '0.2rem' }}>
-                                            {record.workerId} {record.farmCardNumber && `• ${record.farmCardNumber}`}
-                                        </div>
+                                <div>
+                                    <div className="text-light" style={{ fontSize: '0.8rem' }}>Number: {serial}</div>
+                                    <strong style={{ fontSize: '1.05rem' }}>{record.workerName}</strong>
+                                    <div className="text-light" style={{ fontSize: '0.8rem', marginTop: '0.2rem' }}>
+                                        {record.workerId} {record.farmCardNumber && `• ${record.farmCardNumber}`}
                                     </div>
-                                    <span 
-                                        className={`badge ${
-                                            record.paymentStatus === 'Paid' 
-                                                ? 'badge-success' 
-                                                : record.paymentStatus === 'Partially Paid' 
-                                                ? 'badge-warning' 
-                                                : 'badge-danger'
-                                        }`}
-                                    >
-                                        {record.paymentStatus || 'Pending'}
-                                    </span>
                                 </div>
 
                                 <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.5rem', background: 'var(--color-background)', padding: '0.75rem', borderRadius: '6px', fontSize: '0.85rem' }}>
@@ -655,18 +608,19 @@ const Payroll: React.FC = () => {
                                         <span className="text-light">Net Pay:</span>
                                         <div style={{ color: 'var(--color-primary)' }}><strong>{formatUGX(record.netPay)}</strong></div>
                                     </div>
-                                    <div>
-                                        <span className="text-light">Paid / Balance:</span>
-                                        <div>
-                                            <span style={{ color: '#16a34a' }}>{formatUGX(record.amountPaid || 0)}</span> / <span style={{ color: balance > 0 ? '#dc2626' : 'var(--color-text)' }}>{formatUGX(balance)}</span>
-                                        </div>
-                                    </div>
                                 </div>
 
-                                <div style={{ display: 'flex', gap: '0.5rem', marginTop: '0.25rem' }}>
+                                <div style={{ display: 'flex', gap: '0.5rem', marginTop: '0.25rem', flexWrap: 'wrap' }}>
                                     <button 
+                                        className="btn btn-secondary"
+                                        style={{ flex: 1, minWidth: '90px', padding: '0.4rem', fontSize: '0.85rem' }}
+                                        onClick={() => handleOpenDeduction(record)}
+                                    >
+                                        Edit Deduction
+                                    </button>
+                                    <button
                                         className="btn btn-primary"
-                                        style={{ flex: 1, padding: '0.4rem', fontSize: '0.85rem', display: 'flex', justifyContent: 'center', alignItems: 'center', gap: '0.35rem' }}
+                                        style={{ flex: 1, minWidth: '70px', padding: '0.4rem', fontSize: '0.85rem', display: 'flex', justifyContent: 'center', alignItems: 'center', gap: '0.35rem' }}
                                         onClick={() => handleOpenPayment(record)}
                                     >
                                         <CreditCard size={15} /> Record Payment

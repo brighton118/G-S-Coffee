@@ -242,14 +242,13 @@ const Workers: React.FC = () => {
                             <th style={{ whiteSpace: 'nowrap', padding: '0.75rem 1rem' }}>Gender</th>
                             <th style={{ whiteSpace: 'nowrap', padding: '0.75rem 1rem' }}>Phone Number</th>
                             <th style={{ whiteSpace: 'nowrap', padding: '0.75rem 1rem' }}>Date Joined</th>
-                            <th style={{ whiteSpace: 'nowrap', padding: '0.75rem 1rem' }}>Farm Card #</th>
                             <th style={{ whiteSpace: 'nowrap', textAlign: 'right', padding: '0.75rem 1rem' }}>Farm Card</th>
                         </tr>
                     </thead>
                     <tbody>
                         {filteredWorkers.length === 0 ? (
                             <tr>
-                                <td colSpan={7} style={{ textAlign: 'center', padding: '3rem', color: 'var(--color-text-light)' }}>
+                                <td colSpan={6} style={{ textAlign: 'center', padding: '3rem', color: 'var(--color-text-light)' }}>
                                     No registered workers found matching criteria.
                                 </td>
                             </tr>
@@ -265,11 +264,6 @@ const Workers: React.FC = () => {
                                     <td style={{ whiteSpace: 'nowrap', padding: '0.75rem 1rem' }}>{w.gender}</td>
                                     <td style={{ whiteSpace: 'nowrap', padding: '0.75rem 1rem' }}>{w.phoneNumber}</td>
                                     <td style={{ whiteSpace: 'nowrap', padding: '0.75rem 1rem' }}>{w.dateJoined}</td>
-                                    <td style={{ whiteSpace: 'nowrap', padding: '0.75rem 1rem' }}>
-                                        <span style={{ padding: '0.2rem 0.5rem', backgroundColor: '#f1f5f9', borderRadius: '4px', fontSize: '0.8rem', fontWeight: 600, color: 'var(--color-text)' }}>
-                                            {w.farmCardNumber}
-                                        </span>
-                                    </td>
                                     <td style={{ whiteSpace: 'nowrap', textAlign: 'right', padding: '0.75rem 1rem' }}>
                                         <div style={{ display: 'inline-flex', gap: '0.4rem' }}>
                                             <button
