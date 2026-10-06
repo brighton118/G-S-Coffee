@@ -156,8 +156,7 @@ const Overtime: React.FC<OvertimeProps> = ({ embedded = false }) => {
     };
 
     return (
-        <div className={embedded ? "" : "page-wrapper"} style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
-            {/* Header */}
+        <div className="page-wrapper" style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
             {!embedded && (
                 <div className="header-action" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '1rem' }}>
                     <div>
@@ -176,11 +175,11 @@ const Overtime: React.FC<OvertimeProps> = ({ embedded = false }) => {
                                 setShowRulesModal(true);
                             }}
                         >
-                            <SettingsIcon size={16} /> Multiplier & Threshold Rules
+                            <SettingsIcon size={16} /> Configure Shift Rules
                         </button>
                         <button 
-                            className="btn btn-secondary" 
-                            onClick={() => generateOvertimePDF(overtimeRecords, `Overtime Report - ${selectedMonth}`)}
+                            className="btn btn-secondary"
+                            onClick={() => generateOvertimePDF(attendanceRecords, `Overtime Ledger - ${selectedMonth}`)}
                         >
                             <Download size={16} /> Export Overtime PDF
                         </button>
