@@ -241,13 +241,14 @@ const Sales: React.FC = () => {
                             <th style={{ whiteSpace: 'nowrap', textAlign: 'right', padding: '0.75rem 1rem' }}>Quantity</th>
                             <th style={{ whiteSpace: 'nowrap', textAlign: 'right', padding: '0.75rem 1rem' }}>Unit Price</th>
                             <th style={{ whiteSpace: 'nowrap', textAlign: 'right', padding: '0.75rem 1rem' }}>Cash Paid (UGX)</th>
+                            <th style={{ whiteSpace: 'nowrap', padding: '0.75rem 1rem', textAlign: 'center' }}>Payment Status</th>
                             <th style={{ whiteSpace: 'nowrap', textAlign: 'right', padding: '0.75rem 1rem' }}>Receipt</th>
                         </tr>
                     </thead>
                     <tbody>
                         {filteredOrders.length === 0 ? (
                             <tr>
-                                <td colSpan={8} style={{ textAlign: 'center', padding: '3rem', color: 'var(--color-text-light)' }}>
+                                <td colSpan={9} style={{ textAlign: 'center', padding: '3rem', color: 'var(--color-text-light)' }}>
                                     No sales records found matching criteria.
                                 </td>
                             </tr>
@@ -284,6 +285,21 @@ const Sales: React.FC = () => {
                                         </td>
                                         <td style={{ whiteSpace: 'nowrap', textAlign: 'right', padding: '0.75rem 1rem' }}>
                                             <strong style={{ color: '#16a34a' }}>{formatUGX(order.totalAmount)}</strong>
+                                        </td>
+                                        <td style={{ whiteSpace: 'nowrap', padding: '0.75rem 1rem', textAlign: 'center' }}>
+                                            <span style={{ 
+                                                display: 'inline-flex', 
+                                                alignItems: 'center', 
+                                                gap: '0.3rem', 
+                                                backgroundColor: '#dcfce7', 
+                                                color: '#166534', 
+                                                padding: '0.25rem 0.65rem', 
+                                                borderRadius: '4px', 
+                                                fontWeight: 600, 
+                                                fontSize: '0.85rem' 
+                                            }}>
+                                                ✓ Cash Paid
+                                            </span>
                                         </td>
                                         <td style={{ whiteSpace: 'nowrap', textAlign: 'right', padding: '0.75rem 1rem' }}>
                                             <button 

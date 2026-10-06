@@ -6,6 +6,9 @@ import CloneProduction from './pages/CloneProduction';
 import Workers from './pages/Workers';
 import Inventory from './pages/Inventory';
 import ScanAttendance from './pages/ScanAttendance';
+import Attendance from './pages/Attendance';
+import Overtime from './pages/Overtime';
+import Payroll from './pages/Payroll';
 import Sales from './pages/Sales';
 import Reports from './pages/Reports';
 import WorkerProfile from './pages/WorkerProfile';
@@ -62,6 +65,9 @@ const App = () => {
                     <Route path="/workers" element={<Workers />} />
                     <Route path="/worker/:workerId" element={<WorkerProfile />} />
                     <Route path="/scan" element={<ScanAttendance />} />
+                    <Route path="/attendance" element={<Attendance />} />
+                    <Route path="/overtime" element={<Overtime />} />
+                    <Route path="/payroll" element={<Payroll />} />
                     <Route path="/inventory" element={<Inventory />} />
                     <Route path="/sales" element={<Sales />} />
                     <Route path="/reports" element={<Reports />} />

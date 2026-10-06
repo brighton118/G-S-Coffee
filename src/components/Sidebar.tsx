@@ -1,5 +1,19 @@
 import { NavLink } from 'react-router-dom';
-import { LayoutDashboard, Users, ScanLine, Sprout, ShoppingCart, BarChart3, Bell, ScrollText, Settings, X } from 'lucide-react';
+import { 
+    LayoutDashboard, 
+    Users, 
+    ScanLine, 
+    Sprout, 
+    ShoppingCart, 
+    BarChart3, 
+    Bell, 
+    ScrollText, 
+    Settings, 
+    X,
+    Calendar,
+    Clock,
+    Banknote
+} from 'lucide-react';
 import './Sidebar.css';
 
 interface SidebarProps {
@@ -30,6 +44,15 @@ const Sidebar = ({ isOpen, setIsOpen }: SidebarProps) => {
                 </NavLink>
                 <NavLink to="/scan" onClick={handleClose} className={({ isActive }) => `nav-item ${isActive ? 'active' : ''}`}>
                     <ScanLine size={20} /> Scan
+                </NavLink>
+                <NavLink to="/attendance" onClick={handleClose} className={({ isActive }) => `nav-item ${isActive ? 'active' : ''}`}>
+                    <Calendar size={20} /> Attendance
+                </NavLink>
+                <NavLink to="/overtime" onClick={handleClose} className={({ isActive }) => `nav-item ${isActive ? 'active' : ''}`}>
+                    <Clock size={20} /> Overtime
+                </NavLink>
+                <NavLink to="/payroll" onClick={handleClose} className={({ isActive }) => `nav-item ${isActive ? 'active' : ''}`}>
+                    <Banknote size={20} /> Payroll
                 </NavLink>
                 <NavLink to="/inventory" onClick={handleClose} className={({ isActive }) => `nav-item ${isActive ? 'active' : ''}`}>
                     <ShoppingCart size={20} /> Inventory
