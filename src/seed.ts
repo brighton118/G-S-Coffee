@@ -463,6 +463,9 @@ export async function seedDemoData() {
             overtimeEarnings: 48000,
             deductions: 10000,
             netPay: 688000, // 650000 + 48000 - 10000
+            amountPaid: 688000,
+            balance: 0,
+            paymentStatus: 'Paid',
             status: 'Approved',
             approvedBy: 'Farm Director',
             generatedAt: new Date().toISOString()
@@ -479,6 +482,9 @@ export async function seedDemoData() {
             overtimeEarnings: 21000,
             deductions: 0,
             netPay: 571000, // 550000 + 21000 - 0
+            amountPaid: 0,
+            balance: 571000,
+            paymentStatus: 'Pending',
             status: 'Approved',
             approvedBy: 'Farm Director',
             generatedAt: new Date().toISOString()
