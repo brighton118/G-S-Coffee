@@ -1,5 +1,20 @@
-import { NavLink } from 'react-router-dom';
-import { LayoutDashboard, Users, ScanLine, Sprout, ShoppingCart, BarChart3, Bell, ScrollText, Settings, X } from 'lucide-react';
+import { NavLink, useLocation } from 'react-router-dom';
+import { 
+    LayoutDashboard, 
+    Users, 
+    ScanLine, 
+    Sprout, 
+    ShoppingCart, 
+    BarChart3, 
+    Bell, 
+    ScrollText, 
+    Settings, 
+    X,
+    Calendar,
+    Clock,
+    Banknote,
+    DollarSign
+} from 'lucide-react';
 import './Sidebar.css';
 
 interface SidebarProps {
@@ -9,6 +24,8 @@ interface SidebarProps {
 
 const Sidebar = ({ isOpen, setIsOpen }: SidebarProps) => {
     const handleClose = () => setIsOpen(false);
+    const location = useLocation();
+    const isPayrollSection = location.pathname.startsWith('/payroll') || location.pathname.startsWith('/overtime');
 
     return (
         <aside className={`sidebar ${isOpen ? 'open' : ''}`}>
@@ -31,6 +48,38 @@ const Sidebar = ({ isOpen, setIsOpen }: SidebarProps) => {
                 <NavLink to="/scan" onClick={handleClose} className={({ isActive }) => `nav-item ${isActive ? 'active' : ''}`}>
                     <ScanLine size={20} /> Scan
                 </NavLink>
+                <NavLink to="/attendance" onClick={handleClose} className={({ isActive }) => `nav-item ${isActive ? 'active' : ''}`}>
+                    <Calendar size={20} /> Attendance
+                </NavLink>
+
+                {/* Payroll Section & Subsections */}
+                <div className="nav-group">
+                    <NavLink 
+                        to="/payroll" 
+                        onClick={handleClose} 
+                        className={`nav-item ${isPayrollSection ? 'active' : ''}`}
+                    >
+                        <Banknote size={20} /> Payroll
+                    </NavLink>
+                    <div className="nav-subitems">
+                        <NavLink 
+                            to="/payroll" 
+                            onClick={handleClose} 
+                            className={({ isActive }) => `nav-subitem ${isActive ? 'active' : ''}`}
+                            end
+                        >
+                            <DollarSign size={15} /> Worker Payments
+                        </NavLink>
+                        <NavLink 
+                            to="/overtime" 
+                            onClick={handleClose} 
+                            className={({ isActive }) => `nav-subitem ${isActive ? 'active' : ''}`}
+                        >
+                            <Clock size={15} /> Overtime Tracking
+                        </NavLink>
+                    </div>
+                </div>
+
                 <NavLink to="/inventory" onClick={handleClose} className={({ isActive }) => `nav-item ${isActive ? 'active' : ''}`}>
                     <ShoppingCart size={20} /> Inventory
                 </NavLink>

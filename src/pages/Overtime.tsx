@@ -15,7 +15,11 @@ import { format } from 'date-fns';
 import { generateOvertimePDF } from '../utils/pdfGenerator';
 import { DEFAULT_OVERTIME_RULES, formatUGX } from '../utils/calculations';
 
-const Overtime: React.FC = () => {
+interface OvertimeProps {
+    embedded?: boolean;
+}
+
+const Overtime: React.FC<OvertimeProps> = ({ embedded = false }) => {
     const [selectedMonth, setSelectedMonth] = useState<string>(format(new Date(), 'yyyy-MM'));
     const [statusFilter, setStatusFilter] = useState<string>('All');
     const [searchTerm, setSearchTerm] = useState<string>('');
@@ -152,35 +156,37 @@ const Overtime: React.FC = () => {
     };
 
     return (
-        <div className="page-wrapper" style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
+        <div className={embedded ? "" : "page-wrapper"} style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
             {/* Header */}
-            <div className="header-action" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '1rem' }}>
-                <div>
-                    <h1 style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', margin: 0 }}>
-                        <Clock size={28} color="var(--color-primary)" /> Overtime Management & Approvals
-                    </h1>
-                    <p className="text-light" style={{ margin: '0.25rem 0 0 0' }}>
-                        Evaluate clock-in/out timestamps, approve extra hours, and transfer verified overtime to Payroll.
-                    </p>
+            {!embedded && (
+                <div className="header-action" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '1rem' }}>
+                    <div>
+                        <h1 style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', margin: 0 }}>
+                            <Clock size={28} color="var(--color-primary)" /> Overtime Management & Approvals
+                        </h1>
+                        <p className="text-light" style={{ margin: '0.25rem 0 0 0' }}>
+                            Evaluate clock-in/out timestamps, approve extra hours, and transfer verified overtime to Payroll.
+                        </p>
+                    </div>
+                    <div style={{ display: 'flex', gap: '0.75rem', flexWrap: 'wrap' }}>
+                        <button 
+                            className="btn btn-secondary"
+                            onClick={() => {
+                                setConfigData({ ...rulesConfig });
+                                setShowRulesModal(true);
+                            }}
+                        >
+                            <SettingsIcon size={16} /> Multiplier & Threshold Rules
+                        </button>
+                        <button 
+                            className="btn btn-secondary" 
+                            onClick={() => generateOvertimePDF(overtimeRecords, `Overtime Report - ${selectedMonth}`)}
+                        >
+                            <Download size={16} /> Export Overtime PDF
+                        </button>
+                    </div>
                 </div>
-                <div style={{ display: 'flex', gap: '0.75rem', flexWrap: 'wrap' }}>
-                    <button 
-                        className="btn btn-secondary"
-                        onClick={() => {
-                            setConfigData({ ...rulesConfig });
-                            setShowRulesModal(true);
-                        }}
-                    >
-                        <SettingsIcon size={16} /> Configure Shift Rules
-                    </button>
-                    <button 
-                        className="btn btn-secondary"
-                        onClick={() => generateOvertimePDF(attendanceRecords, `Overtime Ledger - ${selectedMonth}`)}
-                    >
-                        <Download size={16} /> Export Overtime PDF
-                    </button>
-                </div>
-            </div>
+            )}
 
             {/* KPI Overview Cards */}
             <div className="stats-grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '1rem' }}>

@@ -20,10 +20,12 @@ import {
 import { format } from 'date-fns';
 import { generatePayrollMasterPDF, generatePayslipPDF } from '../utils/pdfGenerator';
 import { formatUGX } from '../utils/calculations';
+import Overtime from './Overtime';
 
 const PAYMENT_METHODS = ['Cash', 'Mobile Money', 'Bank Transfer', 'Other'];
 
 const Payroll: React.FC = () => {
+    const [activeSubTab, setActiveSubTab] = useState<'payments' | 'overtime' | 'breakdown'>('payments');
     const [selectedMonth, setSelectedMonth] = useState<string>(format(new Date(), 'yyyy-MM'));
     const [statusFilter, setStatusFilter] = useState<string>('All');
     const [methodFilter, setMethodFilter] = useState<string>('All');
@@ -328,6 +330,37 @@ const Payroll: React.FC = () => {
                 </div>
             </div>
 
+            {/* Sub-tab Navigation */}
+            <div style={{ display: 'flex', gap: '0.5rem', borderBottom: '1px solid var(--color-border)', paddingBottom: '0.5rem', flexWrap: 'wrap' }}>
+                <button 
+                    className={`btn ${activeSubTab === 'payments' ? 'btn-primary' : 'btn-secondary'}`}
+                    onClick={() => setActiveSubTab('payments')}
+                    style={{ display: 'inline-flex', alignItems: 'center', gap: '0.4rem', padding: '0.45rem 0.9rem' }}
+                >
+                    <Banknote size={16} /> Worker Payments & Salary
+                </button>
+                <button 
+                    className={`btn ${activeSubTab === 'overtime' ? 'btn-primary' : 'btn-secondary'}`}
+                    onClick={() => setActiveSubTab('overtime')}
+                    style={{ display: 'inline-flex', alignItems: 'center', gap: '0.4rem', padding: '0.45rem 0.9rem' }}
+                >
+                    <Clock size={16} /> Overtime Tracking & Approvals
+                </button>
+                <button 
+                    className={`btn ${activeSubTab === 'breakdown' ? 'btn-primary' : 'btn-secondary'}`}
+                    onClick={() => setActiveSubTab('breakdown')}
+                    style={{ display: 'inline-flex', alignItems: 'center', gap: '0.4rem', padding: '0.45rem 0.9rem' }}
+                >
+                    <CreditCard size={16} /> Payment Method Summary
+                </button>
+            </div>
+
+            {activeSubTab === 'overtime' && (
+                <Overtime embedded={true} />
+            )}
+
+            {activeSubTab !== 'overtime' && (
+                <>
             {/* Top Payroll KPI Dashboard */}
             <div className="stats-grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: '1rem' }}>
                 <div className="stat-card card">
@@ -677,6 +710,8 @@ const Payroll: React.FC = () => {
                     </div>
                 </div>
             </div>
+            </>
+            )}
 
             {/* Record Payment Modal */}
             {showPaymentModal && selectedRecordForPayment && (
