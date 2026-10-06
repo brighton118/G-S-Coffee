@@ -26,7 +26,7 @@ const Sales: React.FC = () => {
     const [selectedStatus, setSelectedStatus] = useState<string>('All');
     const [showNewOrderModal, setShowNewOrderModal] = useState(false);
 
-    // Form state (Cash Only, Delivery removed)
+    // Form state (Cash Only, Simplified)
     const [formData, setFormData] = useState<{
         customerName: string;
         customerPhone: string;
@@ -37,9 +37,6 @@ const Sales: React.FC = () => {
         unitPrice: number;
         amountPaid: number;
         paymentStatus: 'Paid' | 'Partial' | 'Pending';
-        notes: string;
-        deductFromInventory: boolean;
-        inventoryItemId: string;
     }>({
         customerName: '',
         customerPhone: '',
@@ -49,14 +46,10 @@ const Sales: React.FC = () => {
         quantity: 100,
         unitPrice: 2500, // Master Default Price
         amountPaid: 250000,
-        paymentStatus: 'Paid',
-        notes: '',
-        deductFromInventory: true,
-        inventoryItemId: ''
+        paymentStatus: 'Paid'
     });
 
     const orders = useLiveQuery(() => db.salesOrders.toArray()) || [];
-    const inventoryItems = useLiveQuery(() => db.inventoryItems.filter(i => i.status === 'Active').toArray()) || [];
 
     // Filter orders
     const filteredOrders = orders.filter(order => {
@@ -94,10 +87,10 @@ const Sales: React.FC = () => {
             invoiceNumber: invoiceNum,
             orderId: invoiceNum,
             orderDate: today,
-            customerName: formData.customerName,
-            customerPhone: formData.customerPhone,
-            customerEmail: formData.customerEmail || undefined,
-            customerLocation: formData.customerLocation || undefined,
+            customerName: formData.customerName.trim(),
+            customerPhone: formData.customerPhone.trim(),
+            customerEmail: formData.customerEmail.trim() || undefined,
+            customerLocation: formData.customerLocation.trim() || undefined,
             variety: formData.variety,
             cloneType: formData.variety,
             quantity: formData.quantity,
@@ -111,33 +104,11 @@ const Sales: React.FC = () => {
             paymentStatus: totals.paymentStatus,
             deliveryStatus: 'Delivered',
             orderStatus: 'Delivered',
-            soldBy: 'Sales Officer',
-            notes: formData.notes
+            soldBy: 'Sales Officer'
         };
 
         const id = await db.salesOrders.add(newOrder);
         const createdOrder = { ...newOrder, id };
-
-        // Stock deduction if enabled
-        if (formData.deductFromInventory && formData.inventoryItemId) {
-            const item = await db.inventoryItems.get(formData.inventoryItemId);
-            if (item) {
-                const newQty = Math.max(0, item.quantity - formData.quantity);
-                await db.inventoryItems.update(item.inventoryId, { quantity: newQty });
-                await db.inventoryTransactions.add({
-                    inventoryId: item.inventoryId,
-                    itemName: item.name,
-                    quantityChange: -formData.quantity,
-                    type: 'Sale Dispatch',
-                    unitPrice: formData.unitPrice,
-                    totalCost: totals.totalAmount,
-                    date: new Date().toISOString(),
-                    user: 'Sales Officer',
-                    reason: `Customer Sale ${invoiceNum}`,
-                    notes: `Sold ${formData.quantity} plantlets to ${formData.customerName}`
-                });
-            }
-        }
 
         // Activity log
         await db.activityLogs.add({
@@ -160,10 +131,7 @@ const Sales: React.FC = () => {
             quantity: 100,
             unitPrice: 2500,
             amountPaid: 250000,
-            paymentStatus: 'Paid',
-            notes: '',
-            deductFromInventory: true,
-            inventoryItemId: ''
+            paymentStatus: 'Paid'
         });
     };
 
@@ -550,33 +518,6 @@ const Sales: React.FC = () => {
                                 <span className="text-light" style={{ fontSize: '0.8rem', marginTop: '0.25rem', display: 'block' }}>
                                     💵 Payment Method: <strong>Cash Only</strong>
                                 </span>
-                            </div>
-
-                            <div className="form-group">
-                                <label className="form-label">Link Inventory Item (Optional Stock Auto-Deduct)</label>
-                                <select 
-                                    className="form-input" 
-                                    value={formData.inventoryItemId}
-                                    onChange={e => setFormData({ ...formData, inventoryItemId: e.target.value })}
-                                >
-                                    <option value="">None / Manual Management</option>
-                                    {inventoryItems.map(item => (
-                                        <option key={item.inventoryId} value={item.inventoryId}>
-                                            {item.name} ({item.quantity} available - {item.category})
-                                        </option>
-                                    ))}
-                                </select>
-                            </div>
-
-                            <div className="form-group">
-                                <label className="form-label">Order Notes / Details</label>
-                                <textarea 
-                                    className="form-input" 
-                                    rows={2} 
-                                    placeholder="e.g. Farm gate collection, inspection confirmed..."
-                                    value={formData.notes}
-                                    onChange={e => setFormData({ ...formData, notes: e.target.value })}
-                                />
                             </div>
 
                             <div style={{ display: 'flex', gap: '1rem', marginTop: '0.5rem' }}>
