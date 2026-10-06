@@ -8,7 +8,6 @@ import {
     AlertTriangle, 
     DollarSign, 
     RefreshCw,
-    Calendar,
     X,
     ArrowDownRight,
     ArrowUpRight,
@@ -18,7 +17,7 @@ import {
     Sprout
 } from 'lucide-react';
 import { generateInventoryPDF } from '../utils/pdfGenerator';
-import { isStockLow, isExpiryNear, calculateInventoryValuation } from '../utils/calculations';
+import { isStockLow, calculateInventoryValuation } from '../utils/calculations';
 
 const CATEGORIES = [
     { name: 'Fertilizers', icon: Sparkles, color: '#16a34a' },
@@ -56,7 +55,6 @@ const Inventory: React.FC = () => {
         purchasePrice: number;
         supplier: string;
         minStockLevel: number;
-        expiryDate: string;
         condition: string;
         location: string;
         notes: string;
@@ -69,7 +67,6 @@ const Inventory: React.FC = () => {
         purchasePrice: 25000,
         supplier: 'Uganda Crop Care Ltd',
         minStockLevel: 10,
-        expiryDate: '',
         condition: 'New',
         location: 'Main Store Shelf A',
         notes: ''
@@ -91,7 +88,6 @@ const Inventory: React.FC = () => {
     // Valuation and Stats
     const totalValuation = calculateInventoryValuation(items);
     const lowStockCount = items.filter(i => isStockLow(i.quantity, i.minStockLevel) && i.status === 'Active').length;
-    const expiringSoonCount = items.filter(i => isExpiryNear(i.expiryDate, 60) && i.status === 'Active').length;
     const totalActiveItems = items.filter(i => i.status === 'Active').length;
 
     const handleCreateItem = async (e: React.FormEvent) => {
@@ -118,7 +114,6 @@ const Inventory: React.FC = () => {
             purchasePrice: Number(formData.purchasePrice) || 0,
             purchaseDate: today.split('T')[0],
             dateReceived: today.split('T')[0],
-            expiryDate: formData.expiryDate || undefined,
             condition: formData.category === 'Farm Tools' ? (formData.condition as any) : undefined,
             location: formData.location || 'Central Store',
             status: 'Active',
@@ -151,7 +146,6 @@ const Inventory: React.FC = () => {
             purchasePrice: 25000,
             supplier: 'Uganda Crop Care Ltd',
             minStockLevel: 10,
-            expiryDate: '',
             condition: 'New',
             location: 'Main Store Shelf A',
             notes: ''
@@ -239,17 +233,6 @@ const Inventory: React.FC = () => {
                         {lowStockCount}
                     </div>
                     <div className="stat-change text-light">Items at or below reorder level</div>
-                </div>
-
-                <div className="stat-card card">
-                    <div className="stat-header">
-                        <span className="stat-title">Expiry Warnings</span>
-                        <Calendar className="stat-icon text-danger" size={20} />
-                    </div>
-                    <div className="stat-value" style={{ color: expiringSoonCount > 0 ? '#dc2626' : 'var(--color-text)' }}>
-                        {expiringSoonCount}
-                    </div>
-                    <div className="stat-change text-light">Chemicals expiring &lt; 60 days</div>
                 </div>
 
                 <div className="stat-card card">
@@ -494,7 +477,7 @@ const Inventory: React.FC = () => {
                             </div>
 
                             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
-                                {formData.category === 'Farm Tools' ? (
+                                {formData.category === 'Farm Tools' && (
                                     <div className="form-group">
                                         <label className="form-label">Tool Condition</label>
                                         <select 
@@ -507,16 +490,6 @@ const Inventory: React.FC = () => {
                                             <option value="Fair">Fair</option>
                                             <option value="Needs Repair">Needs Repair</option>
                                         </select>
-                                    </div>
-                                ) : (
-                                    <div className="form-group">
-                                        <label className="form-label">Expiry Date (if applicable)</label>
-                                        <input 
-                                            type="date" 
-                                            className="form-input" 
-                                            value={formData.expiryDate}
-                                            onChange={e => setFormData({ ...formData, expiryDate: e.target.value })}
-                                        />
                                     </div>
                                 )}
                                 <div className="form-group">

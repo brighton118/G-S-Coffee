@@ -25,6 +25,33 @@
     transition: all 0.2s;
 }
 
+.payroll-nav-item {
+    margin-top: 1rem;
+}
+
+.attendance-toggle {
+    width: 100%;
+    border: 0;
+    background: transparent;
+    text-align: left;
+    cursor: pointer;
+    font: inherit;
+}
+
+.attendance-toggle > span {
+    flex: 1;
+}
+
+.attendance-subnav {
+    margin: 0.15rem 0 0.35rem 1.5rem;
+    border-left: 2px solid var(--color-border);
+}
+
+.attendance-subnav-item {
+    padding: 0.6rem 1rem;
+    font-size: 0.925rem;
+}
+
 .nav-item:hover {
     background-color: var(--color-background);
     color: var(--color-primary);

@@ -10,6 +10,85 @@
     align-items: center;
 }
 
+.clone-batch-cards {
+    display: none;
+}
+
+.clone-batch-card-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    gap: 0.75rem;
+}
+
+.clone-batch-card-header > div {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 0.5rem;
+    min-width: 0;
+}
+
+.clone-batch-id {
+    overflow-wrap: anywhere;
+    color: var(--color-primary-dark);
+}
+
+.clone-variety-badge {
+    padding: 0.2rem 0.5rem;
+    border-radius: 4px;
+    background: #dbeafe;
+    color: #1e40af;
+    font-size: 0.8rem;
+    font-weight: 700;
+}
+
+.clone-batch-quantities {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 0.75rem;
+    padding: 0.75rem;
+    border-radius: var(--border-radius);
+    background: var(--color-background);
+}
+
+.clone-batch-quantities > div,
+.clone-batch-details > div {
+    display: flex;
+    flex-direction: column;
+    gap: 0.15rem;
+    min-width: 0;
+}
+
+.clone-batch-details {
+    display: grid;
+    gap: 0.65rem;
+}
+
+.clone-batch-details dt {
+    color: var(--color-text-light);
+    font-size: 0.8rem;
+}
+
+.clone-batch-details dd {
+    font-size: 0.9rem;
+    overflow-wrap: anywhere;
+}
+
+.clone-overdue {
+    display: flex;
+    align-items: center;
+    gap: 0.3rem;
+    margin-top: 0.25rem;
+    color: #b91c1c;
+    font-size: 0.8rem;
+    font-weight: 700;
+}
+
+.clone-advance-button {
+    width: 100%;
+}
+
 .filters-bar {
     display: flex;
     gap: 1rem;
@@ -137,4 +216,42 @@
 .modal-header h2 {
     margin: 0;
     font-size: 1.25rem;
+}
+
+@media (max-width: 768px) {
+    .header-action {
+        flex-direction: column;
+    }
+
+    .header-action > div:last-child {
+        display: grid !important;
+        grid-template-columns: 1fr;
+    }
+
+    .clones-pipeline > div:first-child {
+        align-items: flex-start !important;
+        flex-direction: column;
+    }
+
+    .clones-pipeline > div:first-child > div:last-child {
+        gap: 0.4rem !important;
+    }
+
+    .clones-pipeline > div:first-child > div:last-child > svg {
+        display: none;
+    }
+
+    .clone-batch-cards {
+        display: grid;
+        grid-template-columns: minmax(0, 1fr);
+        gap: 0.75rem;
+    }
+
+    .clone-batch-card {
+        display: flex;
+        flex-direction: column;
+        gap: 0.85rem;
+        min-width: 0;
+        padding: 1rem;
+    }
 }

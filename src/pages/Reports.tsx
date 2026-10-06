@@ -132,8 +132,8 @@ const Reports: React.FC = () => {
         },
         {
             id: 'sales',
-            title: 'Plantlet Sales & Revenue Invoicing',
-            description: 'Customer order ledger, clone variety sales, unit pricing, amount paid vs balances due, and dispatch tracking.',
+            title: 'Plantlet Cash Sales Report',
+            description: 'Customer sales ledger with clone varieties, quantities, unit pricing, and fully paid cash totals.',
             icon: TrendingUp,
             color: '#10b981',
             count: `${sales.length} customer sales orders`

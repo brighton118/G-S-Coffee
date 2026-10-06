@@ -365,13 +365,10 @@ export async function seedDemoData() {
             pricePerClone: 2500,
             totalAmount: 1250000,
             amountPaid: 1250000,
-            outstandingBalance: 0,
-            paymentStatus: 'Fully Paid',
-            orderStatus: 'Fulfilled',
             batchId: 'GSF-CLONE-0001',
             stockDeducted: true,
             stockDeductedDate: '2026-09-29',
-            notes: 'Delivered to Kibaale pickup truck',
+            notes: 'Cash sale completed',
             createdAt: '2026-09-29T10:00:00Z'
         },
         {
@@ -383,13 +380,11 @@ export async function seedDemoData() {
             quantityOrdered: 200,
             pricePerClone: 2500,
             totalAmount: 500000,
-            amountPaid: 300000,
-            outstandingBalance: 200000,
-            paymentStatus: 'Partially Paid',
-            orderStatus: 'Confirmed',
+            amountPaid: 500000,
             batchId: 'GSF-CLONE-0001',
-            stockDeducted: false,
-            notes: 'Balance due upon farm gate loading',
+            stockDeducted: true,
+            stockDeductedDate: todayStr,
+            notes: 'Cash sale completed',
             createdAt: new Date().toISOString()
         }
     ];

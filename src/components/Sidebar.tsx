@@ -1,5 +1,6 @@
-import { NavLink } from 'react-router-dom';
-import { LayoutDashboard, Users, ScanLine, Sprout, ShoppingCart, BarChart3, Bell, ScrollText, Settings, X, Banknote } from 'lucide-react';
+import { useState } from 'react';
+import { NavLink, useLocation } from 'react-router-dom';
+import { LayoutDashboard, Users, ScanLine, Sprout, ShoppingCart, BarChart3, Bell, ScrollText, Settings, X, Banknote, CalendarDays, ChevronDown, ChevronRight } from 'lucide-react';
 import './Sidebar.css';
 
 interface SidebarProps {
@@ -8,7 +9,10 @@ interface SidebarProps {
 }
 
 const Sidebar = ({ isOpen, setIsOpen }: SidebarProps) => {
+    const [isAttendanceExpanded, setIsAttendanceExpanded] = useState(false);
+    const location = useLocation();
     const handleClose = () => setIsOpen(false);
+    const isAttendanceSectionActive = location.pathname === '/attendance' || location.pathname === '/scan';
 
     return (
         <aside className={`sidebar ${isOpen ? 'open' : ''}`}>
@@ -28,17 +32,35 @@ const Sidebar = ({ isOpen, setIsOpen }: SidebarProps) => {
                 <NavLink to="/workers" onClick={handleClose} className={({ isActive }) => `nav-item ${isActive ? 'active' : ''}`}>
                     <Users size={20} /> Workers
                 </NavLink>
-                <NavLink to="/scan" onClick={handleClose} className={({ isActive }) => `nav-item ${isActive ? 'active' : ''}`}>
-                    <ScanLine size={20} /> Scan
-                </NavLink>
-                <NavLink to="/payroll" onClick={handleClose} className={({ isActive }) => `nav-item ${isActive ? 'active' : ''}`}>
-                    <Banknote size={20} /> Payroll
-                </NavLink>
+                <button
+                    type="button"
+                    className={`nav-item attendance-toggle ${isAttendanceSectionActive ? 'active' : ''}`}
+                    aria-expanded={isAttendanceExpanded}
+                    aria-controls="attendance-subnav"
+                    onClick={() => setIsAttendanceExpanded(expanded => !expanded)}
+                >
+                    <CalendarDays size={20} />
+                    <span>Attendance</span>
+                    {isAttendanceExpanded ? <ChevronDown size={16} /> : <ChevronRight size={16} />}
+                </button>
+                {isAttendanceExpanded && (
+                    <div className="attendance-subnav" id="attendance-subnav">
+                        <NavLink to="/attendance" onClick={handleClose} className={({ isActive }) => `nav-item attendance-subnav-item ${isActive ? 'active' : ''}`}>
+                            <CalendarDays size={18} /> Attendance Records
+                        </NavLink>
+                        <NavLink to="/scan" onClick={handleClose} className={({ isActive }) => `nav-item attendance-subnav-item ${isActive ? 'active' : ''}`}>
+                            <ScanLine size={18} /> Scan
+                        </NavLink>
+                    </div>
+                )}
                 <NavLink to="/inventory" onClick={handleClose} className={({ isActive }) => `nav-item ${isActive ? 'active' : ''}`}>
                     <ShoppingCart size={20} /> Inventory
                 </NavLink>
                 <NavLink to="/sales" onClick={handleClose} className={({ isActive }) => `nav-item ${isActive ? 'active' : ''}`}>
                     <BarChart3 size={20} /> Sales
+                </NavLink>
+                <NavLink to="/payroll" onClick={handleClose} className={({ isActive }) => `nav-item payroll-nav-item ${isActive ? 'active' : ''}`}>
+                    <Banknote size={20} /> Payroll
                 </NavLink>
                 <NavLink to="/reports" onClick={handleClose} className={({ isActive }) => `nav-item ${isActive ? 'active' : ''}`}>
                     <ScrollText size={20} /> Reports
@@ -55,4 +77,3 @@ const Sidebar = ({ isOpen, setIsOpen }: SidebarProps) => {
 };
 
 export default Sidebar;
-

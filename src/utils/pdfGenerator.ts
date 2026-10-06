@@ -464,7 +464,7 @@ export function generateInventoryReportPDF(
             formatUGX(i.purchasePrice),
             formatUGX(itemVal),
             i.supplier || 'N/A',
-            i.expiryDate || i.condition || 'Good',
+            i.condition || 'N/A',
             i.status
         ];
     });
@@ -485,7 +485,7 @@ export function generateInventoryReportPDF(
 
     autoTable(doc, {
         startY,
-        head: [['#', 'SKU / ID', 'Item Name', 'Category', 'Stock Qty', 'Min Stock', 'Unit Cost (UGX)', 'Valuation (UGX)', 'Supplier', 'Expiry / Cond.', 'Status']],
+        head: [['#', 'SKU / ID', 'Item Name', 'Category', 'Stock Qty', 'Min Stock', 'Unit Cost (UGX)', 'Valuation (UGX)', 'Supplier', 'Condition', 'Status']],
         body: tableData,
         headStyles: { fillColor: BRAND_PRIMARY, textColor: 255, fontStyle: 'bold' },
         styles: { fontSize: 8, cellPadding: 2.8 },
@@ -591,20 +591,14 @@ export function generateSalesOrdersReportPDF(
     const startY = 58;
 
     let totalRevenue = 0;
-    let totalPaid = 0;
-    let totalBalance = 0;
     let totalQuantity = 0;
 
     const tableData: RowInput[] = orders.map((o, index) => {
         const total = o.totalAmount || 0;
-        const paid = o.amountPaid || 0;
-        const balance = o.balanceDue ?? o.outstandingBalance ?? Math.max(0, total - paid);
         const qty = o.quantity || o.quantityOrdered || 0;
         const price = o.unitPrice || o.pricePerClone || 2500;
 
         totalRevenue += total;
-        totalPaid += paid;
-        totalBalance += balance;
         totalQuantity += qty;
 
         return [
@@ -616,11 +610,7 @@ export function generateSalesOrdersReportPDF(
             o.variety || o.cloneType || 'KR1',
             qty.toLocaleString(),
             formatUGX(price),
-            formatUGX(total),
-            formatUGX(paid),
-            formatUGX(balance),
-            o.paymentStatus,
-            o.deliveryStatus || (o.stockDeducted ? 'Dispatched' : 'Pending')
+            formatUGX(total)
         ];
     });
 
@@ -633,16 +623,13 @@ export function generateSalesOrdersReportPDF(
         '',
         totalQuantity.toLocaleString(),
         '',
-        formatUGX(totalRevenue),
-        formatUGX(totalPaid),
-        formatUGX(totalBalance),
         '',
-        ''
+        formatUGX(totalRevenue)
     ]);
 
     autoTable(doc, {
         startY,
-        head: [['#', 'Invoice #', 'Date', 'Customer', 'Phone', 'Variety', 'Qty', 'Unit Price', 'Total Value', 'Amount Paid', 'Balance (UGX)', 'Payment', 'Dispatch']],
+        head: [['#', 'Invoice #', 'Date', 'Customer', 'Phone', 'Variety', 'Qty', 'Unit Price', 'Cash Sale Total']],
         body: tableData,
         headStyles: { fillColor: BRAND_PRIMARY, textColor: 255, fontStyle: 'bold' },
         styles: { fontSize: 7.5, cellPadding: 2.2 },
@@ -652,19 +639,15 @@ export function generateSalesOrdersReportPDF(
             1: { cellWidth: 24, fontStyle: 'bold' },
             5: { cellWidth: 14, fontStyle: 'bold', halign: 'center' },
             6: { halign: 'right' },
-            8: { halign: 'right' },
-            9: { halign: 'right' },
-            10: { halign: 'right', fontStyle: 'bold' },
-            11: { halign: 'center' },
-            12: { halign: 'center' }
+            8: { halign: 'right', fontStyle: 'bold' }
         },
         margin: { left: 14, right: 14 }
     });
 
     applyHeaderAndFooter(
         doc,
-        'COFFEE CLONE SALES & REVENUE INVOICE MASTER REPORT',
-        `Total Revenue: ${formatUGX(totalRevenue)} | Total Collected: ${formatUGX(totalPaid)} | Receivables: ${formatUGX(totalBalance)}`,
+        'COFFEE CLONE CASH SALES REPORT',
+        `Total Cash Sales: ${formatUGX(totalRevenue)} | Plantlets Sold: ${totalQuantity.toLocaleString()}`,
         typeof summaryOrFilter === 'string' ? summaryOrFilter : 'All Orders'
     );
 
@@ -683,8 +666,6 @@ export function generatePlantletReceiptPDF(order: SalesOrder): void {
     const qty = order.quantity || order.quantityOrdered || 0;
     const price = order.unitPrice || order.pricePerClone || 2500;
     const total = order.totalAmount || (qty * price);
-    const paid = order.amountPaid || 0;
-    const balance = order.balanceDue ?? order.outstandingBalance ?? Math.max(0, total - paid);
 
     // Outer Border
     doc.setDrawColor(BRAND_PRIMARY[0], BRAND_PRIMARY[1], BRAND_PRIMARY[2]);
@@ -729,16 +710,6 @@ export function generatePlantletReceiptPDF(order: SalesOrder): void {
     doc.setFont('helvetica', 'normal');
     doc.text(order.orderDate, 65, 66);
 
-    doc.setFont('helvetica', 'bold');
-    doc.text(`Payment Status:`, 120, 50);
-    doc.setFont('helvetica', 'normal');
-    doc.text(order.paymentStatus, 160, 50);
-
-    doc.setFont('helvetica', 'bold');
-    doc.text(`Dispatch Status:`, 120, 58);
-    doc.setFont('helvetica', 'normal');
-    doc.text(order.deliveryStatus || 'Delivered', 160, 58);
-
     // Items Table
     const tableRows: RowInput[] = [
         [
@@ -767,38 +738,24 @@ export function generatePlantletReceiptPDF(order: SalesOrder): void {
     const finalY = (doc as any).lastAutoTable.finalY + 8;
 
     // Financial Summary
-    doc.setFontSize(9.5);
-    doc.setFont('helvetica', 'normal');
-    doc.text(`Total Amount Payable:`, 120, finalY);
-    doc.setFont('helvetica', 'bold');
-    doc.text(`${formatUGX(total)}`, pageWidth - 14, finalY, { align: 'right' });
-
-    doc.setFont('helvetica', 'normal');
-    doc.text(`Amount Received:`, 120, finalY + 6);
-    doc.setFont('helvetica', 'bold');
-    doc.text(`${formatUGX(paid)}`, pageWidth - 14, finalY + 6, { align: 'right' });
-
-    doc.line(120, finalY + 9, pageWidth - 14, finalY + 9);
-
     doc.setFontSize(10);
-    doc.text(`Outstanding Balance:`, 120, finalY + 15);
-    doc.setTextColor(balance > 0 ? 180 : 0, 0, 0);
-    doc.text(`${formatUGX(balance)}`, pageWidth - 14, finalY + 15, { align: 'right' });
+    doc.setFont('helvetica', 'bold');
+    doc.text(`CASH RECEIVED IN FULL:`, 120, finalY);
+    doc.text(`${formatUGX(total)}`, pageWidth - 14, finalY, { align: 'right' });
 
     doc.setTextColor(TEXT_DARK[0], TEXT_DARK[1], TEXT_DARK[2]);
     doc.setFontSize(8.5);
     doc.setFont('helvetica', 'normal');
-    doc.text(`Fulfilment: ${order.deliveryStatus || 'Dispatched and Delivered'}`, 14, finalY + 25);
     if (order.notes) {
-        doc.text(`Notes: ${order.notes}`, 14, finalY + 31);
+        doc.text(`Notes: ${order.notes}`, 14, finalY + 15);
     }
 
     // Signatures
-    doc.line(14, finalY + 50, 70, finalY + 50);
-    doc.text('Issued by (G&S Coffee Farm)', 14, finalY + 54);
+    doc.line(14, finalY + 40, 70, finalY + 40);
+    doc.text('Issued by (G&S Coffee Farm)', 14, finalY + 44);
 
-    doc.line(pageWidth - 70, finalY + 50, pageWidth - 14, finalY + 50);
-    doc.text('Customer Received by', pageWidth - 70, finalY + 54);
+    doc.line(pageWidth - 70, finalY + 40, pageWidth - 14, finalY + 40);
+    doc.text('Customer Received by', pageWidth - 70, finalY + 44);
 
     doc.save(`GS_Receipt_${invNumber}.pdf`);
 }

@@ -68,8 +68,7 @@ const Dashboard = () => {
     const lowStockItems = activeInventory.filter(i => i.quantity <= i.minStockLevel && i.quantity > 0);
 
     // Sales Financials
-    const totalSalesRevenue = sales.reduce((acc, curr) => acc + (curr.amountPaid || 0), 0);
-    const totalOutstandingReceivables = sales.reduce((acc, curr) => acc + (curr.balanceDue || curr.outstandingBalance || 0), 0);
+    const totalSalesRevenue = sales.reduce((acc, curr) => acc + (curr.totalAmount || 0), 0);
 
     return (
         <div className="dashboard-wrapper" style={{ display: 'flex', flexDirection: 'column', gap: '1.75rem' }}>
@@ -90,6 +89,39 @@ const Dashboard = () => {
                     </Link>
                 </div>
             </div>
+
+            {/* Operational Quick Actions */}
+            <section className="card">
+                <h3 style={{ margin: '0 0 1rem 0', fontSize: '1.1rem', color: 'var(--color-primary-dark)', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                    <TrendingUp size={20} /> Operational Quick Actions
+                </h3>
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(140px, 1fr))', gap: '0.75rem' }}>
+                    <Link to="/scan" className="btn btn-secondary" style={{ padding: '0.75rem', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '0.4rem', textAlign: 'center' }}>
+                        <QrCode size={22} color="var(--color-primary)" />
+                        <span style={{ fontSize: '0.85rem', fontWeight: 600 }}>Scan QR Attendance</span>
+                    </Link>
+                    <Link to="/clones" className="btn btn-secondary" style={{ padding: '0.75rem', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '0.4rem', textAlign: 'center' }}>
+                        <Sprout size={22} color="#16a34a" />
+                        <span style={{ fontSize: '0.85rem', fontWeight: 600 }}>Clone Batch Registry</span>
+                    </Link>
+                    <Link to="/sales" className="btn btn-secondary" style={{ padding: '0.75rem', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '0.4rem', textAlign: 'center' }}>
+                        <ShoppingCart size={22} color="#2563eb" />
+                        <span style={{ fontSize: '0.85rem', fontWeight: 600 }}>Record Sales Order</span>
+                    </Link>
+                    <Link to="/inventory" className="btn btn-secondary" style={{ padding: '0.75rem', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '0.4rem', textAlign: 'center' }}>
+                        <Package size={22} color="#8b5cf6" />
+                        <span style={{ fontSize: '0.85rem', fontWeight: 600 }}>Inventory Stock-In</span>
+                    </Link>
+                    <Link to="/payroll" className="btn btn-secondary" style={{ padding: '0.75rem', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '0.4rem', textAlign: 'center' }}>
+                        <DollarSign size={22} color="#ea580c" />
+                        <span style={{ fontSize: '0.85rem', fontWeight: 600 }}>Monthly Payroll</span>
+                    </Link>
+                    <Link to="/reports" className="btn btn-secondary" style={{ padding: '0.75rem', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '0.4rem', textAlign: 'center' }}>
+                        <FileText size={22} color="#0284c7" />
+                        <span style={{ fontSize: '0.85rem', fontWeight: 600 }}>Export PDF Reports</span>
+                    </Link>
+                </div>
+            </section>
 
             {/* Alert Banner if any overdue humid chambers or low stock */}
             {(overdueChamberBatches.length > 0 || lowStockItems.length > 0 || notifications.length > 0) && (
@@ -161,9 +193,6 @@ const Dashboard = () => {
                     </div>
                     <span className="stat-value text-success" style={{ fontSize: '1.75rem' }}>
                         UGX {totalSalesRevenue.toLocaleString()}
-                    </span>
-                    <span className="text-light" style={{ fontSize: '0.85rem', marginTop: '4px' }}>
-                        Receivables: UGX {totalOutstandingReceivables.toLocaleString()}
                     </span>
                 </div>
 
@@ -261,41 +290,8 @@ const Dashboard = () => {
                 </div>
             </section>
 
-            {/* Quick Actions & Recent Operational Logs */}
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(320px, 1fr))', gap: '1.5rem' }}>
-                {/* Quick Actions Card */}
-                <div className="card">
-                    <h3 style={{ margin: '0 0 1rem 0', fontSize: '1.1rem', color: 'var(--color-primary-dark)', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                        <TrendingUp size={20} /> Operational Quick Actions
-                    </h3>
-                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.75rem' }}>
-                        <Link to="/scan" className="btn btn-secondary" style={{ padding: '0.75rem', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '0.4rem', textAlign: 'center' }}>
-                            <QrCode size={22} color="var(--color-primary)" />
-                            <span style={{ fontSize: '0.85rem', fontWeight: 600 }}>Scan QR Attendance</span>
-                        </Link>
-                        <Link to="/clones" className="btn btn-secondary" style={{ padding: '0.75rem', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '0.4rem', textAlign: 'center' }}>
-                            <Sprout size={22} color="#16a34a" />
-                            <span style={{ fontSize: '0.85rem', fontWeight: 600 }}>Clone Batch Registry</span>
-                        </Link>
-                        <Link to="/sales" className="btn btn-secondary" style={{ padding: '0.75rem', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '0.4rem', textAlign: 'center' }}>
-                            <ShoppingCart size={22} color="#2563eb" />
-                            <span style={{ fontSize: '0.85rem', fontWeight: 600 }}>Record Sales Order</span>
-                        </Link>
-                        <Link to="/inventory" className="btn btn-secondary" style={{ padding: '0.75rem', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '0.4rem', textAlign: 'center' }}>
-                            <Package size={22} color="#8b5cf6" />
-                            <span style={{ fontSize: '0.85rem', fontWeight: 600 }}>Inventory Stock-In</span>
-                        </Link>
-                        <Link to="/payroll" className="btn btn-secondary" style={{ padding: '0.75rem', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '0.4rem', textAlign: 'center' }}>
-                            <DollarSign size={22} color="#ea580c" />
-                            <span style={{ fontSize: '0.85rem', fontWeight: 600 }}>Monthly Payroll</span>
-                        </Link>
-                        <Link to="/reports" className="btn btn-secondary" style={{ padding: '0.75rem', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '0.4rem', textAlign: 'center' }}>
-                            <FileText size={22} color="#0284c7" />
-                            <span style={{ fontSize: '0.85rem', fontWeight: 600 }}>Export PDF Reports</span>
-                        </Link>
-                    </div>
-                </div>
-
+            {/* Today's Operational Logs */}
+            <div>
                 {/* Today's Attendance Overview */}
                 <div className="card">
                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
@@ -357,4 +353,3 @@ const Dashboard = () => {
 };
 
 export default Dashboard;
-

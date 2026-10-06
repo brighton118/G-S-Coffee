@@ -184,30 +184,14 @@ export function calculateInventoryValuation(items: InventoryItem[]): number {
         .reduce((sum, item) => sum + ((Number(item.quantity) || 0) * (Number(item.purchasePrice) || 0)), 0);
 }
 
-/**
- * Calculate Sales Order Totals
- */
-export function calculateSalesTotals(quantity: number, unitPrice: number, amountPaid: number) {
+export function calculateSalesTotals(quantity: number, unitPrice: number) {
     const qty = Math.max(0, Number(quantity) || 0);
     const price = Math.max(0, Number(unitPrice) || 0);
-    const paid = Math.max(0, Number(amountPaid) || 0);
-
     const totalAmount = qty * price;
-    const balanceDue = Math.max(0, totalAmount - paid);
-    const outstandingBalance = balanceDue;
-
-    let paymentStatus: 'Paid' | 'Partial' | 'Pending' = 'Pending';
-    if (paid >= totalAmount && totalAmount > 0) {
-        paymentStatus = 'Paid';
-    } else if (paid > 0) {
-        paymentStatus = 'Partial';
-    }
 
     return {
         totalAmount,
-        balanceDue,
-        outstandingBalance,
-        paymentStatus
+        amountPaid: totalAmount
     };
 }
 

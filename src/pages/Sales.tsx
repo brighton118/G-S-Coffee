@@ -15,6 +15,7 @@ import {
 } from 'lucide-react';
 import { generateSalesReceiptPDF, generateSalesSummaryPDF } from '../utils/pdfGenerator';
 import { formatUGX } from '../utils/calculations';
+import './Sales.css';
 
 const VARIETIES: Array<'KR1' | 'KR3' | 'KR4' | 'KR5' | 'KR6' | 'KR7' | 'KR8' | 'KR9' | 'KR10'> = [
     'KR1', 'KR3', 'KR4', 'KR5', 'KR6', 'KR7', 'KR8', 'KR9', 'KR10'
@@ -25,7 +26,7 @@ const Sales: React.FC = () => {
     const [selectedVariety, setSelectedVariety] = useState<string>('All');
     const [showNewOrderModal, setShowNewOrderModal] = useState(false);
 
-    // Form state (100% Cash Paid, Zero Dues)
+    // Sales are recorded as fully paid cash transactions.
     const [formData, setFormData] = useState<{
         customerName: string;
         customerPhone: string;
@@ -91,12 +92,7 @@ const Sales: React.FC = () => {
             unitPrice: formData.unitPrice,
             pricePerClone: formData.unitPrice,
             totalAmount,
-            amountPaid: totalAmount, // Full Cash Paid
-            balanceDue: 0,
-            outstandingBalance: 0,
-            paymentStatus: 'Paid',
-            deliveryStatus: 'Delivered',
-            orderStatus: 'Delivered',
+            amountPaid: totalAmount,
             soldBy: 'Sales Officer'
         };
 
@@ -141,7 +137,7 @@ const Sales: React.FC = () => {
                 <div style={{ display: 'flex', gap: '0.75rem', flexWrap: 'wrap' }}>
                     <button 
                         className="btn btn-secondary" 
-                        onClick={() => generateSalesSummaryPDF(orders, { totalRevenue, totalCollected: totalRevenue, totalOutstanding: 0, totalQuantity: totalPlantletsSold })}
+                        onClick={() => generateSalesSummaryPDF(orders)}
                     >
                         <Download size={16} /> Export Sales Summary (PDF)
                     </button>
@@ -230,7 +226,7 @@ const Sales: React.FC = () => {
             </div>
 
             {/* Orders Table (Cash Only, No Dues) */}
-            <div className="card table-responsive">
+            <div className="card table-responsive desktop-only">
                 <table className="data-table" style={{ width: '100%', borderCollapse: 'collapse' }}>
                     <thead>
                         <tr>
@@ -241,14 +237,13 @@ const Sales: React.FC = () => {
                             <th style={{ whiteSpace: 'nowrap', textAlign: 'right', padding: '0.75rem 1rem' }}>Quantity</th>
                             <th style={{ whiteSpace: 'nowrap', textAlign: 'right', padding: '0.75rem 1rem' }}>Unit Price</th>
                             <th style={{ whiteSpace: 'nowrap', textAlign: 'right', padding: '0.75rem 1rem' }}>Cash Paid (UGX)</th>
-                            <th style={{ whiteSpace: 'nowrap', padding: '0.75rem 1rem', textAlign: 'center' }}>Payment Status</th>
                             <th style={{ whiteSpace: 'nowrap', textAlign: 'right', padding: '0.75rem 1rem' }}>Receipt</th>
                         </tr>
                     </thead>
                     <tbody>
                         {filteredOrders.length === 0 ? (
                             <tr>
-                                <td colSpan={9} style={{ textAlign: 'center', padding: '3rem', color: 'var(--color-text-light)' }}>
+                                <td colSpan={8} style={{ textAlign: 'center', padding: '3rem', color: 'var(--color-text-light)' }}>
                                     No sales records found matching criteria.
                                 </td>
                             </tr>
@@ -286,21 +281,6 @@ const Sales: React.FC = () => {
                                         <td style={{ whiteSpace: 'nowrap', textAlign: 'right', padding: '0.75rem 1rem' }}>
                                             <strong style={{ color: '#16a34a' }}>{formatUGX(order.totalAmount)}</strong>
                                         </td>
-                                        <td style={{ whiteSpace: 'nowrap', padding: '0.75rem 1rem', textAlign: 'center' }}>
-                                            <span style={{ 
-                                                display: 'inline-flex', 
-                                                alignItems: 'center', 
-                                                gap: '0.3rem', 
-                                                backgroundColor: '#dcfce7', 
-                                                color: '#166534', 
-                                                padding: '0.25rem 0.65rem', 
-                                                borderRadius: '4px', 
-                                                fontWeight: 600, 
-                                                fontSize: '0.85rem' 
-                                            }}>
-                                                ✓ Cash Paid
-                                            </span>
-                                        </td>
                                         <td style={{ whiteSpace: 'nowrap', textAlign: 'right', padding: '0.75rem 1rem' }}>
                                             <button 
                                                 className="btn btn-secondary" 
@@ -317,6 +297,63 @@ const Sales: React.FC = () => {
                         )}
                     </tbody>
                 </table>
+            </div>
+
+            <div className="mobile-only sales-order-cards">
+                {filteredOrders.length === 0 ? (
+                    <div className="card sales-empty-state">
+                        No sales records found matching criteria.
+                    </div>
+                ) : (
+                    filteredOrders.slice().reverse().map(order => {
+                        const inv = order.invoiceNumber || order.orderId || 'GSF-INV';
+                        const varName = order.variety || order.cloneType || 'KR1';
+                        const qty = order.quantity || order.quantityOrdered || 0;
+                        const unitPrice = order.unitPrice || order.pricePerClone || 2500;
+
+                        return (
+                            <article key={order.id} className="card sales-order-card">
+                                <div className="sales-order-heading">
+                                    <div>
+                                        <strong className="sales-invoice">{inv}</strong>
+                                        <div className="text-light sales-order-date">{order.orderDate}</div>
+                                    </div>
+                                    <span className="badge badge-primary">{varName}</span>
+                                </div>
+
+                                <div className="sales-customer">
+                                    <strong>{order.customerName}</strong>
+                                    <span className="text-light">{order.customerPhone}</span>
+                                    {order.customerLocation && (
+                                        <span className="text-light">{order.customerLocation}</span>
+                                    )}
+                                </div>
+
+                                <div className="sales-order-summary">
+                                    <div>
+                                        <span className="text-light">Quantity</span>
+                                        <strong>{qty.toLocaleString()}</strong>
+                                    </div>
+                                    <div>
+                                        <span className="text-light">Unit price</span>
+                                        <strong>{formatUGX(unitPrice)}</strong>
+                                    </div>
+                                    <div>
+                                        <span className="text-light">Cash paid</span>
+                                        <strong className="sales-cash-paid">{formatUGX(order.totalAmount)}</strong>
+                                    </div>
+                                </div>
+
+                                <button
+                                    className="btn btn-secondary sales-receipt-button"
+                                    onClick={() => generateSalesReceiptPDF(order)}
+                                >
+                                    <Receipt size={15} /> Cash Receipt
+                                </button>
+                            </article>
+                        );
+                    })
+                )}
             </div>
 
             {/* New Order Modal (Cash Only, No Dues) */}

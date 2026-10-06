@@ -37,7 +37,6 @@ const CloneProduction: React.FC = () => {
         sourceFarm: 'G&S Mother Garden Block A',
         sourceMotherPlant: 'Row 1 Plant 1',
         originalQuantity: 1000,
-        personResponsible: 'John Kato',
         notes: ''
     });
 
@@ -70,7 +69,7 @@ const CloneProduction: React.FC = () => {
         const matchesSearch =
             b.batchId.toLowerCase().includes(searchTerm.toLowerCase()) ||
             b.variety.toLowerCase().includes(searchTerm.toLowerCase()) ||
-            b.personResponsible.toLowerCase().includes(searchTerm.toLowerCase());
+            (b.personResponsible || '').toLowerCase().includes(searchTerm.toLowerCase());
         return matchesVariety && matchesSearch;
     });
 
@@ -90,7 +89,6 @@ const CloneProduction: React.FC = () => {
             dateObtained,
             originalQuantity: Number(newBatchData.originalQuantity),
             currentQuantity: Number(newBatchData.originalQuantity),
-            personResponsible: newBatchData.personResponsible,
             currentStage: 'Cutting',
             notes: newBatchData.notes,
             createdAt: new Date().toISOString()
@@ -104,7 +102,6 @@ const CloneProduction: React.FC = () => {
             variety: newBatchData.variety,
             datePrepared: dateObtained,
             initialQuantity: Number(newBatchData.originalQuantity),
-            responsibleWorker: newBatchData.personResponsible,
             quantityTransferred: 0,
             quantityLost: 0,
             status: 'In Progress'
@@ -116,7 +113,6 @@ const CloneProduction: React.FC = () => {
             sourceFarm: 'G&S Mother Garden Block A',
             sourceMotherPlant: 'Row 1 Plant 1',
             originalQuantity: 1000,
-            personResponsible: 'John Kato',
             notes: ''
         });
     };
@@ -130,7 +126,7 @@ const CloneProduction: React.FC = () => {
             forSaleQuantity: 0,
             quantityLost: 0,
             lossReason: '',
-            responsibleWorker: batch.personResponsible,
+            responsibleWorker: batch.personResponsible || '',
             chamberNumber: 'Chamber 1',
             section: 'Section A',
             notes: ''
@@ -348,7 +344,7 @@ const CloneProduction: React.FC = () => {
             </div>
 
             {/* Visual Pipeline Bar */}
-            <div className="card" style={{ padding: '1rem', backgroundColor: '#f8fafc', border: '1px solid #e2e8f0' }}>
+            <div className="card clones-pipeline" style={{ padding: '1rem', backgroundColor: '#f8fafc', border: '1px solid #e2e8f0' }}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '0.75rem' }}>
                     <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
                         <Layers size={20} color="var(--color-primary)" />
@@ -399,7 +395,7 @@ const CloneProduction: React.FC = () => {
             </div>
 
             {/* Batches Master Table */}
-            <div className="table-responsive card">
+            <div className="table-responsive card desktop-only">
                 <table className="data-table">
                     <thead>
                         <tr>
@@ -460,7 +456,7 @@ const CloneProduction: React.FC = () => {
                                         </td>
                                         <td>{batch.originalQuantity.toLocaleString()}</td>
                                         <td><strong>{batch.currentQuantity.toLocaleString()}</strong></td>
-                                        <td>{batch.personResponsible}</td>
+                                        <td>{batch.personResponsible || '-'}</td>
                                         <td>{batch.dateObtained}</td>
                                         <td>
                                             {batch.currentStage === 'Humid Chamber' && chamber ? (
@@ -491,6 +487,81 @@ const CloneProduction: React.FC = () => {
                         )}
                     </tbody>
                 </table>
+            </div>
+
+            <div className="clone-batch-cards">
+                {filteredBatches.length === 0 ? (
+                    <div className="card empty-state">
+                        No clone batches found.
+                    </div>
+                ) : (
+                    filteredBatches.map(batch => {
+                        const chamber = humidChambers.find(h => h.batchId === batch.batchId);
+                        const isOverdue = !!(chamber && chamber.status === 'In Chamber' && chamber.expectedCompletionDate && chamber.expectedCompletionDate < todayStr);
+                        const stageStyle = batch.currentStage === 'Cutting' ? { backgroundColor: '#f1f5f9', color: '#334155' } :
+                            batch.currentStage === 'Humid Chamber' ? { backgroundColor: '#e0f2fe', color: '#0369a1' } :
+                            batch.currentStage === 'First Hardening' ? { backgroundColor: '#fef08a', color: '#854d0e' } :
+                            batch.currentStage === 'Second Hardening' ? { backgroundColor: '#f3e8ff', color: '#6b21a8' } :
+                            batch.currentStage === 'Sorting' ? { backgroundColor: '#fed7aa', color: '#9a3412' } :
+                            { backgroundColor: '#dcfce7', color: '#166534' };
+
+                        return (
+                            <article key={batch.batchId} className="card clone-batch-card">
+                                <div className="clone-batch-card-header">
+                                    <div>
+                                        <strong className="clone-batch-id">{batch.batchId}</strong>
+                                        <span className="clone-variety-badge">{batch.variety}</span>
+                                    </div>
+                                    <span className="badge" style={stageStyle}>{batch.currentStage}</span>
+                                </div>
+
+                                <div className="clone-batch-quantities">
+                                    <div>
+                                        <span className="text-light">Initial quantity</span>
+                                        <strong>{batch.originalQuantity.toLocaleString()}</strong>
+                                    </div>
+                                    <div>
+                                        <span className="text-light">Current quantity</span>
+                                        <strong>{batch.currentQuantity.toLocaleString()}</strong>
+                                    </div>
+                                </div>
+
+                                <dl className="clone-batch-details">
+                                    <div>
+                                        <dt>Responsible worker</dt>
+                                        <dd>{batch.personResponsible || '-'}</dd>
+                                    </div>
+                                    <div>
+                                        <dt>Date started</dt>
+                                        <dd>{batch.dateObtained}</dd>
+                                    </div>
+                                    {batch.currentStage === 'Humid Chamber' && chamber && (
+                                        <div>
+                                            <dt>Chamber / due date</dt>
+                                            <dd>
+                                                {chamber.chamberNumber} · {chamber.expectedCompletionDate}
+                                                {isOverdue && (
+                                                    <span className="clone-overdue">
+                                                        <AlertTriangle size={14} /> Overdue for hardening
+                                                    </span>
+                                                )}
+                                            </dd>
+                                        </div>
+                                    )}
+                                </dl>
+
+                                {batch.currentStage !== 'Completed' && (
+                                    <button
+                                        className="btn btn-primary clone-advance-button"
+                                        onClick={() => handleOpenAdvance(batch)}
+                                    >
+                                        Advance <ArrowRight size={16} />
+                                    </button>
+                                )}
+                            </article>
+                        );
+                    })
+                )}
             </div>
 
             {/* Modal: New Batch */}
@@ -553,17 +624,6 @@ const CloneProduction: React.FC = () => {
                                         onChange={e => setNewBatchData({ ...newBatchData, sourceMotherPlant: e.target.value })}
                                     />
                                 </div>
-                            </div>
-
-                            <div className="form-group">
-                                <label className="form-label">Responsible Nursery Officer *</label>
-                                <input
-                                    type="text"
-                                    className="form-input"
-                                    required
-                                    value={newBatchData.personResponsible}
-                                    onChange={e => setNewBatchData({ ...newBatchData, personResponsible: e.target.value })}
-                                />
                             </div>
 
                             <div className="form-group">

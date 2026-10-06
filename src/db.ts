@@ -126,7 +126,7 @@ export interface CloneBatch {
     dateObtained: string;
     originalQuantity: number;
     currentQuantity: number;
-    personResponsible: string;
+    personResponsible?: string;
     notes?: string;
     currentStage: 'Cutting' | 'Humid Chamber' | 'First Hardening' | 'Second Hardening' | 'Sorting' | 'Completed' | 'Obtained' | 'Hardening' | 'Ready for Sorting' | 'Sorted' | string;
     createdAt?: string;
@@ -317,11 +317,6 @@ export interface SalesOrder {
     pricePerClone?: number;
     totalAmount: number;
     amountPaid: number;
-    balanceDue?: number;
-    outstandingBalance?: number;
-    paymentStatus: 'Paid' | 'Partial' | 'Pending' | 'Fully Paid' | 'Partially Paid' | string;
-    deliveryStatus?: 'Pending' | 'Dispatched' | 'Delivered' | 'Cancelled' | string;
-    orderStatus?: string;
     stockDeducted?: boolean;
     stockDeductedDate?: string;
     createdAt?: string;
