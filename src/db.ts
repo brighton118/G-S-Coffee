@@ -73,12 +73,28 @@ export interface AttendanceRecord {
     notes?: string;
 }
 
+export interface PayrollPayment {
+    id?: number;
+    payrollRecordId?: number;
+    workerId: string;
+    workerName: string;
+    payrollMonth: string; // YYYY-MM
+    amount: number; // Amount paid in UGX
+    paymentDate: string;
+    paymentMethod: 'Cash' | 'Mobile Money' | 'Bank Transfer' | 'Other' | string;
+    paymentReference?: string;
+    recordedBy: string;
+    notes?: string;
+    createdAt?: string;
+}
+
 export interface PayrollRecord {
     id?: number;
     payrollMonth: string; // YYYY-MM
     payrollPeriod?: string;
     workerId: string;
     workerName: string;
+    farmCardNumber?: string;
     serialNumber: number; // S/M column
     monthlySalary: number; // Monthly base salary in UGX
     approvedOvertimeHours: number;
@@ -88,8 +104,15 @@ export interface PayrollRecord {
     deductions: number; // UGX
     deductionReason?: string;
     netPay: number; // Monthly Salary + Overtime Earnings - Deductions
-    status: 'Draft' | 'Approved' | 'Paid' | string;
+    amountPaid: number; // Total amount paid in UGX
+    balance: number; // Outstanding balance in UGX (Net Pay - Amount Paid)
+    paymentStatus: 'Pending' | 'Partially Paid' | 'Paid' | string;
     paymentDate?: string;
+    paymentMethod?: string;
+    paymentReference?: string;
+    paymentNotes?: string;
+    recordedBy?: string;
+    status: 'Draft' | 'Approved' | 'Paid' | string;
     approvedBy?: string;
     generatedAt?: string;
     notes?: string;
@@ -377,6 +400,7 @@ const db = new Dexie('GS_Coffee_Farm_DB') as Dexie & {
     overtimeRules: EntityTable<OvertimeRuleConfig, 'id'>;
     attendance: EntityTable<AttendanceRecord, 'id'>;
     payrollRecords: EntityTable<PayrollRecord, 'id'>;
+    payrollPayments: EntityTable<PayrollPayment, 'id'>;
     cloneBatches: EntityTable<CloneBatch, 'batchId'>;
     productionCuttings: EntityTable<ProductionCutting, 'id'>;
     productionHumidChamber: EntityTable<ProductionHumidChamber, 'id'>;
@@ -401,7 +425,8 @@ db.version(2).stores({
     workers: 'workerId, fullName, phoneNumber, status, dateJoined',
     overtimeRules: '++id, active',
     attendance: '++id, workerId, date, status, overtimeStatus',
-    payrollRecords: '++id, payrollMonth, workerId, status, serialNumber',
+    payrollRecords: '++id, payrollMonth, workerId, status, serialNumber, paymentStatus',
+    payrollPayments: '++id, payrollRecordId, workerId, payrollMonth, paymentDate, paymentMethod',
     cloneBatches: 'batchId, variety, currentStage, dateObtained',
     productionCuttings: '++id, batchId, date',
     productionHumidChamber: '++id, batchId, status, targetExitDate',

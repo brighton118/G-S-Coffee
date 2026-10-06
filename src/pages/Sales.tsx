@@ -10,10 +10,11 @@ import {
     DollarSign,
     Layers,
     X,
-    Receipt
+    Receipt,
+    Banknote
 } from 'lucide-react';
 import { generateSalesReceiptPDF, generateSalesSummaryPDF } from '../utils/pdfGenerator';
-import { calculateSalesTotals } from '../utils/calculations';
+import { calculateSalesTotals, formatUGX } from '../utils/calculations';
 
 const VARIETIES: Array<'KR1' | 'KR3' | 'KR4' | 'KR5' | 'KR6' | 'KR7' | 'KR8' | 'KR9' | 'KR10'> = [
     'KR1', 'KR3', 'KR4', 'KR5', 'KR6', 'KR7', 'KR8', 'KR9', 'KR10'
@@ -25,7 +26,7 @@ const Sales: React.FC = () => {
     const [selectedStatus, setSelectedStatus] = useState<string>('All');
     const [showNewOrderModal, setShowNewOrderModal] = useState(false);
 
-    // Form state
+    // Form state (Cash Only, Delivery removed)
     const [formData, setFormData] = useState<{
         customerName: string;
         customerPhone: string;
@@ -36,7 +37,6 @@ const Sales: React.FC = () => {
         unitPrice: number;
         amountPaid: number;
         paymentStatus: 'Paid' | 'Partial' | 'Pending';
-        deliveryStatus: 'Pending' | 'Dispatched' | 'Delivered' | 'Cancelled';
         notes: string;
         deductFromInventory: boolean;
         inventoryItemId: string;
@@ -50,7 +50,6 @@ const Sales: React.FC = () => {
         unitPrice: 2500, // Master Default Price
         amountPaid: 250000,
         paymentStatus: 'Paid',
-        deliveryStatus: 'Delivered',
         notes: '',
         deductFromInventory: true,
         inventoryItemId: ''
@@ -68,7 +67,7 @@ const Sales: React.FC = () => {
         
         const varietyVal = order.variety || order.cloneType;
         const matchesVariety = selectedVariety === 'All' || varietyVal === selectedVariety;
-        const matchesStatus = selectedStatus === 'All' || order.paymentStatus === selectedStatus || order.deliveryStatus === selectedStatus;
+        const matchesStatus = selectedStatus === 'All' || order.paymentStatus === selectedStatus;
 
         return matchesSearch && matchesVariety && matchesStatus;
     });
@@ -110,8 +109,8 @@ const Sales: React.FC = () => {
             balanceDue: totals.balanceDue,
             outstandingBalance: totals.balanceDue,
             paymentStatus: totals.paymentStatus,
-            deliveryStatus: formData.deliveryStatus,
-            orderStatus: formData.deliveryStatus,
+            deliveryStatus: 'Delivered',
+            orderStatus: 'Delivered',
             soldBy: 'Sales Officer',
             notes: formData.notes
         };
@@ -147,7 +146,7 @@ const Sales: React.FC = () => {
             module: 'Sales & Invoices',
             recordIdentifier: invoiceNum,
             date: new Date().toISOString(),
-            description: `Sold ${formData.quantity} ${formData.variety} plantlets to ${formData.customerName} for UGX ${totals.totalAmount.toLocaleString()}`
+            description: `Sold ${formData.quantity} ${formData.variety} plantlets to ${formData.customerName} for cash UGX ${totals.totalAmount.toLocaleString()}`
         });
 
         setShowNewOrderModal(false);
@@ -162,7 +161,6 @@ const Sales: React.FC = () => {
             unitPrice: 2500,
             amountPaid: 250000,
             paymentStatus: 'Paid',
-            deliveryStatus: 'Delivered',
             notes: '',
             deductFromInventory: true,
             inventoryItemId: ''
@@ -186,21 +184,19 @@ const Sales: React.FC = () => {
         });
     };
 
-    const handleUpdateDeliveryStatus = async (orderId: number, status: 'Pending' | 'Dispatched' | 'Delivered' | 'Cancelled') => {
-        await db.salesOrders.update(orderId, { deliveryStatus: status, orderStatus: status });
-    };
-
     return (
         <div className="page-wrapper" style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
             {/* Header */}
             <div className="header-action" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '1rem' }}>
                 <div>
-                    <h1 style={{ margin: 0 }}>Plantlet Sales & Invoicing</h1>
+                    <h1 style={{ margin: 0, display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                        <Banknote size={28} color="var(--color-primary)" /> Plantlet Sales & Cash Invoicing
+                    </h1>
                     <p className="text-light" style={{ margin: '0.25rem 0 0 0' }}>
-                        Manage customer plantlet orders, pricing (UGX), invoices, dispatch status, and official receipts.
+                        Track commercial coffee clone sales, cash payments in UGX, and official customer receipts.
                     </p>
                 </div>
-                <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }}>
+                <div style={{ display: 'flex', gap: '0.75rem', flexWrap: 'wrap' }}>
                     <button 
                         className="btn btn-secondary" 
                         onClick={() => generateSalesSummaryPDF(orders, { totalRevenue, totalCollected, totalOutstanding, totalQuantity: totalPlantletsSold })}
@@ -208,7 +204,7 @@ const Sales: React.FC = () => {
                         <Download size={16} /> Export Sales Summary (PDF)
                     </button>
                     <button className="btn btn-primary" onClick={() => setShowNewOrderModal(true)}>
-                        <Plus size={18} /> Record New Order
+                        <Plus size={18} /> Record Cash Sale
                     </button>
                 </div>
             </div>
@@ -217,40 +213,40 @@ const Sales: React.FC = () => {
             <div className="stats-grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: '1rem' }}>
                 <div className="stat-card card">
                     <div className="stat-header">
-                        <span className="stat-title">Total Revenue</span>
-                        <DollarSign className="stat-icon text-success" size={20} />
+                        <span className="stat-title">TOTAL SALES VALUE</span>
+                        <DollarSign className="stat-icon text-primary" size={20} />
                     </div>
                     <div className="stat-value" style={{ color: 'var(--color-primary)' }}>
-                        UGX {totalRevenue.toLocaleString()}
+                        {formatUGX(totalRevenue)}
                     </div>
-                    <div className="stat-change text-light">Cumulative sales amount</div>
+                    <div className="stat-change text-light">Total invoice volume</div>
                 </div>
 
                 <div className="stat-card card">
                     <div className="stat-header">
-                        <span className="stat-title">Cash Collected</span>
+                        <span className="stat-title">CASH RECEIVED</span>
                         <CheckCircle2 className="stat-icon text-success" size={20} />
                     </div>
                     <div className="stat-value" style={{ color: '#16a34a' }}>
-                        UGX {totalCollected.toLocaleString()}
+                        {formatUGX(totalCollected)}
                     </div>
-                    <div className="stat-change text-light">Received payments</div>
+                    <div className="stat-change text-light">Total cash settled</div>
                 </div>
 
                 <div className="stat-card card">
                     <div className="stat-header">
-                        <span className="stat-title">Outstanding Balance</span>
+                        <span className="stat-title">CASH OUTSTANDING</span>
                         <AlertCircle className="stat-icon text-danger" size={20} />
                     </div>
                     <div className="stat-value" style={{ color: totalOutstanding > 0 ? '#dc2626' : 'var(--color-text)' }}>
-                        UGX {totalOutstanding.toLocaleString()}
+                        {formatUGX(totalOutstanding)}
                     </div>
-                    <div className="stat-change text-light">Unpaid invoices</div>
+                    <div className="stat-change text-light">Pending cash balances</div>
                 </div>
 
                 <div className="stat-card card">
                     <div className="stat-header">
-                        <span className="stat-title">Plantlets Sold</span>
+                        <span className="stat-title">PLANTLETS SOLD</span>
                         <Layers className="stat-icon text-primary" size={20} />
                     </div>
                     <div className="stat-value">
@@ -260,9 +256,9 @@ const Sales: React.FC = () => {
                 </div>
             </div>
 
-            {/* Filters */}
+            {/* Search and Filters */}
             <div className="card" style={{ padding: '1rem', display: 'flex', flexWrap: 'wrap', gap: '1rem', alignItems: 'center', justifyContent: 'space-between' }}>
-                <div style={{ display: 'flex', gap: '0.75rem', flex: 1, minWidth: '280px' }}>
+                <div style={{ display: 'flex', gap: '0.75rem', flex: 1, minWidth: '260px' }}>
                     <div style={{ position: 'relative', width: '100%' }}>
                         <Search size={18} style={{ position: 'absolute', left: '10px', top: '50%', transform: 'translateY(-50%)', color: 'var(--color-text-light)' }} />
                         <input 
@@ -276,12 +272,12 @@ const Sales: React.FC = () => {
                     </div>
                 </div>
 
-                <div style={{ display: 'flex', gap: '0.75rem', flexWrap: 'wrap' }}>
+                <div style={{ display: 'flex', gap: '0.75rem', flexWrap: 'wrap', alignItems: 'center' }}>
                     <select 
                         className="form-input" 
                         value={selectedVariety} 
                         onChange={e => setSelectedVariety(e.target.value)}
-                        style={{ minWidth: '130px' }}
+                        style={{ minWidth: '140px' }}
                     >
                         <option value="All">All Varieties</option>
                         {VARIETIES.map(v => (
@@ -293,41 +289,37 @@ const Sales: React.FC = () => {
                         className="form-input" 
                         value={selectedStatus} 
                         onChange={e => setSelectedStatus(e.target.value)}
-                        style={{ minWidth: '140px' }}
+                        style={{ minWidth: '150px' }}
                     >
-                        <option value="All">All Statuses</option>
+                        <option value="All">All Payments</option>
                         <option value="Paid">Paid</option>
                         <option value="Partial">Partial</option>
                         <option value="Pending">Pending</option>
-                        <option value="Dispatched">Dispatched</option>
-                        <option value="Delivered">Delivered</option>
                     </select>
                 </div>
             </div>
 
             {/* Orders Table */}
             <div className="card table-responsive">
-                <table className="data-table">
+                <table className="data-table" style={{ width: '100%', borderCollapse: 'collapse' }}>
                     <thead>
                         <tr>
-                            <th>Invoice #</th>
-                            <th>Date</th>
-                            <th>Customer Info</th>
-                            <th>Variety</th>
-                            <th>Qty</th>
-                            <th>Unit Price</th>
-                            <th>Total (UGX)</th>
-                            <th>Paid / Balance</th>
-                            <th>Payment</th>
-                            <th>Delivery</th>
-                            <th style={{ textAlign: 'right' }}>Actions</th>
+                            <th style={{ whiteSpace: 'nowrap', padding: '0.75rem 1rem' }}>Invoice #</th>
+                            <th style={{ whiteSpace: 'nowrap', padding: '0.75rem 1rem' }}>Date</th>
+                            <th style={{ padding: '0.75rem 1rem' }}>Customer</th>
+                            <th style={{ whiteSpace: 'nowrap', padding: '0.75rem 1rem' }}>Variety</th>
+                            <th style={{ whiteSpace: 'nowrap', textAlign: 'right', padding: '0.75rem 1rem' }}>Quantity</th>
+                            <th style={{ whiteSpace: 'nowrap', textAlign: 'right', padding: '0.75rem 1rem' }}>Unit Price</th>
+                            <th style={{ whiteSpace: 'nowrap', textAlign: 'right', padding: '0.75rem 1rem' }}>Total Amount</th>
+                            <th style={{ whiteSpace: 'nowrap', padding: '0.75rem 1rem' }}>Cash Payment Status</th>
+                            <th style={{ whiteSpace: 'nowrap', textAlign: 'right', padding: '0.75rem 1rem' }}>Receipt</th>
                         </tr>
                     </thead>
                     <tbody>
                         {filteredOrders.length === 0 ? (
                             <tr>
-                                <td colSpan={11} style={{ textAlign: 'center', padding: '3rem', color: 'var(--color-text-light)' }}>
-                                    No sales orders found matching criteria.
+                                <td colSpan={9} style={{ textAlign: 'center', padding: '3rem', color: 'var(--color-text-light)' }}>
+                                    No sales records found matching criteria.
                                 </td>
                             </tr>
                         ) : (
@@ -337,81 +329,81 @@ const Sales: React.FC = () => {
                                 const qty = order.quantity || order.quantityOrdered || 0;
                                 const unitPrice = order.unitPrice || order.pricePerClone || 2500;
                                 const balance = order.balanceDue ?? order.outstandingBalance ?? Math.max(0, order.totalAmount - order.amountPaid);
+                                const isFullyPaid = order.paymentStatus === 'Paid' || order.paymentStatus === 'Fully Paid';
+                                const isPartial = order.paymentStatus === 'Partial' || order.paymentStatus === 'Partially Paid';
 
                                 return (
-                                    <tr key={order.id}>
-                                        <td>
+                                    <tr key={order.id} style={{ borderBottom: '1px solid var(--color-border)' }}>
+                                        <td style={{ whiteSpace: 'nowrap', padding: '0.75rem 1rem' }}>
                                             <strong style={{ color: 'var(--color-primary)' }}>{inv}</strong>
                                         </td>
-                                        <td>{order.orderDate}</td>
-                                        <td>
-                                            <div><strong>{order.customerName}</strong></div>
+                                        <td style={{ whiteSpace: 'nowrap', padding: '0.75rem 1rem' }}>
+                                            {order.orderDate}
+                                        </td>
+                                        <td style={{ padding: '0.75rem 1rem' }}>
+                                            <div style={{ fontWeight: 600, color: 'var(--color-text)' }}>{order.customerName}</div>
                                             <div className="text-light" style={{ fontSize: '0.8rem' }}>{order.customerPhone}</div>
                                             {order.customerLocation && (
                                                 <div className="text-light" style={{ fontSize: '0.75rem' }}>📍 {order.customerLocation}</div>
                                             )}
                                         </td>
-                                        <td>
+                                        <td style={{ whiteSpace: 'nowrap', padding: '0.75rem 1rem' }}>
                                             <span className="badge badge-primary">{varName}</span>
                                         </td>
-                                        <td><strong>{qty.toLocaleString()}</strong></td>
-                                        <td>UGX {unitPrice.toLocaleString()}</td>
-                                        <td><strong>UGX {order.totalAmount.toLocaleString()}</strong></td>
-                                        <td>
-                                            <div style={{ color: '#16a34a', fontSize: '0.85rem' }}>Paid: UGX {order.amountPaid.toLocaleString()}</div>
-                                            {balance > 0 ? (
-                                                <div style={{ color: '#dc2626', fontSize: '0.8rem', fontWeight: 600 }}>Due: UGX {balance.toLocaleString()}</div>
-                                            ) : (
-                                                <div style={{ color: 'var(--color-text-light)', fontSize: '0.75rem' }}>Cleared</div>
-                                            )}
+                                        <td style={{ whiteSpace: 'nowrap', textAlign: 'right', padding: '0.75rem 1rem' }}>
+                                            <strong>{qty.toLocaleString()}</strong>
                                         </td>
-                                        <td>
-                                            <select 
-                                                value={order.paymentStatus}
-                                                onChange={e => handleUpdatePaymentStatus(order.id!, e.target.value as any)}
-                                                style={{
-                                                    padding: '0.25rem 0.5rem',
-                                                    borderRadius: '4px',
-                                                    border: '1px solid var(--color-border)',
-                                                    fontSize: '0.85rem',
-                                                    fontWeight: 600,
-                                                    background: order.paymentStatus === 'Paid' || order.paymentStatus === 'Fully Paid' ? '#dcfce7' : order.paymentStatus === 'Partial' || order.paymentStatus === 'Partially Paid' ? '#fef9c3' : '#fee2e2',
-                                                    color: order.paymentStatus === 'Paid' || order.paymentStatus === 'Fully Paid' ? '#166534' : order.paymentStatus === 'Partial' || order.paymentStatus === 'Partially Paid' ? '#854d0e' : '#991b1b'
-                                                }}
-                                            >
-                                                <option value="Paid">Paid</option>
-                                                <option value="Partial">Partial</option>
-                                                <option value="Pending">Pending</option>
-                                            </select>
+                                        <td style={{ whiteSpace: 'nowrap', textAlign: 'right', padding: '0.75rem 1rem' }}>
+                                            {formatUGX(unitPrice)}
                                         </td>
-                                        <td>
-                                            <select 
-                                                value={order.deliveryStatus || 'Delivered'}
-                                                onChange={e => handleUpdateDeliveryStatus(order.id!, e.target.value as any)}
-                                                style={{
-                                                    padding: '0.25rem 0.5rem',
-                                                    borderRadius: '4px',
-                                                    border: '1px solid var(--color-border)',
-                                                    fontSize: '0.85rem'
-                                                }}
-                                            >
-                                                <option value="Pending">Pending</option>
-                                                <option value="Dispatched">Dispatched</option>
-                                                <option value="Delivered">Delivered</option>
-                                                <option value="Cancelled">Cancelled</option>
-                                            </select>
+                                        <td style={{ whiteSpace: 'nowrap', textAlign: 'right', padding: '0.75rem 1rem' }}>
+                                            <strong style={{ color: 'var(--color-primary)' }}>{formatUGX(order.totalAmount)}</strong>
                                         </td>
-                                        <td style={{ textAlign: 'right' }}>
-                                            <div style={{ display: 'inline-flex', gap: '0.35rem' }}>
-                                                <button 
-                                                    className="btn btn-secondary" 
-                                                    style={{ padding: '0.35rem 0.6rem', fontSize: '0.8rem' }}
-                                                    title="Print Invoice / Receipt"
-                                                    onClick={() => generateSalesReceiptPDF(order)}
-                                                >
-                                                    <Receipt size={14} /> Receipt PDF
-                                                </button>
+                                        <td style={{ whiteSpace: 'nowrap', padding: '0.75rem 1rem' }}>
+                                            <div style={{ display: 'flex', flexDirection: 'column', gap: '0.25rem' }}>
+                                                <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                                                    <select 
+                                                        value={order.paymentStatus}
+                                                        onChange={e => handleUpdatePaymentStatus(order.id!, e.target.value as any)}
+                                                        style={{
+                                                            padding: '0.25rem 0.5rem',
+                                                            borderRadius: '4px',
+                                                            border: '1px solid var(--color-border)',
+                                                            fontSize: '0.85rem',
+                                                            fontWeight: 600,
+                                                            background: isFullyPaid ? '#dcfce7' : isPartial ? '#fef9c3' : '#fee2e2',
+                                                            color: isFullyPaid ? '#166534' : isPartial ? '#854d0e' : '#991b1b',
+                                                            cursor: 'pointer'
+                                                        }}
+                                                    >
+                                                        <option value="Paid">Paid</option>
+                                                        <option value="Partial">Partial</option>
+                                                        <option value="Pending">Pending</option>
+                                                    </select>
+                                                    <span style={{ fontSize: '0.8rem', color: '#16a34a', fontWeight: 600 }}>
+                                                        {formatUGX(order.amountPaid)}
+                                                    </span>
+                                                </div>
+                                                {balance > 0 ? (
+                                                    <div style={{ color: '#dc2626', fontSize: '0.75rem', fontWeight: 600 }}>
+                                                        Balance: {formatUGX(balance)}
+                                                    </div>
+                                                ) : (
+                                                    <div style={{ color: 'var(--color-text-light)', fontSize: '0.75rem' }}>
+                                                        Fully Cleared (Cash)
+                                                    </div>
+                                                )}
                                             </div>
+                                        </td>
+                                        <td style={{ whiteSpace: 'nowrap', textAlign: 'right', padding: '0.75rem 1rem' }}>
+                                            <button 
+                                                className="btn btn-secondary" 
+                                                style={{ padding: '0.35rem 0.65rem', fontSize: '0.8rem', display: 'inline-flex', alignItems: 'center', gap: '0.35rem' }}
+                                                title="Print Receipt"
+                                                onClick={() => generateSalesReceiptPDF(order)}
+                                            >
+                                                <Receipt size={14} /> Receipt
+                                            </button>
                                         </td>
                                     </tr>
                                 );
@@ -421,12 +413,17 @@ const Sales: React.FC = () => {
                 </table>
             </div>
 
-            {/* New Order Modal */}
+            {/* New Order Modal (Cash Only) */}
             {showNewOrderModal && (
                 <div className="modal-overlay">
-                    <div className="modal-content card" style={{ maxWidth: '600px', width: '100%' }}>
+                    <div className="modal-content card" style={{ maxWidth: '560px', width: '100%', maxHeight: '90vh', overflowY: 'auto' }}>
                         <div className="modal-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.25rem' }}>
-                            <h2 style={{ margin: 0 }}>Create Customer Plantlet Order</h2>
+                            <div>
+                                <h2 style={{ margin: 0, display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                                    <Banknote size={22} color="var(--color-primary)" /> Record Customer Cash Sale
+                                </h2>
+                                <span className="text-light" style={{ fontSize: '0.85rem' }}>Payment accepted: Cash only</span>
+                            </div>
                             <button className="btn btn-secondary" style={{ padding: '0.25rem', border: 'none' }} onClick={() => setShowNewOrderModal(false)}>
                                 <X size={18} />
                             </button>
@@ -435,7 +432,7 @@ const Sales: React.FC = () => {
                         <form onSubmit={handleCreateOrder} style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
                             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
                                 <div className="form-group">
-                                    <label className="form-label">Customer Full Name *</label>
+                                    <label className="form-label">Customer Name *</label>
                                     <input 
                                         type="text" 
                                         required 
@@ -460,11 +457,11 @@ const Sales: React.FC = () => {
 
                             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
                                 <div className="form-group">
-                                    <label className="form-label">Delivery Location</label>
+                                    <label className="form-label">Customer Location / Farm</label>
                                     <input 
                                         type="text" 
                                         className="form-input" 
-                                        placeholder="District / Town / Farm"
+                                        placeholder="District / Town / Sub-county"
                                         value={formData.customerLocation}
                                         onChange={e => setFormData({ ...formData, customerLocation: e.target.value })}
                                     />
@@ -474,7 +471,7 @@ const Sales: React.FC = () => {
                                     <input 
                                         type="email" 
                                         className="form-input" 
-                                        placeholder="optional"
+                                        placeholder="Optional email"
                                         value={formData.customerEmail}
                                         onChange={e => setFormData({ ...formData, customerEmail: e.target.value })}
                                     />
@@ -496,7 +493,7 @@ const Sales: React.FC = () => {
                                 </div>
 
                                 <div className="form-group">
-                                    <label className="form-label">Quantity (Plantlets) *</label>
+                                    <label className="form-label">Quantity *</label>
                                     <input 
                                         type="number" 
                                         required 
@@ -521,50 +518,38 @@ const Sales: React.FC = () => {
                             </div>
 
                             {/* Order Total preview */}
-                            <div style={{ background: 'var(--color-background)', padding: '1rem', borderRadius: '6px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                            <div style={{ background: '#f8fafc', border: '1px solid #e2e8f0', padding: '1rem', borderRadius: '6px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                                 <div>
-                                    <div className="text-light" style={{ fontSize: '0.85rem' }}>Calculated Total Order Value</div>
+                                    <div className="text-light" style={{ fontSize: '0.85rem' }}>Total Sales Amount</div>
                                     <strong style={{ fontSize: '1.25rem', color: 'var(--color-primary)' }}>
-                                        UGX {((formData.quantity || 0) * (formData.unitPrice || 0)).toLocaleString()}
+                                        {formatUGX((formData.quantity || 0) * (formData.unitPrice || 0))}
                                     </strong>
                                 </div>
                                 <div style={{ textAlign: 'right' }}>
-                                    <div className="text-light" style={{ fontSize: '0.85rem' }}>Balance Remaining</div>
+                                    <div className="text-light" style={{ fontSize: '0.85rem' }}>Cash Balance Due</div>
                                     <strong style={{ fontSize: '1.1rem', color: Math.max(0, (formData.quantity * formData.unitPrice) - formData.amountPaid) > 0 ? '#dc2626' : '#16a34a' }}>
-                                        UGX {Math.max(0, (formData.quantity * formData.unitPrice) - formData.amountPaid).toLocaleString()}
+                                        {formatUGX(Math.max(0, (formData.quantity * formData.unitPrice) - formData.amountPaid))}
                                     </strong>
                                 </div>
                             </div>
 
-                            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
-                                <div className="form-group">
-                                    <label className="form-label">Amount Paid Now (UGX) *</label>
-                                    <input 
-                                        type="number" 
-                                        min="0" 
-                                        className="form-input" 
-                                        value={formData.amountPaid || ''}
-                                        onChange={e => {
-                                            const paid = Number(e.target.value);
-                                            const total = formData.quantity * formData.unitPrice;
-                                            const status = paid >= total ? 'Paid' : paid > 0 ? 'Partial' : 'Pending';
-                                            setFormData({ ...formData, amountPaid: paid, paymentStatus: status });
-                                        }}
-                                    />
-                                </div>
-
-                                <div className="form-group">
-                                    <label className="form-label">Delivery / Dispatch Status</label>
-                                    <select 
-                                        className="form-input" 
-                                        value={formData.deliveryStatus}
-                                        onChange={e => setFormData({ ...formData, deliveryStatus: e.target.value as any })}
-                                    >
-                                        <option value="Delivered">Delivered</option>
-                                        <option value="Dispatched">Dispatched</option>
-                                        <option value="Pending">Pending Dispatch</option>
-                                    </select>
-                                </div>
+                            <div className="form-group">
+                                <label className="form-label">Cash Amount Received Now (UGX) *</label>
+                                <input 
+                                    type="number" 
+                                    min="0" 
+                                    className="form-input" 
+                                    value={formData.amountPaid || ''}
+                                    onChange={e => {
+                                        const paid = Number(e.target.value);
+                                        const total = formData.quantity * formData.unitPrice;
+                                        const status = paid >= total ? 'Paid' : paid > 0 ? 'Partial' : 'Pending';
+                                        setFormData({ ...formData, amountPaid: paid, paymentStatus: status });
+                                    }}
+                                />
+                                <span className="text-light" style={{ fontSize: '0.8rem', marginTop: '0.25rem', display: 'block' }}>
+                                    💵 Payment Method: <strong>Cash Only</strong>
+                                </span>
                             </div>
 
                             <div className="form-group">
@@ -584,11 +569,11 @@ const Sales: React.FC = () => {
                             </div>
 
                             <div className="form-group">
-                                <label className="form-label">Order Notes / Specifications</label>
+                                <label className="form-label">Order Notes / Details</label>
                                 <textarea 
                                     className="form-input" 
                                     rows={2} 
-                                    placeholder="e.g. Special transport arrangement, potting bag inspection..."
+                                    placeholder="e.g. Farm gate collection, inspection confirmed..."
                                     value={formData.notes}
                                     onChange={e => setFormData({ ...formData, notes: e.target.value })}
                                 />
@@ -599,7 +584,7 @@ const Sales: React.FC = () => {
                                     Cancel
                                 </button>
                                 <button type="submit" className="btn btn-primary" style={{ flex: 1 }}>
-                                    Confirm & Generate Invoice
+                                    Confirm Cash Sale & Print Receipt
                                 </button>
                             </div>
                         </form>

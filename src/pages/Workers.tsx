@@ -38,7 +38,7 @@ const Workers: React.FC = () => {
         const matchesSearch =
             w.fullName.toLowerCase().includes(searchTerm.toLowerCase()) ||
             w.workerId.toLowerCase().includes(searchTerm.toLowerCase()) ||
-            w.farmCardNumber.toLowerCase().includes(searchTerm.toLowerCase()) ||
+            (w.farmCardNumber && w.farmCardNumber.toLowerCase().includes(searchTerm.toLowerCase())) ||
             w.phoneNumber.includes(searchTerm);
 
         const matchesStatus = statusFilter === 'All' || w.status === statusFilter;
@@ -57,11 +57,11 @@ const Workers: React.FC = () => {
             // Update existing worker
             await db.workers.update(editingWorker.workerId, {
                 fullName: formData.fullName.trim(),
-                gender: formData.gender,
+                gender: formData.gender as 'Male' | 'Female',
                 phoneNumber: formData.phoneNumber.trim() || '+256 700 000000',
                 monthlySalary: Number(formData.monthlySalary) || 0,
                 overtimeRate: Number(formData.overtimeRate) || 0,
-                status: formData.status
+                status: formData.status as 'Active' | 'Inactive'
             });
             setEditingWorker(null);
         } else {
@@ -74,10 +74,10 @@ const Workers: React.FC = () => {
             const newWorker: Worker = {
                 workerId: newId,
                 fullName: formData.fullName.trim(),
-                gender: formData.gender,
+                gender: formData.gender as 'Male' | 'Female',
                 phoneNumber: formData.phoneNumber.trim() || '+256 700 000000',
                 dateJoined: todayStr,
-                status: formData.status,
+                status: formData.status as 'Active' | 'Inactive',
                 farmCardNumber: farmCardNum,
                 qrCode: newId,
                 monthlySalary: Number(formData.monthlySalary) || 0,
@@ -103,11 +103,11 @@ const Workers: React.FC = () => {
         setEditingWorker(worker);
         setFormData({
             fullName: worker.fullName,
-            gender: worker.gender,
+            gender: (worker.gender || 'Male') as 'Male' | 'Female',
             phoneNumber: worker.phoneNumber,
             monthlySalary: worker.monthlySalary || 0,
             overtimeRate: worker.overtimeRate || 0,
-            status: worker.status
+            status: (worker.status || 'Active') as 'Active' | 'Inactive'
         });
         setShowAddModal(true);
     };
@@ -137,7 +137,7 @@ const Workers: React.FC = () => {
                 <div style={{ display: 'flex', gap: '0.75rem', flexWrap: 'wrap' }}>
                     <button
                         className="btn btn-secondary"
-                        onClick={() => generateWorkersMasterPDF(filteredWorkers, statusFilter)}
+                        onClick={() => generateWorkersMasterPDF(filteredWorkers)}
                     >
                         <FileDown size={18} /> Download Workforce PDF
                     </button>

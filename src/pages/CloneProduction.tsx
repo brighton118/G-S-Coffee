@@ -337,7 +337,7 @@ const CloneProduction: React.FC = () => {
                 <div style={{ display: 'flex', gap: '0.75rem', flexWrap: 'wrap' }}>
                     <button
                         className="btn btn-secondary"
-                        onClick={() => generateProductionBatchMasterPDF(batches, cuttings, humidChambers, firstHardenings, secondHardenings, sortings)}
+                        onClick={() => generateProductionBatchMasterPDF(batches, humidChambers, sortings)}
                     >
                         <FileDown size={18} /> Download Production PDF
                     </button>
@@ -424,7 +424,7 @@ const CloneProduction: React.FC = () => {
                         ) : (
                             filteredBatches.map(batch => {
                                 const chamber = humidChambers.find(h => h.batchId === batch.batchId);
-                                const isOverdue = chamber && chamber.status === 'In Chamber' && chamber.expectedCompletionDate < todayStr;
+                                const isOverdue = !!(chamber && chamber.status === 'In Chamber' && chamber.expectedCompletionDate && chamber.expectedCompletionDate < todayStr);
 
                                 return (
                                     <tr key={batch.batchId}>
