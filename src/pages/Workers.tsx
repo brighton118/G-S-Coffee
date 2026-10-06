@@ -120,7 +120,6 @@ const Workers: React.FC = () => {
     };
 
     const activeCount = workers.filter(w => w.status === 'Active').length;
-    const totalPayrollLiability = workers.filter(w => w.status === 'Active').reduce((acc, curr) => acc + (curr.monthlySalary || 0), 0);
 
     return (
         <div className="page-wrapper" style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
@@ -162,57 +161,73 @@ const Workers: React.FC = () => {
             </div>
 
             {/* KPI Cards */}
-            <div className="cards-grid" style={{ gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))' }}>
-                <div className="card stat-card" style={{ borderLeft: '4px solid #16a34a' }}>
-                    <span className="stat-label">Active Registered Workers</span>
-                    <span className="stat-value text-success" style={{ fontSize: '1.6rem' }}>
-                        {activeCount} <span style={{ fontSize: '0.9rem', fontWeight: 'normal', color: '#64748b' }}>/ {workers.length} Total</span>
-                    </span>
-                    <span className="text-light" style={{ fontSize: '0.8rem', marginTop: '4px' }}>
-                        Eligible for attendance and payroll
-                    </span>
+            <div className="stats-grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: '1rem' }}>
+                <div className="stat-card card">
+                    <div className="stat-header">
+                        <span className="stat-title">TOTAL REGISTERED</span>
+                        <Users className="stat-icon text-primary" size={20} />
+                    </div>
+                    <div className="stat-value" style={{ color: 'var(--color-primary)' }}>
+                        {workers.length}
+                    </div>
+                    <div className="stat-change text-light">Total registered workers</div>
                 </div>
 
-                <div className="card stat-card" style={{ borderLeft: '4px solid #2563eb' }}>
-                    <span className="stat-label">Monthly Salary Base Liability</span>
-                    <span className="stat-value text-primary" style={{ fontSize: '1.6rem' }}>
-                        UGX {totalPayrollLiability.toLocaleString()}
-                    </span>
-                    <span className="text-light" style={{ fontSize: '0.8rem', marginTop: '4px' }}>
-                        Sum of active monthly salaries
-                    </span>
+                <div className="stat-card card">
+                    <div className="stat-header">
+                        <span className="stat-title">ACTIVE WORKFORCE</span>
+                        <CheckCircle2 className="stat-icon text-success" size={20} />
+                    </div>
+                    <div className="stat-value" style={{ color: '#16a34a' }}>
+                        {activeCount}
+                    </div>
+                    <div className="stat-change text-light">Eligible for shifts & attendance</div>
                 </div>
 
-                <div className="card stat-card" style={{ borderLeft: '4px solid #8b5cf6' }}>
-                    <span className="stat-label">Average Base Salary</span>
-                    <span className="stat-value" style={{ fontSize: '1.6rem', color: '#8b5cf6' }}>
-                        UGX {activeCount > 0 ? Math.round(totalPayrollLiability / activeCount).toLocaleString() : '0'}
-                    </span>
-                    <span className="text-light" style={{ fontSize: '0.8rem', marginTop: '4px' }}>
-                        Per active worker / month
-                    </span>
+                <div className="stat-card card">
+                    <div className="stat-header">
+                        <span className="stat-title">INACTIVE / ON LEAVE</span>
+                        <X className="stat-icon text-warning" size={20} />
+                    </div>
+                    <div className="stat-value" style={{ color: (workers.length - activeCount) > 0 ? '#ea580c' : 'var(--color-text)' }}>
+                        {workers.length - activeCount}
+                    </div>
+                    <div className="stat-change text-light">Suspended or inactive profiles</div>
+                </div>
+
+                <div className="stat-card card">
+                    <div className="stat-header">
+                        <span className="stat-title">FARM CARDS ISSUED</span>
+                        <Printer className="stat-icon text-primary" size={20} />
+                    </div>
+                    <div className="stat-value">
+                        {workers.filter(w => !!w.farmCardNumber).length}
+                    </div>
+                    <div className="stat-change text-light">QR code cards generated</div>
                 </div>
             </div>
 
             {/* Search and Filters */}
-            <div className="card" style={{ padding: '1rem', display: 'flex', gap: '1rem', flexWrap: 'wrap', alignItems: 'center' }}>
-                <div style={{ flex: '1 1 250px', position: 'relative' }}>
-                    <Search size={18} style={{ position: 'absolute', left: '10px', top: '10px', color: '#94a3b8' }} />
-                    <input
-                        type="text"
-                        placeholder="Search worker by name, ID (GSF-W-...), phone, or card #..."
-                        className="form-input"
-                        style={{ paddingLeft: '2.25rem' }}
-                        value={searchTerm}
-                        onChange={e => setSearchTerm(e.target.value)}
-                    />
+            <div className="card" style={{ padding: '1rem', display: 'flex', flexWrap: 'wrap', gap: '1rem', alignItems: 'center', justifyContent: 'space-between' }}>
+                <div style={{ display: 'flex', gap: '0.75rem', flex: 1, minWidth: '260px' }}>
+                    <div style={{ position: 'relative', width: '100%' }}>
+                        <Search size={18} style={{ position: 'absolute', left: '10px', top: '50%', transform: 'translateY(-50%)', color: 'var(--color-text-light)' }} />
+                        <input
+                            type="text"
+                            placeholder="Search worker by name, ID (GSF-W-...), phone, or card #..."
+                            className="form-input"
+                            style={{ paddingLeft: '2.25rem', width: '100%' }}
+                            value={searchTerm}
+                            onChange={e => setSearchTerm(e.target.value)}
+                        />
+                    </div>
                 </div>
 
-                <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
-                    <label style={{ fontSize: '0.875rem', fontWeight: 500, color: '#475569' }}>Status:</label>
+                <div style={{ display: 'flex', gap: '0.75rem', flexWrap: 'wrap', alignItems: 'center' }}>
+                    <label style={{ fontSize: '0.875rem', fontWeight: 500, color: 'var(--color-text-light)' }}>Status:</label>
                     <select
                         className="form-input"
-                        style={{ width: 'auto' }}
+                        style={{ minWidth: '140px' }}
                         value={statusFilter}
                         onChange={e => setStatusFilter(e.target.value as any)}
                     >
@@ -225,54 +240,44 @@ const Workers: React.FC = () => {
 
             {/* Workers Table */}
             <div className="table-responsive card">
-                <table className="data-table">
+                <table className="data-table" style={{ width: '100%', borderCollapse: 'collapse' }}>
                     <thead>
                         <tr>
-                            <th>Worker ID</th>
-                            <th>Full Name</th>
-                            <th>Gender</th>
-                            <th>Phone Number</th>
-                            <th>Date Joined</th>
-                            <th>Farm Card #</th>
-                            <th>Monthly Salary (UGX)</th>
-                            <th>OT Rate / Hr (UGX)</th>
-                            <th>Status</th>
-                            <th style={{ textAlign: 'right' }}>Actions</th>
+                            <th style={{ whiteSpace: 'nowrap', padding: '0.75rem 1rem' }}>Worker ID</th>
+                            <th style={{ padding: '0.75rem 1rem' }}>Full Name</th>
+                            <th style={{ whiteSpace: 'nowrap', padding: '0.75rem 1rem' }}>Gender</th>
+                            <th style={{ whiteSpace: 'nowrap', padding: '0.75rem 1rem' }}>Phone Number</th>
+                            <th style={{ whiteSpace: 'nowrap', padding: '0.75rem 1rem' }}>Date Joined</th>
+                            <th style={{ whiteSpace: 'nowrap', padding: '0.75rem 1rem' }}>Farm Card #</th>
+                            <th style={{ whiteSpace: 'nowrap', padding: '0.75rem 1rem', textAlign: 'center' }}>Status</th>
+                            <th style={{ whiteSpace: 'nowrap', textAlign: 'right', padding: '0.75rem 1rem' }}>Actions</th>
                         </tr>
                     </thead>
                     <tbody>
                         {filteredWorkers.length === 0 ? (
                             <tr>
-                                <td colSpan={10} style={{ textAlign: 'center', padding: '2rem', color: '#64748b' }}>
-                                    No registered workers found.
+                                <td colSpan={8} style={{ textAlign: 'center', padding: '3rem', color: 'var(--color-text-light)' }}>
+                                    No registered workers found matching criteria.
                                 </td>
                             </tr>
                         ) : (
                             filteredWorkers.map(w => (
-                                <tr key={w.workerId}>
-                                    <td>
-                                        <strong style={{ color: 'var(--color-primary-dark)' }}>{w.workerId}</strong>
+                                <tr key={w.workerId} style={{ borderBottom: '1px solid var(--color-border)' }}>
+                                    <td style={{ whiteSpace: 'nowrap', padding: '0.75rem 1rem' }}>
+                                        <strong style={{ color: 'var(--color-primary)' }}>{w.workerId}</strong>
                                     </td>
-                                    <td>
+                                    <td style={{ padding: '0.75rem 1rem' }}>
                                         <strong>{w.fullName}</strong>
                                     </td>
-                                    <td>{w.gender}</td>
-                                    <td>{w.phoneNumber}</td>
-                                    <td>{w.dateJoined}</td>
-                                    <td>
-                                        <span style={{ padding: '0.15rem 0.4rem', backgroundColor: '#f1f5f9', borderRadius: '4px', fontSize: '0.8rem', fontWeight: 600 }}>
+                                    <td style={{ whiteSpace: 'nowrap', padding: '0.75rem 1rem' }}>{w.gender}</td>
+                                    <td style={{ whiteSpace: 'nowrap', padding: '0.75rem 1rem' }}>{w.phoneNumber}</td>
+                                    <td style={{ whiteSpace: 'nowrap', padding: '0.75rem 1rem' }}>{w.dateJoined}</td>
+                                    <td style={{ whiteSpace: 'nowrap', padding: '0.75rem 1rem' }}>
+                                        <span style={{ padding: '0.2rem 0.5rem', backgroundColor: '#f1f5f9', borderRadius: '4px', fontSize: '0.8rem', fontWeight: 600, color: 'var(--color-text)' }}>
                                             {w.farmCardNumber}
                                         </span>
                                     </td>
-                                    <td>
-                                        <strong style={{ color: '#16a34a' }}>
-                                            UGX {w.monthlySalary ? w.monthlySalary.toLocaleString() : '0'}
-                                        </strong>
-                                    </td>
-                                    <td>
-                                        UGX {w.overtimeRate ? w.overtimeRate.toLocaleString() : '0'} / hr
-                                    </td>
-                                    <td>
+                                    <td style={{ whiteSpace: 'nowrap', padding: '0.75rem 1rem', textAlign: 'center' }}>
                                         <span
                                             onClick={() => handleToggleStatus(w)}
                                             style={{
@@ -280,7 +285,7 @@ const Workers: React.FC = () => {
                                                 display: 'inline-flex',
                                                 alignItems: 'center',
                                                 gap: '0.25rem',
-                                                padding: '0.2rem 0.5rem',
+                                                padding: '0.25rem 0.6rem',
                                                 borderRadius: '12px',
                                                 fontSize: '0.75rem',
                                                 fontWeight: 600,
@@ -293,11 +298,11 @@ const Workers: React.FC = () => {
                                             {w.status}
                                         </span>
                                     </td>
-                                    <td style={{ textAlign: 'right' }}>
+                                    <td style={{ whiteSpace: 'nowrap', textAlign: 'right', padding: '0.75rem 1rem' }}>
                                         <div style={{ display: 'inline-flex', gap: '0.35rem' }}>
                                             <button
                                                 className="btn btn-secondary"
-                                                style={{ padding: '0.25rem 0.5rem', fontSize: '0.75rem' }}
+                                                style={{ padding: '0.3rem 0.6rem', fontSize: '0.8rem' }}
                                                 onClick={() => handleOpenEdit(w)}
                                                 title="Edit Worker"
                                             >
@@ -305,7 +310,7 @@ const Workers: React.FC = () => {
                                             </button>
                                             <button
                                                 className="btn btn-secondary"
-                                                style={{ padding: '0.25rem 0.5rem', fontSize: '0.75rem' }}
+                                                style={{ padding: '0.3rem 0.6rem', fontSize: '0.8rem' }}
                                                 onClick={() => setSelectedWorkerForCard(w)}
                                                 title="View & Print Farm Card"
                                             >
