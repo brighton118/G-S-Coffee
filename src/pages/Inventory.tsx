@@ -7,7 +7,6 @@ import {
     Download, 
     AlertTriangle, 
     DollarSign, 
-    Archive, 
     RefreshCw,
     Calendar,
     X,
@@ -195,14 +194,6 @@ const Inventory: React.FC = () => {
         setStockChangeAmount(10);
     };
 
-    const handleArchiveItem = async (item: InventoryItem) => {
-        const nextStatus = item.status === 'Archived' ? 'Active' : 'Archived';
-        const actionLabel = nextStatus === 'Archived' ? 'archive (non-destructive)' : 'reactivate';
-        if (confirm(`Are you sure you want to ${actionLabel} ${item.name}? Historical transactions will be strictly preserved.`)) {
-            await db.inventoryItems.update(item.inventoryId, { status: nextStatus });
-        }
-    };
-
     return (
         <div className="page-wrapper" style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
             {/* Header */}
@@ -316,42 +307,38 @@ const Inventory: React.FC = () => {
 
             {/* Items Table */}
             <div className="card table-responsive">
-                <table className="data-table">
+                <table className="data-table" style={{ width: '100%', borderCollapse: 'collapse' }}>
                     <thead>
                         <tr>
-                            <th>Item Details</th>
-                            <th>Category</th>
-                            <th>Stock Level</th>
-                            <th>Unit Cost</th>
-                            <th>Total Valuation</th>
-                            <th>Supplier / Location</th>
-                            <th>Expiry / Condition</th>
-                            <th>Status</th>
-                            <th style={{ textAlign: 'right' }}>Actions</th>
+                            <th style={{ whiteSpace: 'nowrap', padding: '0.75rem 1rem' }}>Item</th>
+                            <th style={{ whiteSpace: 'nowrap', padding: '0.75rem 1rem' }}>Category</th>
+                            <th style={{ whiteSpace: 'nowrap', padding: '0.75rem 1rem' }}>Stock Level</th>
+                            <th style={{ whiteSpace: 'nowrap', textAlign: 'right', padding: '0.75rem 1rem' }}>Unit Cost</th>
+                            <th style={{ whiteSpace: 'nowrap', textAlign: 'right', padding: '0.75rem 1rem' }}>Total Valuation</th>
+                            <th style={{ padding: '0.75rem 1rem' }}>Supplier / Location</th>
                         </tr>
                     </thead>
                     <tbody>
                         {filteredItems.length === 0 ? (
                             <tr>
-                                <td colSpan={9} style={{ textAlign: 'center', padding: '3rem', color: 'var(--color-text-light)' }}>
+                                <td colSpan={6} style={{ textAlign: 'center', padding: '3rem', color: 'var(--color-text-light)' }}>
                                     No inventory items found. Click "Add Inventory Item" to register supplies.
                                 </td>
                             </tr>
                         ) : (
                             filteredItems.map(item => {
                                 const isLow = isStockLow(item.quantity, item.minStockLevel);
-                                const isExpiring = isExpiryNear(item.expiryDate, 60);
 
                                 return (
                                     <tr key={item.inventoryId} style={{ opacity: item.status === 'Archived' ? 0.6 : 1 }}>
-                                        <td>
+                                        <td style={{ padding: '0.75rem 1rem' }}>
                                             <div><strong>{item.name}</strong></div>
                                             <div className="text-light" style={{ fontSize: '0.8rem' }}>{item.inventoryId} {item.type && `• ${item.type}`}</div>
                                         </td>
-                                        <td>
+                                        <td style={{ padding: '0.75rem 1rem', whiteSpace: 'nowrap' }}>
                                             <span className="badge badge-primary">{item.category}</span>
                                         </td>
-                                        <td>
+                                        <td style={{ padding: '0.75rem 1rem', whiteSpace: 'nowrap' }}>
                                             <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
                                                 <strong style={{ fontSize: '1rem', color: isLow ? '#ea580c' : 'var(--color-text)' }}>
                                                     {item.quantity.toLocaleString()} {item.unit}
@@ -362,52 +349,15 @@ const Inventory: React.FC = () => {
                                             </div>
                                             <div className="text-light" style={{ fontSize: '0.75rem' }}>Min: {item.minStockLevel} {item.unit}</div>
                                         </td>
-                                        <td>UGX {item.purchasePrice.toLocaleString()}</td>
-                                        <td><strong>UGX {(item.quantity * item.purchasePrice).toLocaleString()}</strong></td>
-                                        <td>
+                                        <td style={{ padding: '0.75rem 1rem', textAlign: 'right', whiteSpace: 'nowrap' }}>
+                                            UGX {item.purchasePrice.toLocaleString()}
+                                        </td>
+                                        <td style={{ padding: '0.75rem 1rem', textAlign: 'right', whiteSpace: 'nowrap' }}>
+                                            <strong>UGX {(item.quantity * item.purchasePrice).toLocaleString()}</strong>
+                                        </td>
+                                        <td style={{ padding: '0.75rem 1rem' }}>
                                             <div>{item.supplier || 'N/A'}</div>
                                             <div className="text-light" style={{ fontSize: '0.75rem' }}>📍 {item.location || 'Store'}</div>
-                                        </td>
-                                        <td>
-                                            {item.expiryDate ? (
-                                                <div style={{ color: isExpiring ? '#dc2626' : 'var(--color-text)', fontSize: '0.85rem' }}>
-                                                    📅 {item.expiryDate}
-                                                    {isExpiring && <div style={{ fontSize: '0.7rem', fontWeight: 600 }}>Expiring Soon</div>}
-                                                </div>
-                                            ) : item.condition ? (
-                                                <span className="badge badge-secondary">{item.condition}</span>
-                                            ) : (
-                                                <span className="text-light">-</span>
-                                            )}
-                                        </td>
-                                        <td>
-                                            <span className={`badge ${item.status === 'Active' ? 'badge-success' : 'badge-secondary'}`}>
-                                                {item.status}
-                                            </span>
-                                        </td>
-                                        <td style={{ textAlign: 'right' }}>
-                                            <div style={{ display: 'inline-flex', gap: '0.35rem' }}>
-                                                <button 
-                                                    className="btn btn-secondary" 
-                                                    style={{ padding: '0.3rem 0.55rem', fontSize: '0.8rem' }}
-                                                    onClick={() => {
-                                                        setSelectedItemForStock(item);
-                                                        setStockAction('IN');
-                                                        setShowStockModal(true);
-                                                    }}
-                                                    title="Stock In / Out"
-                                                >
-                                                    <RefreshCw size={14} /> Stock In/Out
-                                                </button>
-                                                <button 
-                                                    className="btn btn-secondary" 
-                                                    style={{ padding: '0.3rem 0.55rem', fontSize: '0.8rem' }}
-                                                    onClick={() => handleArchiveItem(item)}
-                                                    title={item.status === 'Archived' ? 'Reactivate' : 'Archive'}
-                                                >
-                                                    <Archive size={14} />
-                                                </button>
-                                            </div>
                                         </td>
                                     </tr>
                                 );
