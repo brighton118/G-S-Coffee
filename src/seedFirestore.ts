@@ -39,7 +39,11 @@ const initialData = {
 };
 
 export const createFirestoreTables = async () => {
-    console.log('Seeding Firestore collections...');
+    // Avoid repeated seeding attempts in the same browser session if already completed or attempted
+    if (sessionStorage.getItem('gs_firestore_seeded') === 'true') {
+        return;
+    }
+
     try {
         for (const worker of initialData.workers) {
             await setDoc(doc(collection(dbFirestore, 'workers'), worker.workerId), worker);
@@ -50,9 +54,16 @@ export const createFirestoreTables = async () => {
         for (const setting of initialData.settings) {
             await setDoc(doc(collection(dbFirestore, 'settings'), setting.id), setting);
         }
-        console.log('Successfully created initial records (tables) in Firebase!');
-    } catch (error) {
-        console.error('Error seeding Firebase:', error);
+        sessionStorage.setItem('gs_firestore_seeded', 'true');
+        console.log('Firebase Cloud Firestore tables initialized.');
+    } catch (error: any) {
+        // Mark as attempted in this session to prevent repeated failed loops
+        sessionStorage.setItem('gs_firestore_seeded', 'true');
+        if (error?.code === 'permission-denied') {
+            console.info('Cloud Firestore: Offline-first mode active (Local Dexie DB running). Cloud rules require authentication.');
+        } else {
+            console.warn('Cloud Firestore initialization skipped:', error?.message || error);
+        }
     }
 };
 
