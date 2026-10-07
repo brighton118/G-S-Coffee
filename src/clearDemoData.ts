@@ -1,9 +1,20 @@
-import { collection, doc, writeBatch } from 'firebase/firestore';
+import {
+    collection,
+    deleteDoc,
+    doc,
+    getDocs,
+    runTransaction,
+    serverTimestamp,
+    Timestamp,
+    writeBatch
+} from 'firebase/firestore';
 import { db } from './db';
 import { dbFirestore } from './firebase';
 
 const LOCAL_CLEANUP_KEY = 'gs_demo_local_cleared_v1';
 const CLOUD_CLEANUP_KEY = 'gs_demo_cloud_cleared_v1';
+const LOCAL_WORKER_RESET_KEY = 'gs_all_workers_cleared_v1';
+const WORKER_RESET_MIGRATION = 'systemMigrations/workers-payroll-reset-v1';
 
 const demoWorkerIds = [
     'GSF-W-0001',
@@ -167,6 +178,82 @@ async function clearCloudDemoData(): Promise<void> {
     await batch.commit();
 }
 
+async function clearAllLocalWorkersAndPayroll(): Promise<void> {
+    await db.transaction(
+        'rw',
+        [db.workers, db.attendance, db.payrollRecords, db.payrollPayments],
+        async () => {
+            await db.workers.clear();
+            await db.attendance.clear();
+            await db.payrollRecords.clear();
+            await db.payrollPayments.clear();
+        }
+    );
+}
+
+async function clearCloudCollection(collectionName: string): Promise<void> {
+    const snapshot = await getDocs(collection(dbFirestore, collectionName));
+    const documents = snapshot.docs;
+    const batchLimit = 450;
+
+    for (let start = 0; start < documents.length; start += batchLimit) {
+        const batch = writeBatch(dbFirestore);
+        for (const document of documents.slice(start, start + batchLimit)) {
+            batch.delete(document.ref);
+        }
+        await batch.commit();
+    }
+}
+
+async function clearAllCloudWorkersAndPayroll(): Promise<void> {
+    const migrationRef = doc(dbFirestore, WORKER_RESET_MIGRATION);
+    const migrationState = await runTransaction(dbFirestore, async transaction => {
+        const migrationSnapshot = await transaction.get(migrationRef);
+        if (migrationSnapshot.exists() && migrationSnapshot.data().status === 'completed') {
+            return 'completed';
+        }
+
+        if (migrationSnapshot.exists()) {
+            const startedAt = migrationSnapshot.data().startedAt;
+            if (startedAt instanceof Timestamp && Date.now() - startedAt.toMillis() < 10 * 60 * 1000) {
+                return 'running';
+            }
+        }
+
+        transaction.set(migrationRef, {
+            status: 'running',
+            startedAt: serverTimestamp()
+        });
+        return 'claimed';
+    });
+
+    if (migrationState === 'completed') {
+        return;
+    }
+    if (migrationState === 'running') {
+        throw new Error('The worker and payroll reset is already running on another device. Reload after it completes.');
+    }
+
+    try {
+        for (const collectionName of ['workers', 'attendance', 'payrollRecords', 'payrollPayments']) {
+            await clearCloudCollection(collectionName);
+        }
+        await runTransaction(dbFirestore, async transaction => {
+            transaction.set(migrationRef, {
+                status: 'completed',
+                completedAt: serverTimestamp()
+            });
+        });
+    } catch (error) {
+        try {
+            await deleteDoc(migrationRef);
+        } catch (cleanupError) {
+            console.error('Could not release the worker reset lock after a failed cleanup:', cleanupError);
+        }
+        throw error;
+    }
+}
+
 export async function clearSeededDemoData(): Promise<void> {
     if (localStorage.getItem(LOCAL_CLEANUP_KEY) !== 'true') {
         await clearLocalDemoData();
@@ -177,4 +264,11 @@ export async function clearSeededDemoData(): Promise<void> {
         await clearCloudDemoData();
         localStorage.setItem(CLOUD_CLEANUP_KEY, 'true');
     }
+
+    if (localStorage.getItem(LOCAL_WORKER_RESET_KEY) !== 'true') {
+        await clearAllLocalWorkersAndPayroll();
+        localStorage.setItem(LOCAL_WORKER_RESET_KEY, 'true');
+    }
+
+    await clearAllCloudWorkersAndPayroll();
 }
