@@ -15,6 +15,8 @@ const LOCAL_CLEANUP_KEY = 'gs_demo_local_cleared_v1';
 const CLOUD_CLEANUP_KEY = 'gs_demo_cloud_cleared_v1';
 const LOCAL_WORKER_RESET_KEY = 'gs_all_workers_cleared_v1';
 const WORKER_RESET_MIGRATION = 'systemMigrations/workers-payroll-reset-v1';
+const LOCAL_INVENTORY_RESET_KEY = 'gs_all_inventory_cleared_v2';
+const INVENTORY_RESET_MIGRATION = 'systemMigrations/inventory-reset-v2';
 
 const demoWorkerIds = [
     'GSF-W-0001',
@@ -191,6 +193,13 @@ async function clearAllLocalWorkersAndPayroll(): Promise<void> {
     );
 }
 
+async function clearAllLocalInventory(): Promise<void> {
+    await db.transaction('rw', [db.inventoryItems, db.inventoryTransactions], async () => {
+        await db.inventoryItems.clear();
+        await db.inventoryTransactions.clear();
+    });
+}
+
 async function clearCloudCollection(collectionName: string): Promise<void> {
     const snapshot = await getDocs(collection(dbFirestore, collectionName));
     const documents = snapshot.docs;
@@ -205,8 +214,8 @@ async function clearCloudCollection(collectionName: string): Promise<void> {
     }
 }
 
-async function clearAllCloudWorkersAndPayroll(): Promise<void> {
-    const migrationRef = doc(dbFirestore, WORKER_RESET_MIGRATION);
+async function runCloudCollectionReset(migrationPath: string, collectionNames: string[]): Promise<void> {
+    const migrationRef = doc(dbFirestore, migrationPath);
     const migrationState = await runTransaction(dbFirestore, async transaction => {
         const migrationSnapshot = await transaction.get(migrationRef);
         if (migrationSnapshot.exists() && migrationSnapshot.data().status === 'completed') {
@@ -231,11 +240,11 @@ async function clearAllCloudWorkersAndPayroll(): Promise<void> {
         return;
     }
     if (migrationState === 'running') {
-        throw new Error('The worker and payroll reset is already running on another device. Reload after it completes.');
+        throw new Error(`The reset (${migrationPath}) is already running on another device. Reload after it completes.`);
     }
 
     try {
-        for (const collectionName of ['workers', 'attendance', 'payrollRecords', 'payrollPayments']) {
+        for (const collectionName of collectionNames) {
             await clearCloudCollection(collectionName);
         }
         await runTransaction(dbFirestore, async transaction => {
@@ -252,6 +261,22 @@ async function clearAllCloudWorkersAndPayroll(): Promise<void> {
         }
         throw error;
     }
+}
+
+async function clearAllCloudWorkersAndPayroll(): Promise<void> {
+    await runCloudCollectionReset(WORKER_RESET_MIGRATION, [
+        'workers',
+        'attendance',
+        'payrollRecords',
+        'payrollPayments'
+    ]);
+}
+
+async function clearAllCloudInventory(): Promise<void> {
+    await runCloudCollectionReset(INVENTORY_RESET_MIGRATION, [
+        'inventoryItems',
+        'inventoryTransactions'
+    ]);
 }
 
 export async function clearSeededDemoData(): Promise<void> {
@@ -271,4 +296,11 @@ export async function clearSeededDemoData(): Promise<void> {
     }
 
     await clearAllCloudWorkersAndPayroll();
+
+    if (localStorage.getItem(LOCAL_INVENTORY_RESET_KEY) !== 'true') {
+        await clearAllLocalInventory();
+        localStorage.setItem(LOCAL_INVENTORY_RESET_KEY, 'true');
+    }
+
+    await clearAllCloudInventory();
 }
