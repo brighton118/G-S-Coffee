@@ -3,6 +3,7 @@
         "rules": "firestore.rules"
     },
     "hosting": {
+        "site": "gs-coffee-3d022",
         "public": "dist",
         "ignore": [
             "firebase.json",
