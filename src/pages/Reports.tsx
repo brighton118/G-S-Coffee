@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { useLiveQuery } from 'dexie-react-hooks';
 import { db } from '../db';
+import { format } from 'date-fns';
 import { 
     FileText, 
     Download, 
@@ -26,8 +27,11 @@ import {
 import { calculateInventoryValuation } from '../utils/calculations';
 
 const Reports: React.FC = () => {
-    const [selectedMonth, setSelectedMonth] = useState<string>(new Date().toISOString().substring(0, 7)); // YYYY-MM
+    const today = format(new Date(), 'yyyy-MM-dd');
+    const [startDate, setStartDate] = useState<string>(format(new Date(new Date().getFullYear(), new Date().getMonth(), 1), 'yyyy-MM-dd'));
+    const [endDate, setEndDate] = useState<string>(today);
     const [isExporting, setIsExporting] = useState<string | null>(null);
+    const [dateRangeError, setDateRangeError] = useState('');
 
     // Queries
     const workers = useLiveQuery(() => db.workers.toArray()) || [];
@@ -41,37 +45,72 @@ const Reports: React.FC = () => {
     const sales = useLiveQuery(() => db.salesOrders.toArray()) || [];
     const activityLogs = useLiveQuery(() => db.activityLogs.toArray()) || [];
 
+    const isInDateRange = (date?: string) => {
+        if (!date) return false;
+        const dateOnly = date.slice(0, 10);
+        return dateOnly >= startDate && dateOnly <= endDate;
+    };
+    const rangeLabel = `${startDate} to ${endDate}`;
+    const rangeStartMonth = startDate.slice(0, 7);
+    const rangeEndMonth = endDate.slice(0, 7);
+    const workersInRange = workers.filter(worker => isInDateRange(worker.dateJoined));
+    const attendanceInRange = attendance.filter(record => isInDateRange(record.date));
+    const payrollInRange = payrollRecords.filter(record => {
+        const period = record.payrollMonth || record.payrollPeriod || '';
+        return period >= rangeStartMonth && period <= rangeEndMonth;
+    });
+    const cloneBatchesInRange = cloneBatches.filter(batch => isInDateRange(batch.dateObtained));
+    const inventoryMovementsInRange = inventoryTransactions.filter(transaction => isInDateRange(transaction.date));
+    const salesInRange = sales.filter(order => isInDateRange(order.orderDate));
+    const rangeStartTimestamp = new Date(`${startDate}T00:00:00`).getTime();
+    const rangeEndTimestamp = new Date(`${endDate}T23:59:59.999`).getTime();
+    const activityLogsInRange = activityLogs.filter(log => {
+        const timestamp = new Date(log.date).getTime();
+        return timestamp >= rangeStartTimestamp && timestamp <= rangeEndTimestamp;
+    });
+
     const handleExport = async (type: string) => {
+        if (!startDate || !endDate || startDate > endDate) {
+            setDateRangeError('Choose a valid start and end date. The start date must be before or the same as the end date.');
+            return;
+        }
+
+        setDateRangeError('');
         setIsExporting(type);
         try {
             switch (type) {
                 case 'workers':
-                    generateWorkersMasterPDF(workers);
+                    generateWorkersMasterPDF(workersInRange, `Date joined: ${rangeLabel}`);
                     break;
                 case 'attendance':
-                    generateAttendancePDF(attendance, `Monthly Attendance Report - ${selectedMonth}`);
+                    generateAttendancePDF(attendanceInRange, `Attendance Report - ${rangeLabel}`);
                     break;
                 case 'overtime':
-                    generateOvertimePDF(attendance, `Overtime & Shift Evaluation - ${selectedMonth}`);
+                    generateOvertimePDF(attendanceInRange, `Overtime & Shift Evaluation - ${rangeLabel}`);
                     break;
                 case 'payroll': {
-                    const monthPayroll = payrollRecords.filter(p => p.payrollMonth === selectedMonth || p.payrollPeriod === selectedMonth);
-                    generatePayrollMasterPDF(monthPayroll.length > 0 ? monthPayroll : payrollRecords, selectedMonth);
+                    generatePayrollMasterPDF(payrollInRange, rangeLabel);
                     break;
                 }
                 case 'clones':
-                    generateCloneProductionSummaryPDF(cloneBatches, humidChambers, sortings);
+                    generateCloneProductionSummaryPDF(
+                        cloneBatchesInRange,
+                        humidChambers,
+                        sortings,
+                        `All Stages - ${rangeLabel}`
+                    );
                     break;
                 case 'inventory':
-                    generateInventoryPDF(inventory, inventoryTransactions);
+                    generateInventoryPDF(inventory, inventoryMovementsInRange, rangeLabel);
                     break;
                 case 'sales': {
-                    generateSalesMasterPDF(sales, `Sales Report - ${selectedMonth}`);
+                    generateSalesMasterPDF(salesInRange, `Sales Report - ${rangeLabel}`);
                     break;
                 }
-                case 'audit':
-                    generateUniversalFarmAuditPDF(activityLogs, 'Farm Operations Audit Trail');
+                case 'audit': {
+                    generateUniversalFarmAuditPDF(activityLogsInRange, `Farm Operations Audit Trail - ${rangeLabel}`);
                     break;
+                }
             }
         } catch (err) {
             console.error('Failed to generate PDF:', err);
@@ -88,7 +127,7 @@ const Reports: React.FC = () => {
             description: 'Comprehensive roster of all farm workers, contact numbers, base monthly salaries in UGX, and overtime hourly rates.',
             icon: Users,
             color: '#2563eb',
-            count: `${workers.length} registered workers`
+            count: `${workersInRange.length} workers joined in range`
         },
         {
             id: 'attendance',
@@ -96,7 +135,7 @@ const Reports: React.FC = () => {
             description: 'Full scan records with clock-in/out stamps, scheduled vs actual hours, missing scans, and attendance status flags.',
             icon: Calendar,
             color: '#0d9488',
-            count: `${attendance.length} attendance logs`
+            count: `${attendanceInRange.length} attendance logs in range`
         },
         {
             id: 'overtime',
@@ -104,7 +143,7 @@ const Reports: React.FC = () => {
             description: 'Calculated overtime hours, shift rule evaluations, supervisor approval decisions, reasons, and estimated earnings.',
             icon: Clock,
             color: '#f59e0b',
-            count: `${attendance.filter(a => (a.overtimeHours || 0) > 0).length} overtime records`
+            count: `${attendanceInRange.filter(a => (a.overtimeHours || 0) > 0).length} overtime records in range`
         },
         {
             id: 'payroll',
@@ -112,7 +151,7 @@ const Reports: React.FC = () => {
             description: 'Official 5-column payroll table (S/M, Name, Monthly Salary, Overtime Earnings, Net Pay) with deductions in UGX.',
             icon: DollarSign,
             color: '#16a34a',
-            count: `${payrollRecords.length} payslip entries`
+            count: `${payrollInRange.length} payroll entries in range`
         },
         {
             id: 'clones',
@@ -120,7 +159,7 @@ const Reports: React.FC = () => {
             description: 'Complete 5-stage tracking (Cutting -> Humid Chamber -> 1st Hardening -> 2nd Hardening -> Sorting) for KR1 & KR3-KR10.',
             icon: Layers,
             color: '#8b5cf6',
-            count: `${cloneBatches.length} active clone batches`
+            count: `${cloneBatchesInRange.length} batches started in range`
         },
         {
             id: 'inventory',
@@ -128,7 +167,7 @@ const Reports: React.FC = () => {
             description: 'Complete stock breakdown for Fertilizers, Pesticides, Farm Tools, and Nursery Supplies with total UGX valuation.',
             icon: Package,
             color: '#0284c7',
-            count: `UGX ${calculateInventoryValuation(inventory).toLocaleString()} valuation`
+            count: `${inventoryMovementsInRange.length} movements in range · UGX ${calculateInventoryValuation(inventory).toLocaleString()} current valuation`
         },
         {
             id: 'sales',
@@ -136,7 +175,7 @@ const Reports: React.FC = () => {
             description: 'Customer sales ledger with clone varieties, quantities, unit pricing, and fully paid cash totals.',
             icon: TrendingUp,
             color: '#10b981',
-            count: `${sales.length} customer sales orders`
+            count: `${salesInRange.length} customer sales orders in range`
         },
         {
             id: 'audit',
@@ -144,7 +183,7 @@ const Reports: React.FC = () => {
             description: 'Timestamped audit logs of all user actions, edits, status overrides, and operational adjustments across all modules.',
             icon: ShieldCheck,
             color: '#64748b',
-            count: `${activityLogs.length} activity audit entries`
+            count: `${activityLogsInRange.length} activity audit entries in range`
         }
     ];
 
@@ -158,17 +197,41 @@ const Reports: React.FC = () => {
                         Generate and download production-grade, formatted PDF summaries with official farm headers and tables.
                     </p>
                 </div>
-                <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
-                    <label style={{ fontSize: '0.9rem', fontWeight: 600, color: 'var(--color-text-light)' }}>Reporting Month:</label>
-                    <input 
-                        type="month" 
-                        className="form-input" 
-                        value={selectedMonth}
-                        onChange={e => setSelectedMonth(e.target.value)}
-                        style={{ maxWidth: '160px' }}
+                <div style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: '0.75rem' }}>
+                    <label htmlFor="report-start-date" style={{ fontSize: '0.9rem', fontWeight: 600, color: 'var(--color-text-light)' }}>From:</label>
+                    <input
+                        id="report-start-date"
+                        type="date"
+                        className="form-input"
+                        value={startDate}
+                        max={endDate || undefined}
+                        onChange={e => {
+                            setStartDate(e.target.value);
+                            setDateRangeError('');
+                        }}
+                        style={{ maxWidth: '170px' }}
+                    />
+                    <label htmlFor="report-end-date" style={{ fontSize: '0.9rem', fontWeight: 600, color: 'var(--color-text-light)' }}>To:</label>
+                    <input
+                        id="report-end-date"
+                        type="date"
+                        className="form-input"
+                        value={endDate}
+                        min={startDate || undefined}
+                        onChange={e => {
+                            setEndDate(e.target.value);
+                            setDateRangeError('');
+                        }}
+                        style={{ maxWidth: '170px' }}
                     />
                 </div>
             </div>
+
+            {dateRangeError && (
+                <div role="alert" className="badge badge-danger" style={{ alignSelf: 'flex-start', padding: '0.5rem 0.75rem' }}>
+                    {dateRangeError}
+                </div>
+            )}
 
             {/* Reports Grid */}
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(320px, 1fr))', gap: '1.25rem' }}>
@@ -228,7 +291,7 @@ const Reports: React.FC = () => {
                     <strong>Print-Ready Executive Reports:</strong>
                 </div>
                 <p className="text-light" style={{ margin: 0, fontSize: '0.875rem' }}>
-                    All downloaded reports are compiled dynamically with vector graphics, auto-pagination, UGX currency formatting, and standard G&S Coffee Farm letterhead suitable for administrative filing, tax auditing, and bank reconciliation.
+                    All downloaded reports are compiled dynamically with vector graphics, auto-pagination, UGX currency formatting, and standard G&S COOFFEE Farm letterhead suitable for administrative filing, tax auditing, and bank reconciliation.
                 </p>
             </div>
         </div>

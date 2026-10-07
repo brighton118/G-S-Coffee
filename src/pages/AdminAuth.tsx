@@ -1,0 +1,193 @@
+import { FormEvent, useState } from 'react';
+import {
+    createUserWithEmailAndPassword,
+    sendEmailVerification,
+    sendPasswordResetEmail,
+    signInWithEmailAndPassword,
+    signOut
+} from 'firebase/auth';
+import { Banknote, Coffee, LockKeyhole, Mail } from 'lucide-react';
+import { auth } from '../firebase';
+import './AdminAuth.css';
+
+interface AdminAuthProps {
+    message: string;
+    onClearMessage: () => void;
+}
+
+const AdminAuth = ({ message, onClearMessage }: AdminAuthProps) => {
+    const [mode, setMode] = useState<'signIn' | 'signUp'>('signIn');
+    const [email, setEmail] = useState('');
+    const [password, setPassword] = useState('');
+    const [isSubmitting, setIsSubmitting] = useState(false);
+    const [formMessage, setFormMessage] = useState('');
+
+    const handleSubmit = async (event: FormEvent) => {
+        event.preventDefault();
+        setIsSubmitting(true);
+        setFormMessage('');
+        onClearMessage();
+
+        try {
+            if (mode === 'signUp') {
+                const credential = await createUserWithEmailAndPassword(auth, email.trim().toLowerCase(), password);
+                await sendEmailVerification(credential.user);
+                await signOut(auth);
+                setFormMessage('Check your inbox and verify your email address. Then sign in to finish administrator setup.');
+            } else {
+                const credential = await signInWithEmailAndPassword(auth, email.trim().toLowerCase(), password);
+                if (!credential.user.emailVerified) {
+                    await signOut(auth);
+                    setFormMessage('Verify your email address using the link we sent, then sign in again.');
+                }
+            }
+        } catch (error) {
+            const code = (error as { code?: string }).code;
+            const messages: Record<string, string> = {
+                'auth/email-already-in-use': 'An account already exists for this email. Sign in instead.',
+                'auth/operation-not-allowed': 'Email/password sign-in is not enabled for this Firebase project. Ask the Firebase administrator to enable it.',
+                'auth/invalid-credential': 'Email or password is incorrect.',
+                'auth/invalid-email': 'Enter a valid email address.',
+                'auth/weak-password': 'Use a password with at least 6 characters.',
+                'auth/too-many-requests': 'Too many attempts. Wait a few minutes and try again.',
+                'auth/network-request-failed': 'Could not connect. Check your internet connection and try again.'
+            };
+            setFormMessage(messages[code || ''] || 'Authentication failed. Please try again.');
+        } finally {
+            setIsSubmitting(false);
+        }
+    };
+
+    const handlePasswordReset = async () => {
+        setFormMessage('');
+        onClearMessage();
+        if (!email.trim()) {
+            setFormMessage('Enter your email address first, then choose Forgot password.');
+            return;
+        }
+
+        try {
+            await sendPasswordResetEmail(auth, email.trim().toLowerCase());
+            setFormMessage('If an account exists for this email, a password reset link has been sent.');
+        } catch {
+            setFormMessage('Could not send the reset email. Check the address and try again.');
+        }
+    };
+
+    const switchMode = (nextMode: 'signIn' | 'signUp') => {
+        setMode(nextMode);
+        setFormMessage('');
+        onClearMessage();
+    };
+
+    return (
+        <main className="admin-auth-page">
+            <section className="admin-auth-panel" aria-labelledby="admin-auth-title">
+                <div className="admin-auth-brand">
+                    <div className="admin-auth-brand-icon"><Coffee size={27} /></div>
+                    <div>
+                        <strong>G&S COOFFEE Farm</strong>
+                        <span>Farm operations workspace</span>
+                    </div>
+                </div>
+
+                <div className="admin-auth-intro">
+                    <span className="admin-auth-eyebrow"><Banknote size={15} /> ADMIN ACCESS</span>
+                    <h1 id="admin-auth-title">{mode === 'signIn' ? 'Welcome back' : 'Create admin account'}</h1>
+                    <p>
+                        {mode === 'signIn'
+                            ? 'Sign in to manage your farm operations and records.'
+                            : 'The first account becomes the initial administrator. After setup, new admins must be invited.'}
+                    </p>
+                </div>
+
+                <div className="admin-auth-tabs" role="tablist" aria-label="Administrator access">
+                    <button
+                        type="button"
+                        role="tab"
+                        aria-selected={mode === 'signIn'}
+                        className={mode === 'signIn' ? 'is-active' : ''}
+                        onClick={() => switchMode('signIn')}
+                    >
+                        Sign in
+                    </button>
+                    <button
+                        type="button"
+                        role="tab"
+                        aria-selected={mode === 'signUp'}
+                        className={mode === 'signUp' ? 'is-active' : ''}
+                        onClick={() => switchMode('signUp')}
+                    >
+                        Sign up
+                    </button>
+                </div>
+
+                <form className="admin-auth-form" onSubmit={handleSubmit}>
+                    <label htmlFor="admin-email">Administrator email</label>
+                    <div className="admin-auth-input-wrap">
+                        <Mail size={18} aria-hidden="true" />
+                        <input
+                            id="admin-email"
+                            type="email"
+                            autoComplete="email"
+                            required
+                            value={email}
+                            onChange={event => setEmail(event.target.value)}
+                            placeholder="name@example.com"
+                        />
+                    </div>
+
+                    {mode === 'signUp' && (
+                        <p className="admin-auth-signup-note">
+                            We’ll email a verification link before granting administrator access.
+                        </p>
+                    )}
+
+                    <label htmlFor="admin-password">Password</label>
+                    <div className="admin-auth-input-wrap">
+                        <LockKeyhole size={18} aria-hidden="true" />
+                        <input
+                            id="admin-password"
+                            type="password"
+                            autoComplete={mode === 'signIn' ? 'current-password' : 'new-password'}
+                            minLength={6}
+                            required
+                            value={password}
+                            onChange={event => setPassword(event.target.value)}
+                            placeholder="At least 6 characters"
+                        />
+                    </div>
+
+                    {(formMessage || message) && (
+                        <div className="admin-auth-message" role="alert">
+                            {formMessage || message}
+                        </div>
+                    )}
+
+                    <button className="btn btn-primary admin-auth-submit" type="submit" disabled={isSubmitting}>
+                        {isSubmitting ? 'Please wait...' : mode === 'signIn' ? 'Sign in as admin' : 'Create admin account'}
+                    </button>
+                </form>
+
+                {mode === 'signIn' && (
+                    <button type="button" className="admin-auth-reset" onClick={handlePasswordReset}>
+                        Forgot password?
+                    </button>
+                )}
+
+                <p className="admin-auth-footnote">
+                    Administrator access only. Workers do not need accounts to be added to the system.
+                </p>
+            </section>
+            <aside className="admin-auth-aside" aria-hidden="true">
+                <div className="admin-auth-aside-content">
+                    <span>GROW WITH CONFIDENCE</span>
+                    <h2>Your farm.<br />Your records.<br />One secure place.</h2>
+                    <p>Sign in to oversee your workforce, inventory, production and payroll.</p>
+                </div>
+            </aside>
+        </main>
+    );
+};
+
+export default AdminAuth;

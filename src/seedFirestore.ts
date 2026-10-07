@@ -134,7 +134,7 @@ const initialData = {
     settings: [
         {
             id: 'system_preferences',
-            farmName: 'G$S Coffee Farm',
+            farmName: 'G&S COOFFEE Farm',
             currency: 'UGX',
             operatingHours: '08:00 - 17:00',
             featuresEnabled: ['Attendance', 'Clones', 'Sales', 'Payroll', 'Inventory', 'Reports'],

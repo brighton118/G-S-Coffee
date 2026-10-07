@@ -2,15 +2,17 @@ import { useState } from 'react';
 import { NavLink, useLocation } from 'react-router-dom';
 import { useLiveQuery } from 'dexie-react-hooks';
 import { db } from '../db';
-import { LayoutDashboard, Users, ScanLine, Sprout, ShoppingCart, BarChart3, Bell, ScrollText, Settings, X, Banknote, CalendarDays, ChevronDown, ChevronRight } from 'lucide-react';
+import { LayoutDashboard, Users, ScanLine, Sprout, ShoppingCart, BarChart3, Bell, ScrollText, Settings, X, Banknote, CalendarDays, ChevronDown, ChevronRight, LogOut } from 'lucide-react';
 import './Sidebar.css';
 
 interface SidebarProps {
     isOpen: boolean;
     setIsOpen: (val: boolean) => void;
+    adminEmail: string;
+    onSignOut: () => void;
 }
 
-const Sidebar = ({ isOpen, setIsOpen }: SidebarProps) => {
+const Sidebar = ({ isOpen, setIsOpen, adminEmail, onSignOut }: SidebarProps) => {
     const [isAttendanceExpanded, setIsAttendanceExpanded] = useState(false);
     const location = useLocation();
     const handleClose = () => setIsOpen(false);
@@ -24,7 +26,7 @@ const Sidebar = ({ isOpen, setIsOpen }: SidebarProps) => {
     return (
         <aside className={`sidebar ${isOpen ? 'open' : ''}`}>
             <div className="sidebar-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                <h2>G$S Coffee Farm</h2>
+                <h2>G&S COOFFEE Farm</h2>
                 <button className="mobile-close-btn" onClick={handleClose}>
                     <X size={24} />
                 </button>
@@ -85,6 +87,12 @@ const Sidebar = ({ isOpen, setIsOpen }: SidebarProps) => {
                     <Settings size={20} /> Settings
                 </NavLink>
             </nav>
+            <div className="sidebar-account">
+                <div className="sidebar-account-email" title={adminEmail}>{adminEmail}</div>
+                <button type="button" className="nav-item sidebar-sign-out" onClick={() => { handleClose(); onSignOut(); }}>
+                    <LogOut size={19} /> Sign out
+                </button>
+            </div>
         </aside>
     );
 };

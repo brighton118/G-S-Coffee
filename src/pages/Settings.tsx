@@ -15,11 +15,12 @@ import {
 } from 'lucide-react';
 import { notificationService } from '../utils/notificationService';
 import { firestoreSyncService } from '../services/firestoreSync';
+import AdminInvitations from '../components/AdminInvitations';
 import './Dashboard.css';
 
 const Settings: React.FC = () => {
     const [settings, setSettings] = useState({
-        farmName: 'G$S Coffee Farm',
+        farmName: 'G&S COOFFEE Farm',
         farmLocation: 'Mubende District, Uganda',
         contactEmail: 'admin@gscoffee-farm.com',
         contactPhone: '+256 700 123456',
@@ -207,6 +208,8 @@ const Settings: React.FC = () => {
                     </div>
 
                     {/* Security and Cloud Sync */}
+                    <AdminInvitations />
+
                     <div className="card" style={{ borderLeft: '4px solid var(--color-primary)', display: 'flex', flexDirection: 'column', gap: '1rem' }}>
                         <h3 style={{ borderBottom: '1px solid var(--color-border)', paddingBottom: '0.75rem', margin: 0, color: 'var(--color-primary-dark)' }}>
                             <ShieldCheck size={20} style={{ verticalAlign: 'text-bottom', marginRight: '6px' }} />

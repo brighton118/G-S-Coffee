@@ -8,7 +8,7 @@ export async function seedDemoData() {
         return;
     }
 
-    console.log('Seeding Comprehensive G&S Coffee Farm Demo Data...');
+    console.log('Seeding Comprehensive G&S COOFFEE Farm Demo Data...');
 
     const todayStr = format(new Date(), 'yyyy-MM-dd');
     const yesterdayStr = format(subDays(new Date(), 1), 'yyyy-MM-dd');
@@ -487,5 +487,5 @@ export async function seedDemoData() {
     ];
     await db.payrollRecords.bulkAdd(seedPayroll);
 
-    console.log('G&S Coffee Farm Demo Data successfully initialized!');
+    console.log('G&S COOFFEE Farm Demo Data successfully initialized!');
 }

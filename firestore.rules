@@ -1,10 +1,79 @@
 rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
-    // Allow read and write access for farm management collections
+    function signedIn() {
+      return request.auth != null
+        && request.auth.token.email is string
+        && request.auth.token.email_verified == true;
+    }
+
+    function adminPath(uid) {
+      return /databases/$(database)/documents/admins/$(uid);
+    }
+
+    function bootstrapPath() {
+      return /databases/$(database)/documents/system/bootstrap;
+    }
+
+    function invitePath(email) {
+      return /databases/$(database)/documents/adminInvites/$(email);
+    }
+
+    function isAdmin() {
+      return signedIn()
+        && exists(adminPath(request.auth.uid))
+        && get(adminPath(request.auth.uid)).data.active == true
+        && get(adminPath(request.auth.uid)).data.email == request.auth.token.email;
+    }
+
+    match /system/bootstrap {
+      allow get: if signedIn();
+      allow list: if false;
+      allow create: if signedIn()
+        && !exists(bootstrapPath())
+        && request.resource.data.uid == request.auth.uid
+        && request.resource.data.email == request.auth.token.email;
+      allow update, delete: if false;
+    }
+
+    match /admins/{uid} {
+      allow get: if signedIn() && (request.auth.uid == uid || isAdmin());
+      allow list: if isAdmin();
+      allow create: if signedIn()
+        && request.auth.uid == uid
+        && request.resource.data.uid == uid
+        && request.resource.data.email == request.auth.token.email
+        && request.resource.data.active == true
+        && (
+          (existsAfter(bootstrapPath()) && getAfter(bootstrapPath()).data.uid == uid)
+          ||
+          (
+            existsAfter(invitePath(request.auth.token.email))
+            && getAfter(invitePath(request.auth.token.email)).data.email == request.auth.token.email
+            && getAfter(invitePath(request.auth.token.email)).data.claimedBy == uid
+          )
+        );
+      allow update, delete: if isAdmin();
+    }
+
+    match /adminInvites/{email} {
+      allow get: if isAdmin() || (signedIn() && request.auth.token.email == email);
+      allow list: if isAdmin();
+      allow create, delete: if isAdmin();
+      allow update: if isAdmin()
+        || (
+          signedIn()
+          && request.auth.token.email == email
+          && resource.data.email == email
+          && resource.data.get('claimedBy', '') == ''
+          && request.resource.data.email == email
+          && request.resource.data.claimedBy == request.auth.uid
+          && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['claimedBy', 'claimedAt'])
+        );
+    }
+
     match /{document=**} {
-      allow read, write: if true;
+      allow read, write: if isAdmin();
     }
   }
 }
-

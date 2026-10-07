@@ -900,7 +900,7 @@ const Payroll: React.FC = () => {
                         {/* Payslip Document Preview */}
                         <div style={{ border: '2px solid var(--color-primary)', borderRadius: '6px', padding: '1.5rem', background: '#ffffff', color: '#1e293b' }}>
                             <div style={{ textAlign: 'center', borderBottom: '2px solid #e2e8f0', paddingBottom: '0.75rem', marginBottom: '1rem' }}>
-                                <h3 style={{ margin: 0, color: 'var(--color-primary)', fontSize: '1.3rem' }}>G&S COFFEE FARM</h3>
+                                <h3 style={{ margin: 0, color: 'var(--color-primary)', fontSize: '1.3rem' }}>G&S COOFFEE FARM</h3>
                                 <div style={{ fontSize: '0.85rem', color: '#64748b' }}>OFFICIAL EMPLOYEE MONTHLY PAYSLIP</div>
                                 <div style={{ fontSize: '0.85rem', fontWeight: 600, marginTop: '0.25rem' }}>Period: {selectedRecordForPayslip.payrollMonth || selectedMonth}</div>
                             </div>

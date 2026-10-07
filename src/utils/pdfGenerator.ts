@@ -4,7 +4,7 @@ import { format } from 'date-fns';
 import { Worker, AttendanceRecord, PayrollRecord, InventoryItem, InventoryTransaction, SalesOrder, CloneBatch, ProductionHumidChamber, ProductionSorting, ActivityLog } from '../db';
 import { formatUGX } from './calculations';
 
-// Color Palette for G&S Coffee Farm PDF Branding
+// Color Palette for G&S COOFFEE Farm PDF Branding
 const BRAND_PRIMARY: [number, number, number] = [46, 125, 50]; // #2E7D32 Forest Green
 const BRAND_DARK: [number, number, number] = [27, 94, 32]; // #1B5E20 Dark Green
 const BRAND_ACCENT: [number, number, number] = [139, 69, 19]; // Saddle Brown (Coffee)
@@ -40,7 +40,7 @@ function applyHeaderAndFooter(
             doc.setTextColor(255, 255, 255);
             doc.setFontSize(16);
             doc.setFont('helvetica', 'bold');
-            doc.text('G&S COFFEE FARM MANAGEMENT SYSTEM', 14, 14);
+            doc.text('G&S COOFFEE FARM MANAGEMENT SYSTEM', 14, 14);
 
             doc.setFontSize(9);
             doc.setFont('helvetica', 'normal');
@@ -71,7 +71,7 @@ function applyHeaderAndFooter(
             doc.setTextColor(TEXT_MUTED[0], TEXT_MUTED[1], TEXT_MUTED[2]);
             doc.setFontSize(8);
             doc.setFont('helvetica', 'normal');
-            doc.text(`G&S Coffee Farm — ${title}`, 14, 8);
+            doc.text(`G&S COOFFEE Farm — ${title}`, 14, 8);
             doc.text(`Generated: ${format(new Date(), 'yyyy-MM-dd HH:mm')}`, pageWidth - 14, 8, { align: 'right' });
         }
 
@@ -82,7 +82,7 @@ function applyHeaderAndFooter(
         doc.setTextColor(TEXT_MUTED[0], TEXT_MUTED[1], TEXT_MUTED[2]);
         doc.setFontSize(8);
         doc.setFont('helvetica', 'normal');
-        doc.text('Confidential • Internal G&S Coffee Farm Operations Record', 14, pageHeight - 8);
+        doc.text('Confidential • Internal G&S COOFFEE Farm Operations Record', 14, pageHeight - 8);
         doc.text(`Page ${i} of ${pageCount}`, pageWidth - 14, pageHeight - 8, { align: 'right' });
     }
 }
@@ -90,7 +90,7 @@ function applyHeaderAndFooter(
 /**
  * 1. WORKERS DIRECTORY REPORT
  */
-export function generateWorkerListPDF(workers: Worker[]): void {
+export function generateWorkerListPDF(workers: Worker[], filterInfo?: string): void {
     const doc = new jsPDF('landscape', 'mm', 'a4');
     const startY = 58;
 
@@ -127,10 +127,11 @@ export function generateWorkerListPDF(workers: Worker[]): void {
         doc,
         'WORKERS DIRECTORY & SALARY STRUCTURE REPORT',
         `Active & Inactive Farm Labor Force (${workers.length} Registered Workers)`,
-        'All Workers'
+        filterInfo || 'All Workers'
     );
 
-    doc.save(`GS_Workers_Report_${format(new Date(), 'yyyy-MM-dd')}.pdf`);
+    const fileScope = filterInfo ? filterInfo.replace(/[^0-9A-Za-z-]+/g, '_') : format(new Date(), 'yyyy-MM-dd');
+    doc.save(`GS_Workers_Report_${fileScope}.pdf`);
 }
 
 /**
@@ -309,10 +310,10 @@ export function generatePayrollMasterSheetPDF(
         doc,
         'MONTHLY MASTER PAYROLL REPORT',
         `Net Payroll Disbursement: ${formatUGX(totalNet)} (Base: ${formatUGX(totalBase)} + OT: ${formatUGX(totalOT)} - Deductions: ${formatUGX(totalDeductions)})`,
-        `Payroll Month: ${period}`
+        `Payroll Period: ${period}`
     );
 
-    doc.save(`GS_Payroll_Master_${period}.pdf`);
+    doc.save(`GS_Payroll_Master_${period.replace(/[^0-9A-Za-z-]+/g, '_')}.pdf`);
 }
 
 /**
@@ -334,7 +335,7 @@ export function generateIndividualPayslipPDF(payroll: PayrollRecord): void {
     doc.setTextColor(255, 255, 255);
     doc.setFontSize(15);
     doc.setFont('helvetica', 'bold');
-    doc.text('G&S COFFEE FARM', pageWidth / 2, 20, { align: 'center' });
+    doc.text('G&S COOFFEE FARM', pageWidth / 2, 20, { align: 'center' });
 
     doc.setFontSize(9);
     doc.setFont('helvetica', 'normal');
@@ -444,7 +445,8 @@ export function generateIndividualPayslipPDF(payroll: PayrollRecord): void {
  */
 export function generateInventoryReportPDF(
     items: InventoryItem[],
-    _transactions: InventoryTransaction[] = []
+    transactions: InventoryTransaction[] = [],
+    dateRange?: string
 ): void {
     const doc = new jsPDF('landscape', 'mm', 'a4');
     const startY = 58;
@@ -502,14 +504,44 @@ export function generateInventoryReportPDF(
         margin: { left: 14, right: 14 }
     });
 
+    if (dateRange) {
+        const movementRows: RowInput[] = transactions.map((transaction, index) => [
+            (index + 1).toString(),
+            transaction.date,
+            transaction.inventoryId,
+            transaction.itemName || '',
+            transaction.type,
+            `${transaction.quantityChange > 0 ? '+' : ''}${transaction.quantityChange}`,
+            transaction.user,
+            transaction.reason
+        ]);
+
+        autoTable(doc, {
+            startY: (doc as any).lastAutoTable.finalY + 12,
+            head: [['#', 'Date', 'Item ID', 'Item', 'Movement', 'Qty Change', 'Recorded By', 'Reason']],
+            body: movementRows.length > 0 ? movementRows : [['', '', '', 'No stock movements in this date range.', '', '', '', '']],
+            headStyles: { fillColor: BRAND_PRIMARY, textColor: 255, fontStyle: 'bold' },
+            styles: { fontSize: 8, cellPadding: 2.8 },
+            alternateRowStyles: { fillColor: [248, 249, 250] },
+            columnStyles: {
+                0: { cellWidth: 8, halign: 'center' },
+                1: { cellWidth: 24 },
+                2: { cellWidth: 24, fontStyle: 'bold' },
+                5: { halign: 'right' }
+            },
+            margin: { left: 14, right: 14 }
+        });
+    }
+
     applyHeaderAndFooter(
         doc,
         'INVENTORY VALUATION & STOCK REGISTRY REPORT',
-        `4 Categories (Fertilizers, Pesticides, Farm Tools, Nursery Supplies) | Total Valuation: ${formatUGX(totalValuation)}`,
-        'All Active & Archived Items'
+        `Current stock snapshot | 4 Categories (Fertilizers, Pesticides, Farm Tools, Nursery Supplies) | Total Valuation: ${formatUGX(totalValuation)}`,
+        dateRange ? `Stock movements: ${dateRange}` : 'All Active & Archived Items'
     );
 
-    doc.save(`GS_Inventory_Report_${format(new Date(), 'yyyy-MM-dd')}.pdf`);
+    const fileScope = dateRange ? dateRange.replace(/[^0-9A-Za-z-]+/g, '_') : format(new Date(), 'yyyy-MM-dd');
+    doc.save(`GS_Inventory_Report_${fileScope}.pdf`);
 }
 
 /**
@@ -679,7 +711,7 @@ export function generatePlantletReceiptPDF(order: SalesOrder): void {
     doc.setTextColor(255, 255, 255);
     doc.setFontSize(16);
     doc.setFont('helvetica', 'bold');
-    doc.text('G&S COFFEE FARM', pageWidth / 2, 20, { align: 'center' });
+    doc.text('G&S COOFFEE FARM', pageWidth / 2, 20, { align: 'center' });
 
     doc.setFontSize(9);
     doc.setFont('helvetica', 'normal');
@@ -752,7 +784,7 @@ export function generatePlantletReceiptPDF(order: SalesOrder): void {
 
     // Signatures
     doc.line(14, finalY + 40, 70, finalY + 40);
-    doc.text('Issued by (G&S Coffee Farm)', 14, finalY + 44);
+    doc.text('Issued by (G&S COOFFEE Farm)', 14, finalY + 44);
 
     doc.line(pageWidth - 70, finalY + 40, pageWidth - 14, finalY + 40);
     doc.text('Customer Received by', pageWidth - 70, finalY + 44);
@@ -825,7 +857,7 @@ export function generateWorkerIdCardPDF(worker: Worker): void {
     doc.setTextColor(255, 255, 255);
     doc.setFontSize(8);
     doc.setFont('helvetica', 'bold');
-    doc.text('G&S COFFEE FARM', 42.8, 6, { align: 'center' });
+    doc.text('G&S COOFFEE FARM', 42.8, 6, { align: 'center' });
 
     doc.setFontSize(5);
     doc.setFont('helvetica', 'normal');
@@ -859,7 +891,7 @@ export function generateWorkerIdCardPDF(worker: Worker): void {
     doc.rect(0, 49, 85.6, 5, 'F');
     doc.setFontSize(4.5);
     doc.setTextColor(TEXT_MUTED[0], TEXT_MUTED[1], TEXT_MUTED[2]);
-    doc.text('Authorized by G&S Coffee Farm Management • Mubende, Uganda', 42.8, 52.5, { align: 'center' });
+    doc.text('Authorized by G&S COOFFEE Farm Management • Mubende, Uganda', 42.8, 52.5, { align: 'center' });
 
     doc.save(`GS_FarmCard_${worker.workerId}.pdf`);
 }
@@ -876,7 +908,12 @@ export const generatePayrollMasterPDF = generatePayrollMasterSheetPDF;
 export const generatePayslipPDF = generateIndividualPayslipPDF;
 export const generateInventoryPDF = generateInventoryReportPDF;
 export const generateInventoryValuationPDF = (items: InventoryItem[]) => generateInventoryReportPDF(items, []);
-export const generateCloneProductionSummaryPDF = (batches: CloneBatch[], chambers?: ProductionHumidChamber[], sortings?: ProductionSorting[]) => generateProductionStageReportPDF(batches, chambers, sortings, 'All Stages');
+export const generateCloneProductionSummaryPDF = (
+    batches: CloneBatch[],
+    chambers?: ProductionHumidChamber[],
+    sortings?: ProductionSorting[],
+    selectedStage?: string
+) => generateProductionStageReportPDF(batches, chambers, sortings, selectedStage || 'All Stages');
 export const generateProductionBatchMasterPDF = generateProductionStageReportPDF;
 export const generateSalesMasterPDF = generateSalesOrdersReportPDF;
 export const generateSalesReceiptPDF = generatePlantletReceiptPDF;
