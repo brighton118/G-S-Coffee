@@ -1,27 +1,194 @@
-.table-responsive {
-    width: 100%;
-    overflow-x: auto;
+.workers-payroll-summary {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+    gap: 1rem;
 }
 
-.data-table {
-    width: 100%;
-    border-collapse: collapse;
+.workers-payroll-total {
+    color: var(--color-primary);
+    font-size: clamp(1.25rem, 2vw, 1.7rem);
+    white-space: nowrap;
 }
 
-.data-table th,
-.data-table td {
+.workers-payroll-toolbar {
     padding: 1rem;
-    text-align: left;
-    border-bottom: 1px solid var(--color-border);
+    display: flex;
+    flex-wrap: wrap;
+    gap: 1rem;
+    align-items: center;
+    justify-content: space-between;
 }
 
-.data-table th {
-    background-color: var(--color-background);
-    font-weight: 600;
+.workers-payroll-table-wrap {
+    padding: 0;
+}
+
+.workers-payroll-table {
+    min-width: 900px;
+}
+
+.workers-payroll-table th {
+    padding: 0.9rem 1rem;
+    white-space: nowrap;
+    background: #f8faf7;
     color: var(--color-text-light);
-    font-size: 0.875rem;
+    font-size: 0.76rem;
+    font-weight: 700;
+    letter-spacing: 0.045em;
+    text-transform: uppercase;
 }
 
-.data-table tr:hover {
-    background-color: var(--color-background);
+.workers-payroll-table td {
+    padding: 0.85rem 1rem;
+    vertical-align: middle;
+}
+
+.workers-payroll-table tbody tr:last-child td {
+    border-bottom: 0;
+}
+
+.workers-payroll-table tbody tr:hover {
+    background: #fbfcfa;
+}
+
+.workers-payroll-name {
+    font-weight: 650;
+    color: var(--color-text);
+    white-space: nowrap;
+}
+
+.workers-payroll-id,
+.workers-payroll-caption {
+    margin-top: 0.15rem;
+    color: var(--color-text-light);
+    font-size: 0.78rem;
+    white-space: nowrap;
+}
+
+.workers-payroll-salary {
+    color: var(--color-primary);
+    white-space: nowrap;
+}
+
+.workers-status-badge {
+    display: inline-flex;
+    align-items: center;
+    border-radius: 999px;
+    padding: 0.25rem 0.6rem;
+    font-size: 0.78rem;
+    font-weight: 650;
+    white-space: nowrap;
+}
+
+.workers-status-badge.is-active {
+    background: #e7f4e8;
+    color: #27713a;
+}
+
+.workers-status-badge.is-inactive {
+    background: #f1f2ef;
+    color: #697166;
+}
+
+.workers-payroll-date {
+    white-space: nowrap;
+    color: var(--color-text-light);
+}
+
+.workers-payroll-actions-heading,
+.workers-payroll-actions {
+    text-align: right !important;
+}
+
+.workers-payroll-action-group {
+    display: inline-flex;
+    justify-content: flex-end;
+    gap: 0.4rem;
+    white-space: nowrap;
+}
+
+.workers-payroll-empty {
+    padding: 3rem !important;
+    text-align: center;
+    color: var(--color-text-light);
+}
+
+.workers-payroll-cards {
+    flex-direction: column;
+    gap: 1rem;
+}
+
+.workers-payroll-card {
+    display: flex;
+    flex-direction: column;
+    gap: 0.75rem;
+    padding: 1.25rem;
+}
+
+.workers-payroll-card-heading {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 0.75rem;
+}
+
+.workers-payroll-card-identity {
+    min-width: 0;
+}
+
+.workers-payroll-card-name {
+    display: block;
+    margin-top: 0.1rem;
+    font-size: 1.05rem;
+}
+
+.workers-payroll-card-details {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 0.65rem;
+    padding: 0.75rem;
+    border-radius: 6px;
+    background: var(--color-background);
+    font-size: 0.85rem;
+}
+
+.workers-payroll-card-details > div {
+    display: flex;
+    flex-direction: column;
+    gap: 0.1rem;
+    min-width: 0;
+}
+
+.workers-payroll-card-details strong {
+    overflow-wrap: anywhere;
+}
+
+.workers-payroll-card-actions {
+    display: flex;
+    gap: 0.5rem;
+}
+
+.workers-payroll-card-actions .btn {
+    flex: 1;
+    min-width: 0;
+    padding: 0.45rem 0.5rem;
+    font-size: 0.85rem;
+}
+
+@media (max-width: 768px) {
+    .workers-payroll-summary {
+        grid-template-columns: 1fr;
+    }
+
+    .workers-payroll-toolbar {
+        align-items: stretch;
+    }
+
+    .workers-payroll-toolbar > div {
+        min-width: 100% !important;
+    }
+
+    .workers-payroll-table {
+        min-width: 900px !important;
+    }
 }
