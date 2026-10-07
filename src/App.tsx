@@ -13,26 +13,39 @@ import Notifications from './pages/Notifications';
 import Settings from './pages/Settings';
 import Payroll from './pages/Payroll';
 import Attendance from './pages/Attendance';
-import { seedDemoData } from './seed';
-import { createFirestoreTables } from './seedFirestore';
 import { firestoreSyncService } from './services/firestoreSync';
 import { format } from 'date-fns';
 import { db } from './db';
+import { clearSeededDemoData } from './clearDemoData';
 
 const App = () => {
     useEffect(() => {
-        seedDemoData();
-        createFirestoreTables();
-
-        // Initialize Cloud Firestore Sync Engine
-        firestoreSyncService.syncCloudToLocal().then(() => {
-            firestoreSyncService.syncLocalToCloud();
-            firestoreSyncService.startRealtimeSync();
-        });
+        let isMounted = true;
+        let isInitialized = false;
 
         const syncInterval = setInterval(() => {
-            firestoreSyncService.syncLocalToCloud();
+            if (isInitialized) {
+                firestoreSyncService.syncLocalToCloud();
+            }
         }, 5 * 60 * 1000); // Background cloud backup every 5 minutes
+
+        const initializeData = async () => {
+            try {
+                await clearSeededDemoData();
+                await firestoreSyncService.syncCloudToLocal();
+                await firestoreSyncService.syncLocalToCloud();
+                firestoreSyncService.startRealtimeSync();
+                isInitialized = true;
+            } catch (error) {
+                console.error('System data initialization failed:', error);
+                if (isMounted) {
+                    const message = error instanceof Error ? error.message : String(error);
+                    window.alert(`Demo data cleanup could not be completed. Cloud sync is paused to prevent demo data from returning. Please check your connection and reload. Details: ${message}`);
+                }
+            }
+        };
+
+        void initializeData();
 
         const generateEODReport = async () => {
             const now = new Date();
@@ -64,6 +77,7 @@ const App = () => {
         const intervalId = setInterval(generateEODReport, 1000 * 60 * 60); // check strictly every hour
 
         return () => {
+            isMounted = false;
             clearInterval(intervalId);
             clearInterval(syncInterval);
             firestoreSyncService.stopRealtimeSync();
