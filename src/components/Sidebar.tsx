@@ -1,5 +1,7 @@
 import { useState } from 'react';
 import { NavLink, useLocation } from 'react-router-dom';
+import { useLiveQuery } from 'dexie-react-hooks';
+import { db } from '../db';
 import { LayoutDashboard, Users, ScanLine, Sprout, ShoppingCart, BarChart3, Bell, ScrollText, Settings, X, Banknote, CalendarDays, ChevronDown, ChevronRight } from 'lucide-react';
 import './Sidebar.css';
 
@@ -13,6 +15,11 @@ const Sidebar = ({ isOpen, setIsOpen }: SidebarProps) => {
     const location = useLocation();
     const handleClose = () => setIsOpen(false);
     const isAttendanceSectionActive = location.pathname === '/attendance' || location.pathname === '/scan';
+
+    const unreadCount = useLiveQuery(async () => {
+        const unread = await db.notifications.filter(n => !n.read).toArray();
+        return unread.length;
+    }) || 0;
 
     return (
         <aside className={`sidebar ${isOpen ? 'open' : ''}`}>
@@ -65,8 +72,14 @@ const Sidebar = ({ isOpen, setIsOpen }: SidebarProps) => {
                 <NavLink to="/reports" onClick={handleClose} className={({ isActive }) => `nav-item ${isActive ? 'active' : ''}`}>
                     <ScrollText size={20} /> Reports
                 </NavLink>
-                <NavLink to="/notifications" onClick={handleClose} className={({ isActive }) => `nav-item ${isActive ? 'active' : ''}`}>
-                    <Bell size={20} /> Notifications
+                <NavLink to="/notifications" onClick={handleClose} className={({ isActive }) => `nav-item ${isActive ? 'active' : ''}`} style={{ display: 'flex', alignItems: 'center' }}>
+                    <Bell size={20} /> 
+                    <span style={{ flex: 1 }}>Notifications</span>
+                    {unreadCount > 0 && (
+                        <span className="badge badge-warning" style={{ borderRadius: '12px', fontSize: '0.7rem', padding: '0.15rem 0.45rem', fontWeight: 700 }}>
+                            {unreadCount}
+                        </span>
+                    )}
                 </NavLink>
                 <NavLink to="/settings" onClick={handleClose} className={({ isActive }) => `nav-item ${isActive ? 'active' : ''}`}>
                     <Settings size={20} /> Settings

@@ -14,9 +14,8 @@ import Settings from './pages/Settings';
 import Payroll from './pages/Payroll';
 import Attendance from './pages/Attendance';
 import { firestoreSyncService } from './services/firestoreSync';
-import { format } from 'date-fns';
-import { db } from './db';
 import { clearSeededDemoData } from './clearDemoData';
+import { notificationService } from './utils/notificationService';
 
 const App = () => {
     useEffect(() => {
@@ -36,6 +35,7 @@ const App = () => {
                 await firestoreSyncService.syncLocalToCloud();
                 firestoreSyncService.startRealtimeSync();
                 isInitialized = true;
+                await notificationService.runAllNotificationChecks();
             } catch (error) {
                 console.error('System data initialization failed:', error);
                 if (isMounted) {
@@ -47,38 +47,17 @@ const App = () => {
 
         void initializeData();
 
-        const generateEODReport = async () => {
-            const now = new Date();
-            // Trigger EOD logic if past 5:00 PM (17:00)
-            if (now.getHours() >= 17) {
-                const today = format(now, 'yyyy-MM-dd');
-                const existing = await db.notifications.where({ date: today, type: 'EOD_ATTENDANCE' }).first();
-
-                if (!existing) {
-                    const allWorkers = await db.workers.where('status').equals('Active').toArray();
-                    const todayAttendance = await db.attendance.where('date').equals(today).toArray();
-
-                    const totalWorkers = allWorkers.length;
-                    const presentCount = todayAttendance.filter(a => a.status === 'Present' || a.status === 'Late').length;
-                    const absentCount = totalWorkers - presentCount;
-
-                    await db.notifications.add({
-                        type: 'EOD_ATTENDANCE',
-                        title: 'End of Day Attendance Report',
-                        message: `System Verification Complete: Out of ${totalWorkers} active workers, ${presentCount} attended their shift today and ${absentCount} were formally absent.`,
-                        date: today,
-                        read: 0
-                    });
-                }
-            }
+        // Run automated system notifications check (Low stock, chamber overdue, pending OT, EOD)
+        const runSystemChecks = () => {
+            notificationService.runAllNotificationChecks();
         };
 
-        generateEODReport();
-        const intervalId = setInterval(generateEODReport, 1000 * 60 * 60); // check strictly every hour
+        runSystemChecks();
+        const notificationInterval = setInterval(runSystemChecks, 1000 * 60 * 60); // Check every hour
 
         return () => {
             isMounted = false;
-            clearInterval(intervalId);
+            clearInterval(notificationInterval);
             clearInterval(syncInterval);
             firestoreSyncService.stopRealtimeSync();
         };
