@@ -15,6 +15,7 @@ import Payroll from './pages/Payroll';
 import Attendance from './pages/Attendance';
 import { seedDemoData } from './seed';
 import { createFirestoreTables } from './seedFirestore';
+import { firestoreSyncService } from './services/firestoreSync';
 import { format } from 'date-fns';
 import { db } from './db';
 
@@ -22,6 +23,16 @@ const App = () => {
     useEffect(() => {
         seedDemoData();
         createFirestoreTables();
+
+        // Initialize Cloud Firestore Sync Engine
+        firestoreSyncService.syncCloudToLocal().then(() => {
+            firestoreSyncService.syncLocalToCloud();
+            firestoreSyncService.startRealtimeSync();
+        });
+
+        const syncInterval = setInterval(() => {
+            firestoreSyncService.syncLocalToCloud();
+        }, 5 * 60 * 1000); // Background cloud backup every 5 minutes
 
         const generateEODReport = async () => {
             const now = new Date();
@@ -52,7 +63,11 @@ const App = () => {
         generateEODReport();
         const intervalId = setInterval(generateEODReport, 1000 * 60 * 60); // check strictly every hour
 
-        return () => clearInterval(intervalId);
+        return () => {
+            clearInterval(intervalId);
+            clearInterval(syncInterval);
+            firestoreSyncService.stopRealtimeSync();
+        };
     }, []);
 
     return (
