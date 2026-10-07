@@ -86,7 +86,7 @@ const AdminAuth = ({ message, onClearMessage }: AdminAuthProps) => {
                 <div className="admin-auth-brand">
                     <div className="admin-auth-brand-icon"><Coffee size={27} /></div>
                     <div>
-                        <strong>G&S COOFFEE Farm</strong>
+                        <strong>G&S COFFEE Farm</strong>
                         <span>Farm operations workspace</span>
                     </div>
                 </div>

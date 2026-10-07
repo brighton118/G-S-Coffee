@@ -489,7 +489,7 @@ const Workers: React.FC = () => {
                             }}
                         >
                             <div style={{ backgroundColor: 'var(--color-primary-dark)', color: 'white', padding: '0.75rem 1rem', textAlign: 'center' }}>
-                                <h3 style={{ margin: 0, fontSize: '1.1rem', letterSpacing: '1px' }}>G&S COOFFEE FARM</h3>
+                                <h3 style={{ margin: 0, fontSize: '1.1rem', letterSpacing: '1px' }}>G&S COFFEE FARM</h3>
                                 <span style={{ fontSize: '0.75rem', opacity: 0.9 }}>OFFICIAL WORKER IDENTIFICATION CARD</span>
                             </div>
 

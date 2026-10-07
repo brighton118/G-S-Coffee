@@ -41,7 +41,7 @@ const WorkerProfile = () => {
                     <div className="scan-feedback error">
                         <div className="feedback-details">
                             <h3>WORKER NOT FOUND</h3>
-                            <p>This G&S COOFFEE Farm worker profile could not be found.</p>
+                            <p>This G&S COFFEE Farm worker profile could not be found.</p>
                         </div>
                     </div>
                 </div>
@@ -54,7 +54,7 @@ const WorkerProfile = () => {
             <div className="scanner-container card" style={{ padding: '0', maxWidth: '500px', margin: '0 auto', width: '100%' }}>
                 <div className="worker-profile-modal" style={{ border: 'none', borderRadius: '0' }}>
                     <div style={{ textAlign: 'center', paddingTop: '2rem' }}>
-                        <h4 style={{ color: 'var(--color-primary-dark)', letterSpacing: '2px', margin: 0 }}>G&S COOFFEE FARM</h4>
+                        <h4 style={{ color: 'var(--color-primary-dark)', letterSpacing: '2px', margin: 0 }}>G&S COFFEE FARM</h4>
                     </div>
                     <div className="worker-header" style={{ flexDirection: 'column', textAlign: 'center' }}>
                         <div className="worker-avatar">

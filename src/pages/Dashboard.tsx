@@ -75,7 +75,7 @@ const Dashboard = () => {
             {/* Header */}
             <div className="dashboard-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '1rem' }}>
                 <div>
-                    <h1 style={{ margin: 0, fontSize: '1.75rem' }}>G&S COOFFEE Farm Management System</h1>
+                    <h1 style={{ margin: 0, fontSize: '1.75rem' }}>G&S COFFEE Farm Management System</h1>
                     <p className="text-light" style={{ margin: '0.25rem 0 0 0' }}>
                         {format(new Date(), 'EEEE, MMMM do, yyyy')} • Enterprise Farm & Nursery Operations
                     </p>

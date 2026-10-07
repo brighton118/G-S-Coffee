@@ -291,7 +291,7 @@ const Reports: React.FC = () => {
                     <strong>Print-Ready Executive Reports:</strong>
                 </div>
                 <p className="text-light" style={{ margin: 0, fontSize: '0.875rem' }}>
-                    All downloaded reports are compiled dynamically with vector graphics, auto-pagination, UGX currency formatting, and standard G&S COOFFEE Farm letterhead suitable for administrative filing, tax auditing, and bank reconciliation.
+                    All downloaded reports are compiled dynamically with vector graphics, auto-pagination, UGX currency formatting, and standard G&S COFFEE Farm letterhead suitable for administrative filing, tax auditing, and bank reconciliation.
                 </p>
             </div>
         </div>

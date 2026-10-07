@@ -4,7 +4,7 @@ import { format } from 'date-fns';
 import { Worker, AttendanceRecord, PayrollRecord, InventoryItem, InventoryTransaction, SalesOrder, CloneBatch, ProductionHumidChamber, ProductionSorting, ActivityLog } from '../db';
 import { formatUGX } from './calculations';
 
-// Color Palette for G&S COOFFEE Farm PDF Branding
+// Color Palette for G&S COFFEE Farm PDF Branding
 const BRAND_PRIMARY: [number, number, number] = [46, 125, 50]; // #2E7D32 Forest Green
 const BRAND_DARK: [number, number, number] = [27, 94, 32]; // #1B5E20 Dark Green
 const BRAND_ACCENT: [number, number, number] = [139, 69, 19]; // Saddle Brown (Coffee)
@@ -40,7 +40,7 @@ function applyHeaderAndFooter(
             doc.setTextColor(255, 255, 255);
             doc.setFontSize(16);
             doc.setFont('helvetica', 'bold');
-            doc.text('G&S COOFFEE FARM MANAGEMENT SYSTEM', 14, 14);
+            doc.text('G&S COFFEE FARM MANAGEMENT SYSTEM', 14, 14);
 
             doc.setFontSize(9);
             doc.setFont('helvetica', 'normal');
@@ -71,7 +71,7 @@ function applyHeaderAndFooter(
             doc.setTextColor(TEXT_MUTED[0], TEXT_MUTED[1], TEXT_MUTED[2]);
             doc.setFontSize(8);
             doc.setFont('helvetica', 'normal');
-            doc.text(`G&S COOFFEE Farm — ${title}`, 14, 8);
+            doc.text(`G&S COFFEE Farm — ${title}`, 14, 8);
             doc.text(`Generated: ${format(new Date(), 'yyyy-MM-dd HH:mm')}`, pageWidth - 14, 8, { align: 'right' });
         }
 
@@ -82,7 +82,7 @@ function applyHeaderAndFooter(
         doc.setTextColor(TEXT_MUTED[0], TEXT_MUTED[1], TEXT_MUTED[2]);
         doc.setFontSize(8);
         doc.setFont('helvetica', 'normal');
-        doc.text('Confidential • Internal G&S COOFFEE Farm Operations Record', 14, pageHeight - 8);
+        doc.text('Confidential • Internal G&S COFFEE Farm Operations Record', 14, pageHeight - 8);
         doc.text(`Page ${i} of ${pageCount}`, pageWidth - 14, pageHeight - 8, { align: 'right' });
     }
 }
@@ -335,7 +335,7 @@ export function generateIndividualPayslipPDF(payroll: PayrollRecord): void {
     doc.setTextColor(255, 255, 255);
     doc.setFontSize(15);
     doc.setFont('helvetica', 'bold');
-    doc.text('G&S COOFFEE FARM', pageWidth / 2, 20, { align: 'center' });
+    doc.text('G&S COFFEE FARM', pageWidth / 2, 20, { align: 'center' });
 
     doc.setFontSize(9);
     doc.setFont('helvetica', 'normal');
@@ -711,7 +711,7 @@ export function generatePlantletReceiptPDF(order: SalesOrder): void {
     doc.setTextColor(255, 255, 255);
     doc.setFontSize(16);
     doc.setFont('helvetica', 'bold');
-    doc.text('G&S COOFFEE FARM', pageWidth / 2, 20, { align: 'center' });
+    doc.text('G&S COFFEE FARM', pageWidth / 2, 20, { align: 'center' });
 
     doc.setFontSize(9);
     doc.setFont('helvetica', 'normal');
@@ -784,7 +784,7 @@ export function generatePlantletReceiptPDF(order: SalesOrder): void {
 
     // Signatures
     doc.line(14, finalY + 40, 70, finalY + 40);
-    doc.text('Issued by (G&S COOFFEE Farm)', 14, finalY + 44);
+    doc.text('Issued by (G&S COFFEE Farm)', 14, finalY + 44);
 
     doc.line(pageWidth - 70, finalY + 40, pageWidth - 14, finalY + 40);
     doc.text('Customer Received by', pageWidth - 70, finalY + 44);
@@ -857,7 +857,7 @@ export function generateWorkerIdCardPDF(worker: Worker): void {
     doc.setTextColor(255, 255, 255);
     doc.setFontSize(8);
     doc.setFont('helvetica', 'bold');
-    doc.text('G&S COOFFEE FARM', 42.8, 6, { align: 'center' });
+    doc.text('G&S COFFEE FARM', 42.8, 6, { align: 'center' });
 
     doc.setFontSize(5);
     doc.setFont('helvetica', 'normal');
@@ -891,7 +891,7 @@ export function generateWorkerIdCardPDF(worker: Worker): void {
     doc.rect(0, 49, 85.6, 5, 'F');
     doc.setFontSize(4.5);
     doc.setTextColor(TEXT_MUTED[0], TEXT_MUTED[1], TEXT_MUTED[2]);
-    doc.text('Authorized by G&S COOFFEE Farm Management • Mubende, Uganda', 42.8, 52.5, { align: 'center' });
+    doc.text('Authorized by G&S COFFEE Farm Management • Mubende, Uganda', 42.8, 52.5, { align: 'center' });
 
     doc.save(`GS_FarmCard_${worker.workerId}.pdf`);
 }

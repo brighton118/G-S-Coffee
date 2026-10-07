@@ -26,7 +26,7 @@ const Sidebar = ({ isOpen, setIsOpen, adminEmail, onSignOut }: SidebarProps) => 
     return (
         <aside className={`sidebar ${isOpen ? 'open' : ''}`}>
             <div className="sidebar-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                <h2>G&S COOFFEE Farm</h2>
+                <h2>G&S COFFEE Farm</h2>
                 <button className="mobile-close-btn" onClick={handleClose}>
                     <X size={24} />
                 </button>

@@ -20,7 +20,7 @@ import './Dashboard.css';
 
 const Settings: React.FC = () => {
     const [settings, setSettings] = useState({
-        farmName: 'G&S COOFFEE Farm',
+        farmName: 'G&S COFFEE Farm',
         farmLocation: 'Mubende District, Uganda',
         contactEmail: 'admin@gscoffee-farm.com',
         contactPhone: '+256 700 123456',

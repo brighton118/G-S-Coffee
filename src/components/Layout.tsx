@@ -22,7 +22,7 @@ const Layout = ({ children, adminEmail, onSignOut }: LayoutProps) => {
                     <button className="btn btn-secondary mobile-menu-btn" style={{ padding: '0.25rem', border: 'none', background: 'transparent' }} onClick={() => setIsSidebarOpen(true)}>
                         <Menu size={28} />
                     </button>
-                    <h2 style={{ margin: 0, fontSize: '1.2rem', color: 'var(--color-primary-dark)' }}>G&S COOFFEE Farm</h2>
+                    <h2 style={{ margin: 0, fontSize: '1.2rem', color: 'var(--color-primary-dark)' }}>G&S COFFEE Farm</h2>
                 </header>
 
                 <div className="page-container">
