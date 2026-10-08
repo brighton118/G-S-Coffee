@@ -63,6 +63,14 @@ class FirestoreSyncService {
                 operationCount++;
             }
 
+            // 3a. Sync miscellaneous farm expenses
+            const farmExpenses = await db.farmExpenses.toArray();
+            for (const expense of farmExpenses) {
+                const docRef = doc(collection(dbFirestore, 'farmExpenses'), expense.expenseId);
+                batch.set(docRef, { ...expense, updatedAt: serverTimestamp() }, { merge: true });
+                operationCount++;
+            }
+
             // 4. Sync Payroll Records
             const payrolls = await db.payrollRecords.toArray();
             for (const pr of payrolls) {
@@ -145,6 +153,19 @@ class FirestoreSyncService {
                     await db.cloneBatches.put(b as any);
                 }
             }
+
+            // Pull miscellaneous farm expenses
+            const expensesSnap = await getDocs(collection(dbFirestore, 'farmExpenses'));
+            for (const expenseDoc of expensesSnap.docs) {
+                const expense = expenseDoc.data();
+                const expenseId = typeof expense.expenseId === 'string' ? expense.expenseId : expenseDoc.id;
+                if (!expenseId) {
+                    console.warn(`Skipping farm expense with invalid ID: ${expenseDoc.id}`);
+                    continue;
+                }
+                const existing = await db.farmExpenses.where('expenseId').equals(expenseId).first();
+                await db.farmExpenses.put({ ...expense, expenseId, id: existing?.id } as any);
+            }
         } catch (error: any) {
             console.warn('Cloud download notice:', error?.message || error);
         }
@@ -181,7 +202,22 @@ class FirestoreSyncService {
                 });
             }, (err) => console.info('Firestore sales listener active:', err.message));
 
-            this.syncListeners.push(unsubWorkers, unsubSales);
+            const unsubFarmExpenses = onSnapshot(collection(dbFirestore, 'farmExpenses'), (snap) => {
+                snap.docChanges().forEach(async (change) => {
+                    if (change.type === 'added' || change.type === 'modified') {
+                        const data = change.doc.data();
+                        const expenseId = typeof data.expenseId === 'string' ? data.expenseId : change.doc.id;
+                        if (!expenseId) {
+                            console.warn(`Skipping farm expense with invalid ID: ${change.doc.id}`);
+                            return;
+                        }
+                        const existing = await db.farmExpenses.where('expenseId').equals(expenseId).first();
+                        await db.farmExpenses.put({ ...data, expenseId, id: existing?.id } as any);
+                    }
+                });
+            }, (err) => console.info('Firestore farm expense listener active:', err.message));
+
+            this.syncListeners.push(unsubWorkers, unsubSales, unsubFarmExpenses);
         } catch (err: any) {
             console.info('Realtime sync setup completed:', err?.message || err);
         }

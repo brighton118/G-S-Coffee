@@ -1,8 +1,12 @@
-import { FormEvent, useState } from 'react';
+import { FormEvent, useEffect, useState } from 'react';
 import {
     createUserWithEmailAndPassword,
+    getRedirectResult,
+    GoogleAuthProvider,
     sendPasswordResetEmail,
-    signInWithEmailAndPassword
+    signInWithEmailAndPassword,
+    signInWithPopup,
+    signInWithRedirect
 } from 'firebase/auth';
 import { Banknote, Coffee, LockKeyhole, Mail } from 'lucide-react';
 import { auth } from '../firebase';
@@ -13,12 +17,24 @@ interface AdminAuthProps {
     onClearMessage: () => void;
 }
 
+const googleProvider = new GoogleAuthProvider();
+googleProvider.setCustomParameters({ prompt: 'select_account' });
+
 const AdminAuth = ({ message, onClearMessage }: AdminAuthProps) => {
     const [mode, setMode] = useState<'signIn' | 'signUp'>('signIn');
     const [email, setEmail] = useState('');
     const [password, setPassword] = useState('');
     const [isSubmitting, setIsSubmitting] = useState(false);
     const [formMessage, setFormMessage] = useState('');
+
+    useEffect(() => {
+        // Handle redirect result from Google sign-in on mobile browsers
+        getRedirectResult(auth).catch((error: any) => {
+            if (error?.message) {
+                console.warn('Google redirect result check:', error);
+            }
+        });
+    }, []);
 
     const handleSubmit = async (event: FormEvent) => {
         event.preventDefault();
@@ -41,15 +57,51 @@ const AdminAuth = ({ message, onClearMessage }: AdminAuthProps) => {
             const code = error?.code || '';
             const messages: Record<string, string> = {
                 'auth/email-already-in-use': 'An account already exists for this email. Sign in instead.',
-                'auth/operation-not-allowed': 'Email/password sign-in is not enabled for this Firebase project. Please enable it in Firebase Console.',
+                'auth/operation-not-allowed': 'Email/password sign-in is not enabled for this Firebase project.',
                 'auth/invalid-credential': 'Email or password is incorrect.',
                 'auth/invalid-email': 'Enter a valid email address.',
                 'auth/weak-password': 'Use a password with at least 6 characters.',
                 'auth/too-many-requests': 'Too many attempts. Wait a few minutes and try again.',
-                'auth/network-request-failed': 'Connection blocked or offline. Disable browser ad-blockers/shields for this site or try "Continue with Google".',
-                'auth/internal-error': 'Authentication server error. Check email format or try "Continue with Google" for instant sign-in.'
+                'auth/network-request-failed': 'Connection blocked or offline. Disable ad-blockers or try "Continue with Google".',
+                'auth/internal-error': 'Authentication server error. Try "Continue with Google" for instant sign-in.'
             };
             setFormMessage(messages[code] || error?.message || 'Authentication failed. Please try again.');
+        } finally {
+            setIsSubmitting(false);
+        }
+    };
+
+    const handleGoogleSignIn = async () => {
+        setIsSubmitting(true);
+        setFormMessage('');
+        onClearMessage();
+
+        // Check if user is on mobile browser
+        const isMobile = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
+
+        if (isMobile) {
+            try {
+                await signInWithRedirect(auth, googleProvider);
+                return;
+            } catch (redirectErr: any) {
+                console.warn('Redirect sign-in error on mobile, trying popup:', redirectErr);
+            }
+        }
+
+        try {
+            await signInWithPopup(auth, googleProvider);
+        } catch (err: any) {
+            console.warn('Popup sign-in failed, attempting redirect fallback:', err);
+            if (err?.code === 'auth/popup-blocked' || err?.code === 'auth/popup-closed-by-user' || isMobile) {
+                try {
+                    await signInWithRedirect(auth, googleProvider);
+                    return;
+                } catch (redirectErr: any) {
+                    setFormMessage(redirectErr?.message || 'Could not complete Google sign-in. Please try again.');
+                }
+            } else {
+                setFormMessage(err?.message || 'Google sign-in failed. Please try again.');
+            }
         } finally {
             setIsSubmitting(false);
         }
@@ -94,7 +146,7 @@ const AdminAuth = ({ message, onClearMessage }: AdminAuthProps) => {
                     <p>
                         {mode === 'signIn'
                             ? 'Sign in to manage your farm operations and records.'
-                            : 'The first account becomes the initial administrator. After setup, new admins must be invited.'}
+                            : 'Create an administrator account for full access to the farm system.'}
                     </p>
                 </div>
 
@@ -170,19 +222,7 @@ const AdminAuth = ({ message, onClearMessage }: AdminAuthProps) => {
                     type="button" 
                     className="btn btn-secondary" 
                     style={{ width: '100%', display: 'flex', justifyContent: 'center', alignItems: 'center', gap: '0.5rem', padding: '0.65rem' }}
-                    onClick={async () => {
-                        setIsSubmitting(true);
-                        setFormMessage('');
-                        try {
-                            const { GoogleAuthProvider, signInWithPopup } = await import('firebase/auth');
-                            const provider = new GoogleAuthProvider();
-                            await signInWithPopup(auth, provider);
-                        } catch (err: any) {
-                            setFormMessage(err?.message || 'Google sign-in failed. Please try again.');
-                        } finally {
-                            setIsSubmitting(false);
-                        }
-                    }}
+                    onClick={handleGoogleSignIn}
                     disabled={isSubmitting}
                 >
                     <svg width="18" height="18" viewBox="0 0 24 24">

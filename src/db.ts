@@ -302,6 +302,18 @@ export interface InventoryTransaction {
     notes?: string;
 }
 
+export interface FarmExpense {
+    id?: number;
+    expenseId: string;
+    category: string;
+    description: string;
+    amount: number;
+    date: string;
+    paidTo?: string;
+    recordedBy: string;
+    notes?: string;
+}
+
 export interface SalesOrder {
     id?: number;
     invoiceNumber?: string;
@@ -408,6 +420,7 @@ const db = new Dexie('GS_Coffee_Farm_DB') as Dexie & {
     cloneStageHistory: EntityTable<CloneStageHistory, 'id'>;
     inventoryItems: EntityTable<InventoryItem, 'inventoryId'>;
     inventoryTransactions: EntityTable<InventoryTransaction, 'id'>;
+    farmExpenses: EntityTable<FarmExpense, 'id'>;
     salesOrders: EntityTable<SalesOrder, 'id'>;
     plantletSales: EntityTable<PlantletSale, 'id'>;
     plantletSorts: EntityTable<PlantletSort, 'batchId'>;
@@ -441,6 +454,10 @@ db.version(2).stores({
     notifications: '++id, type, date, read',
     notificationLogs: '++id, timestamp, channel, recipient',
     notificationSettings: '++id'
+});
+
+db.version(3).stores({
+    farmExpenses: '++id, expenseId, category, date, recordedBy'
 });
 
 export { db };

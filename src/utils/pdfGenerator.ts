@@ -1,7 +1,7 @@
 import jsPDF from 'jspdf';
 import autoTable, { RowInput } from 'jspdf-autotable';
 import { format } from 'date-fns';
-import { Worker, AttendanceRecord, PayrollRecord, InventoryItem, InventoryTransaction, SalesOrder, CloneBatch, ProductionHumidChamber, ProductionSorting, ActivityLog } from '../db';
+import { Worker, AttendanceRecord, PayrollRecord, InventoryItem, InventoryTransaction, FarmExpense, SalesOrder, CloneBatch, ProductionHumidChamber, ProductionSorting, ActivityLog } from '../db';
 import { formatUGX } from './calculations';
 
 // Color Palette for G&S COFFEE Farm PDF Branding
@@ -544,6 +544,46 @@ export function generateInventoryReportPDF(
 
     const fileScope = dateRange ? dateRange.replace(/[^0-9A-Za-z-]+/g, '_') : format(new Date(), 'yyyy-MM-dd');
     doc.save(`GS_Inventory_Report_${fileScope}.pdf`);
+}
+
+export function generateFarmExpensesPDF(expenses: FarmExpense[]): void {
+    const doc = new jsPDF('landscape', 'mm', 'a4');
+    const total = expenses.reduce((sum, expense) => sum + expense.amount, 0);
+    const rows: RowInput[] = [...expenses]
+        .sort((a, b) => b.date.localeCompare(a.date))
+        .map(expense => [
+            expense.date,
+            expense.category,
+            expense.description,
+            expense.paidTo || 'N/A',
+            expense.recordedBy,
+            formatUGX(expense.amount),
+            expense.notes || ''
+        ]);
+    rows.push(['', '', '', '', 'TOTAL', formatUGX(total), '']);
+
+    autoTable(doc, {
+        startY: 58,
+        head: [['Date', 'Category', 'Description', 'Paid To', 'Recorded By', 'Amount (UGX)', 'Notes']],
+        body: rows.length > 1 ? rows : [['', '', 'No miscellaneous farm expenses recorded.', '', '', '', '']],
+        headStyles: { fillColor: BRAND_PRIMARY, textColor: 255, fontStyle: 'bold' },
+        styles: { fontSize: 8, cellPadding: 3 },
+        alternateRowStyles: { fillColor: [248, 249, 250] },
+        columnStyles: {
+            0: { cellWidth: 24 },
+            1: { cellWidth: 32 },
+            5: { halign: 'right', fontStyle: 'bold' }
+        },
+        margin: { left: 14, right: 14 }
+    });
+
+    applyHeaderAndFooter(
+        doc,
+        'MISCELLANEOUS FARM EXPENSES REPORT',
+        `Transport and other farm operating expenses | Total: ${formatUGX(total)}`,
+        `Generated ${format(new Date(), 'yyyy-MM-dd')}`
+    );
+    doc.save(`GS_Farm_Expenses_${format(new Date(), 'yyyy-MM-dd')}.pdf`);
 }
 
 /**

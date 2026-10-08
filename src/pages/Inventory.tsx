@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { useLiveQuery } from 'dexie-react-hooks';
-import { db, InventoryItem } from '../db';
+import { db, FarmExpense, InventoryItem } from '../db';
 import { 
     Plus, 
     Search, 
@@ -16,7 +16,7 @@ import {
     Sparkles,
     Sprout
 } from 'lucide-react';
-import { generateInventoryPDF } from '../utils/pdfGenerator';
+import { generateFarmExpensesPDF, generateInventoryPDF } from '../utils/pdfGenerator';
 import { isStockLow, calculateInventoryValuation } from '../utils/calculations';
 
 const CATEGORIES = [
@@ -35,15 +35,28 @@ const PREDEFINED_NURSERY_SUPPLIES = [
     'Potting bags'
 ];
 
+const EXPENSE_CATEGORIES = ['Transport', 'Fuel', 'Repairs', 'Communication', 'Other Farm Expense'];
+
 const Inventory: React.FC = () => {
+    const [activeSection, setActiveSection] = useState<'inventory' | 'expenses'>('inventory');
     const [selectedCategory, setSelectedCategory] = useState<string>('All');
     const [searchTerm, setSearchTerm] = useState('');
     const [showAddModal, setShowAddModal] = useState(false);
+    const [showExpenseModal, setShowExpenseModal] = useState(false);
     const [showStockModal, setShowStockModal] = useState(false);
     const [selectedItemForStock, setSelectedItemForStock] = useState<InventoryItem | null>(null);
     const [stockAction, setStockAction] = useState<'IN' | 'OUT'>('IN');
     const [stockChangeAmount, setStockChangeAmount] = useState<number>(10);
     const [stockReason, setStockReason] = useState<string>('Routine Stock Purchase');
+    const [expenseData, setExpenseData] = useState({
+        category: 'Transport',
+        description: '',
+        amount: 0,
+        date: new Date().toISOString().slice(0, 10),
+        paidTo: '',
+        recordedBy: '',
+        notes: ''
+    });
 
     // Add form state
     const [formData, setFormData] = useState<{
@@ -74,6 +87,7 @@ const Inventory: React.FC = () => {
 
     const items = useLiveQuery(() => db.inventoryItems.toArray()) || [];
     const transactions = useLiveQuery(() => db.inventoryTransactions.toArray()) || [];
+    const expenses = useLiveQuery(() => db.farmExpenses.toArray()) || [];
 
     // Filter items
     const filteredItems = items.filter(item => {
@@ -89,6 +103,38 @@ const Inventory: React.FC = () => {
     const totalValuation = calculateInventoryValuation(items);
     const lowStockCount = items.filter(i => isStockLow(i.quantity, i.minStockLevel) && i.status === 'Active').length;
     const totalActiveItems = items.filter(i => i.status === 'Active').length;
+    const totalMiscExpenses = expenses.reduce((sum, expense) => sum + expense.amount, 0);
+
+    const handleCreateExpense = async (e: React.FormEvent) => {
+        e.preventDefault();
+        if (!expenseData.description.trim() || !Number.isFinite(expenseData.amount) || expenseData.amount <= 0) {
+            alert('Enter an expense description and an amount greater than zero.');
+            return;
+        }
+
+        const newExpense: FarmExpense = {
+            expenseId: `GSF-EXP-${crypto.randomUUID()}`,
+            category: expenseData.category,
+            description: expenseData.description.trim(),
+            amount: Number(expenseData.amount),
+            date: expenseData.date,
+            paidTo: expenseData.paidTo.trim() || undefined,
+            recordedBy: expenseData.recordedBy.trim() || 'Farm Manager',
+            notes: expenseData.notes.trim() || undefined
+        };
+
+        await db.farmExpenses.add(newExpense);
+        setShowExpenseModal(false);
+        setExpenseData({
+            category: 'Transport',
+            description: '',
+            amount: 0,
+            date: new Date().toISOString().slice(0, 10),
+            paidTo: '',
+            recordedBy: '',
+            notes: ''
+        });
+    };
 
     const handleCreateItem = async (e: React.FormEvent) => {
         e.preventDefault();
@@ -195,22 +241,106 @@ const Inventory: React.FC = () => {
                 <div>
                     <h1 style={{ margin: 0 }}>Farm & Nursery Inventory</h1>
                     <p className="text-light" style={{ margin: '0.25rem 0 0 0' }}>
-                        Track Fertilizers, Pesticides, Farm Tools, and Nursery Supplies with live valuation in UGX.
+                        Manage farm stock and record transport and other miscellaneous operating expenses.
                     </p>
                 </div>
                 <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }}>
-                    <button 
-                        className="btn btn-secondary" 
-                        onClick={() => generateInventoryPDF(items, transactions)}
-                    >
-                        <Download size={16} /> Export Inventory PDF
-                    </button>
-                    <button className="btn btn-primary" onClick={() => setShowAddModal(true)}>
-                        <Plus size={18} /> Add Inventory Item
-                    </button>
+                    {activeSection === 'inventory' ? (
+                        <>
+                            <button
+                                className="btn btn-secondary"
+                                onClick={() => generateInventoryPDF(items, transactions)}
+                            >
+                                <Download size={16} /> Export Inventory PDF
+                            </button>
+                            <button className="btn btn-primary" onClick={() => setShowAddModal(true)}>
+                                <Plus size={18} /> Add Inventory Item
+                            </button>
+                        </>
+                    ) : (
+                        <>
+                            <button className="btn btn-secondary" onClick={() => generateFarmExpensesPDF(expenses)}>
+                                <Download size={16} /> Export Expenses PDF
+                            </button>
+                            <button className="btn btn-primary" onClick={() => setShowExpenseModal(true)}>
+                                <Plus size={18} /> Record Farm Expense
+                            </button>
+                        </>
+                    )}
                 </div>
             </div>
 
+            <div role="tablist" aria-label="Inventory sections" style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }}>
+                <button
+                    type="button"
+                    role="tab"
+                    aria-selected={activeSection === 'inventory'}
+                    className={`btn ${activeSection === 'inventory' ? 'btn-primary' : 'btn-secondary'}`}
+                    onClick={() => setActiveSection('inventory')}
+                >
+                    Inventory & Stock
+                </button>
+                <button
+                    type="button"
+                    role="tab"
+                    aria-selected={activeSection === 'expenses'}
+                    className={`btn ${activeSection === 'expenses' ? 'btn-primary' : 'btn-secondary'}`}
+                    onClick={() => setActiveSection('expenses')}
+                >
+                    Miscellaneous Expenses ({expenses.length})
+                </button>
+            </div>
+
+            {activeSection === 'expenses' ? (
+                <>
+                    <div className="stats-grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: '1rem' }}>
+                        <div className="stat-card card">
+                            <div className="stat-header"><span className="stat-title">RECORDED FARM EXPENSES</span><DollarSign className="stat-icon text-primary" size={20} /></div>
+                            <div className="stat-value">{expenses.length}</div>
+                            <div className="stat-change text-light">Transport and miscellaneous costs</div>
+                        </div>
+                        <div className="stat-card card">
+                            <div className="stat-header"><span className="stat-title">TOTAL EXPENSES</span><DollarSign className="stat-icon text-danger" size={20} /></div>
+                            <div className="stat-value">UGX {totalMiscExpenses.toLocaleString()}</div>
+                            <div className="stat-change text-light">All recorded miscellaneous expenses</div>
+                        </div>
+                    </div>
+                    <div className="card table-responsive">
+                        <table className="data-table" style={{ width: '100%', borderCollapse: 'collapse' }}>
+                            <thead>
+                                <tr>
+                                    <th>Date</th>
+                                    <th>Category</th>
+                                    <th>Description</th>
+                                    <th>Paid To</th>
+                                    <th>Recorded By</th>
+                                    <th style={{ textAlign: 'right' }}>Amount (UGX)</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {expenses.length === 0 ? (
+                                    <tr><td colSpan={6} style={{ textAlign: 'center', padding: '2rem', color: 'var(--color-text-light)' }}>No farm expenses recorded yet.</td></tr>
+                                ) : [...expenses].sort((a, b) => b.date.localeCompare(a.date) || (b.id || 0) - (a.id || 0)).map(expense => (
+                                    <tr key={expense.id}>
+                                        <td>{expense.date}</td>
+                                        <td>{expense.category}</td>
+                                        <td>{expense.description}{expense.notes && <div className="text-light" style={{ fontSize: '0.8rem' }}>{expense.notes}</div>}</td>
+                                        <td>{expense.paidTo || '-'}</td>
+                                        <td>{expense.recordedBy}</td>
+                                        <td style={{ textAlign: 'right' }}><strong>UGX {expense.amount.toLocaleString()}</strong></td>
+                                    </tr>
+                                ))}
+                            </tbody>
+                            {expenses.length > 0 && (
+                                <tfoot>
+                                    <tr><th colSpan={5} style={{ textAlign: 'right' }}>Total</th><th style={{ textAlign: 'right' }}>UGX {totalMiscExpenses.toLocaleString()}</th></tr>
+                                </tfoot>
+                            )}
+                        </table>
+                    </div>
+                </>
+            ) : (
+            <>
             {/* KPI Cards */}
             <div className="stats-grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: '1rem' }}>
                 <div className="stat-card card">
@@ -589,6 +719,61 @@ const Inventory: React.FC = () => {
                                 <button type="submit" className="btn btn-primary" style={{ flex: 1 }}>
                                     Commit Movement
                                 </button>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+            )}
+            </>
+            )}
+
+            {showExpenseModal && (
+                <div className="modal-overlay">
+                    <div className="modal-content card" style={{ maxWidth: '560px', width: '100%' }}>
+                        <div className="modal-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.25rem' }}>
+                            <h2 style={{ margin: 0 }}>Record Miscellaneous Farm Expense</h2>
+                            <button type="button" className="btn btn-secondary" style={{ padding: '0.25rem', border: 'none' }} onClick={() => setShowExpenseModal(false)} aria-label="Close">
+                                <X size={18} />
+                            </button>
+                        </div>
+                        <form onSubmit={handleCreateExpense} style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+                            <div className="form-group">
+                                <label className="form-label">Expense Category *</label>
+                                <select className="form-input" required value={expenseData.category} onChange={e => setExpenseData({ ...expenseData, category: e.target.value })}>
+                                    {EXPENSE_CATEGORIES.map(category => <option key={category} value={category}>{category}</option>)}
+                                </select>
+                            </div>
+                            <div className="form-group">
+                                <label className="form-label">Description *</label>
+                                <input className="form-input" required value={expenseData.description} onChange={e => setExpenseData({ ...expenseData, description: e.target.value })} placeholder="e.g. Produce delivery transport" />
+                            </div>
+                            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
+                                <div className="form-group">
+                                    <label className="form-label">Amount (UGX) *</label>
+                                    <input type="number" className="form-input" required min="1" step="1" value={expenseData.amount || ''} onChange={e => setExpenseData({ ...expenseData, amount: Number(e.target.value) })} />
+                                </div>
+                                <div className="form-group">
+                                    <label className="form-label">Date *</label>
+                                    <input type="date" className="form-input" required value={expenseData.date} onChange={e => setExpenseData({ ...expenseData, date: e.target.value })} />
+                                </div>
+                            </div>
+                            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
+                                <div className="form-group">
+                                    <label className="form-label">Paid To</label>
+                                    <input className="form-input" value={expenseData.paidTo} onChange={e => setExpenseData({ ...expenseData, paidTo: e.target.value })} placeholder="Recipient or vendor" />
+                                </div>
+                                <div className="form-group">
+                                    <label className="form-label">Recorded By</label>
+                                    <input className="form-input" value={expenseData.recordedBy} onChange={e => setExpenseData({ ...expenseData, recordedBy: e.target.value })} placeholder="Farm Manager" />
+                                </div>
+                            </div>
+                            <div className="form-group">
+                                <label className="form-label">Notes</label>
+                                <textarea className="form-input" rows={2} value={expenseData.notes} onChange={e => setExpenseData({ ...expenseData, notes: e.target.value })} />
+                            </div>
+                            <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '0.75rem' }}>
+                                <button type="button" className="btn btn-secondary" onClick={() => setShowExpenseModal(false)}>Cancel</button>
+                                <button type="submit" className="btn btn-primary">Save Expense</button>
                             </div>
                         </form>
                     </div>
