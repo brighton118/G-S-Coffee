@@ -470,7 +470,7 @@ const Inventory: React.FC = () => {
                                         </td>
                                         <td style={{ padding: '0.75rem 1rem' }}>
                                             <div>{item.supplier || 'N/A'}</div>
-                                            <div className="text-light" style={{ fontSize: '0.75rem' }}>📍 {item.location || 'Store'}</div>
+                                            <div className="text-light" style={{ fontSize: '0.75rem' }}>Location: {item.location || 'Store'}</div>
                                         </td>
                                     </tr>
                                 );

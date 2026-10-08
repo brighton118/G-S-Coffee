@@ -883,7 +883,7 @@ export function generateUniversalFarmAuditPDF(logs: ActivityLog[], filterInfo?: 
  */
 export function generateWorkerIdCardPDF(worker: Worker): void {
     const doc = new jsPDF({
-        orientation: 'portrait',
+        orientation: 'landscape',
         unit: 'mm',
         format: [85.6, 54] // Standard ID-1 CR80 card size
     });
@@ -909,14 +909,14 @@ export function generateWorkerIdCardPDF(worker: Worker): void {
     doc.setTextColor(TEXT_DARK[0], TEXT_DARK[1], TEXT_DARK[2]);
     doc.setFontSize(9);
     doc.setFont('helvetica', 'bold');
-    doc.text(worker.fullName.toUpperCase(), 42.8, 22, { align: 'center' });
+    doc.text(worker.fullName.toUpperCase(), 42.8, 22, { align: 'center', maxWidth: 75 });
 
     doc.setFontSize(6.5);
     doc.setFont('helvetica', 'normal');
-    doc.text(`ID: ${worker.workerId}`, 10, 28);
-    doc.text(`Card: ${worker.farmCardNumber || worker.workerId}`, 10, 33);
-    doc.text(`Phone: ${worker.phoneNumber}`, 10, 38);
-    doc.text(`Status: ${worker.status}`, 10, 43);
+    doc.text(`ID: ${worker.workerId}`, 10, 28, { maxWidth: 40 });
+    doc.text(`Card: ${worker.farmCardNumber || worker.workerId}`, 10, 33, { maxWidth: 40 });
+    doc.text(`Phone: ${worker.phoneNumber}`, 10, 38, { maxWidth: 40 });
+    doc.text(`Status: ${worker.status}`, 10, 43, { maxWidth: 40 });
 
     // QR Payload display
     doc.setDrawColor(200, 200, 200);
@@ -933,7 +933,7 @@ export function generateWorkerIdCardPDF(worker: Worker): void {
     doc.rect(0, 49, 85.6, 5, 'F');
     doc.setFontSize(4.5);
     doc.setTextColor(TEXT_MUTED[0], TEXT_MUTED[1], TEXT_MUTED[2]);
-    doc.text('Authorized by G&S COFFEE Farm Management • Mubende, Uganda', 42.8, 52.5, { align: 'center' });
+    doc.text('Authorized by G&S COFFEE Farm Management • Mubende, Uganda', 42.8, 52.5, { align: 'center', maxWidth: 82 });
 
     doc.save(`GS_FarmCard_${worker.workerId}.pdf`);
 }

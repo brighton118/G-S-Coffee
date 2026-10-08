@@ -268,7 +268,7 @@ const Sales: React.FC = () => {
                                             <div style={{ fontWeight: 600, color: 'var(--color-text)' }}>{order.customerName}</div>
                                             <div className="text-light" style={{ fontSize: '0.8rem' }}>{order.customerPhone}</div>
                                             {order.customerLocation && (
-                                                <div className="text-light" style={{ fontSize: '0.75rem' }}>📍 {order.customerLocation}</div>
+                                                <div className="text-light" style={{ fontSize: '0.75rem' }}>Location: {order.customerLocation}</div>
                                             )}
                                         </td>
                                         <td style={{ whiteSpace: 'nowrap', padding: '0.75rem 1rem' }}>
@@ -472,7 +472,7 @@ const Sales: React.FC = () => {
                                 </div>
                                 <div style={{ textAlign: 'right' }}>
                                     <span style={{ backgroundColor: '#dcfce7', color: '#166534', padding: '0.35rem 0.75rem', borderRadius: '4px', fontWeight: 700, fontSize: '0.85rem' }}>
-                                        💵 Cash Payment
+                                        Cash Payment
                                     </span>
                                 </div>
                             </div>

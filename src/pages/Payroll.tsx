@@ -300,7 +300,6 @@ const Payroll: React.FC = () => {
                 <div className="stat-card card">
                     <div className="stat-header">
                         <span className="stat-title">TOTAL PAYROLL</span>
-                        <DollarSign className="stat-icon text-primary" size={20} />
                     </div>
                     <div className="stat-value" style={{ color: 'var(--color-primary)' }}>
                         {formatUGX(totalNetPayroll)}
@@ -311,7 +310,6 @@ const Payroll: React.FC = () => {
                 <div className="stat-card card">
                     <div className="stat-header">
                         <span className="stat-title">TOTAL PAID</span>
-                        <CheckCircle2 className="stat-icon text-success" size={20} />
                     </div>
                     <div className="stat-value" style={{ color: '#16a34a' }}>
                         {formatUGX(totalPaid)}
@@ -322,7 +320,6 @@ const Payroll: React.FC = () => {
                 <div className="stat-card card">
                     <div className="stat-header">
                         <span className="stat-title">TOTAL PENDING</span>
-                        <AlertCircle className="stat-icon text-danger" size={20} />
                     </div>
                     <div className="stat-value" style={{ color: totalOutstanding > 0 ? '#dc2626' : 'var(--color-text)' }}>
                         {formatUGX(totalOutstanding)}
@@ -333,7 +330,6 @@ const Payroll: React.FC = () => {
                 <div className="stat-card card">
                     <div className="stat-header">
                         <span className="stat-title">TOTAL OVERTIME</span>
-                        <Clock className="stat-icon text-warning" size={20} />
                     </div>
                     <div className="stat-value" style={{ color: '#ea580c' }}>
                         {formatUGX(totalApprovedOvertime)}
@@ -344,7 +340,6 @@ const Payroll: React.FC = () => {
                 <div className="stat-card card">
                     <div className="stat-header">
                         <span className="stat-title">TOTAL DEDUCTIONS</span>
-                        <Receipt className="stat-icon text-muted" size={20} />
                     </div>
                     <div className="stat-value">
                         {formatUGX(totalDeductions)}
@@ -355,7 +350,6 @@ const Payroll: React.FC = () => {
                 <div className="stat-card card">
                     <div className="stat-header">
                         <span className="stat-title">WORKERS</span>
-                        <Users className="stat-icon text-primary" size={20} />
                     </div>
                     <div className="stat-value">
                         {totalWorkers}
