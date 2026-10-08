@@ -286,8 +286,12 @@ export async function clearSeededDemoData(): Promise<void> {
     }
 
     if (localStorage.getItem(CLOUD_CLEANUP_KEY) !== 'true') {
-        await clearCloudDemoData();
-        localStorage.setItem(CLOUD_CLEANUP_KEY, 'true');
+        try {
+            await clearCloudDemoData();
+            localStorage.setItem(CLOUD_CLEANUP_KEY, 'true');
+        } catch (e) {
+            console.warn('Cloud demo data cleanup deferred:', e);
+        }
     }
 
     if (localStorage.getItem(LOCAL_WORKER_RESET_KEY) !== 'true') {
@@ -295,12 +299,20 @@ export async function clearSeededDemoData(): Promise<void> {
         localStorage.setItem(LOCAL_WORKER_RESET_KEY, 'true');
     }
 
-    await clearAllCloudWorkersAndPayroll();
+    try {
+        await clearAllCloudWorkersAndPayroll();
+    } catch (e) {
+        console.warn('Cloud worker reset deferred:', e);
+    }
 
     if (localStorage.getItem(LOCAL_INVENTORY_RESET_KEY) !== 'true') {
         await clearAllLocalInventory();
         localStorage.setItem(LOCAL_INVENTORY_RESET_KEY, 'true');
     }
 
-    await clearAllCloudInventory();
+    try {
+        await clearAllCloudInventory();
+    } catch (e) {
+        console.warn('Cloud inventory reset deferred:', e);
+    }
 }

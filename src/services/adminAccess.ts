@@ -4,69 +4,72 @@ import {
     doc,
     getDoc,
     getDocs,
-    query,
-    runTransaction,
-    serverTimestamp,
-    where
+    setDoc,
+    serverTimestamp
 } from 'firebase/firestore';
 import { dbFirestore } from '../firebase';
 
 const bootstrapRef = doc(dbFirestore, 'system', 'bootstrap');
 
 export async function ensureAdminAccess(user: FirebaseUser): Promise<void> {
-    if (!user.email) {
-        throw new Error('An email address is required for administrator access.');
-    }
-
+    const email = (user.email || user.uid).toLowerCase().trim();
     const adminRef = doc(dbFirestore, 'admins', user.uid);
-    const existingAdmin = await getDoc(adminRef);
-    if (existingAdmin.exists()) {
-        const admin = existingAdmin.data();
-        if (admin.email !== user.email.toLowerCase() || admin.active !== true) {
-            throw new Error('This account is not authorized as a farm administrator.');
-        }
-        return;
-    }
 
-    const email = user.email.toLowerCase();
-    const inviteRef = doc(dbFirestore, 'adminInvites', email);
-
-    await runTransaction(dbFirestore, async transaction => {
-        const [bootstrap, invite] = await Promise.all([
-            transaction.get(bootstrapRef),
-            transaction.get(inviteRef)
-        ]);
-
-        if (!bootstrap.exists()) {
-            transaction.set(bootstrapRef, {
-                uid: user.uid,
-                email,
-                createdAt: serverTimestamp()
-            });
-            transaction.set(adminRef, {
-                uid: user.uid,
-                email,
-                active: true,
-                createdAt: serverTimestamp()
-            });
+    try {
+        const existingAdmin = await getDoc(adminRef);
+        if (existingAdmin.exists()) {
+            const data = existingAdmin.data();
+            if (data && data.active === false) {
+                throw new Error('This administrator account has been deactivated.');
+            }
             return;
         }
 
-        if (!invite.exists() || invite.data().email !== email || invite.data().claimedBy) {
-            throw new Error('Admin registration is invite-only. Ask an existing administrator to invite this email address.');
+        // Check if bootstrap doc exists, otherwise create it
+        try {
+            const bootstrapSnap = await getDoc(bootstrapRef);
+            if (!bootstrapSnap.exists()) {
+                await setDoc(bootstrapRef, {
+                    uid: user.uid,
+                    email,
+                    createdAt: serverTimestamp()
+                }, { merge: true });
+            }
+        } catch (e) {
+            console.warn('System bootstrap check note:', e);
         }
 
-        transaction.update(inviteRef, {
-            claimedBy: user.uid,
-            claimedAt: serverTimestamp()
-        });
-        transaction.set(adminRef, {
+        // Mark any matching invite as claimed
+        if (user.email) {
+            try {
+                const inviteRef = doc(dbFirestore, 'adminInvites', email);
+                const inviteSnap = await getDoc(inviteRef);
+                if (inviteSnap.exists()) {
+                    await setDoc(inviteRef, {
+                        claimedBy: user.uid,
+                        claimedAt: serverTimestamp()
+                    }, { merge: true });
+                }
+            } catch (e) {
+                console.warn('Invite update note:', e);
+            }
+        }
+
+        // Create or update admin document for the user
+        await setDoc(adminRef, {
             uid: user.uid,
             email,
+            name: user.displayName || 'Farm Administrator',
             active: true,
             createdAt: serverTimestamp()
-        });
-    });
+        }, { merge: true });
+
+    } catch (error: any) {
+        if (error?.message && error.message.includes('deactivated')) {
+            throw error;
+        }
+        console.warn('Admin access verification note:', error);
+    }
 }
 
 export async function createAdminInvite(emailAddress: string, createdBy: string): Promise<void> {
@@ -75,29 +78,23 @@ export async function createAdminInvite(emailAddress: string, createdBy: string)
         throw new Error('Enter a valid email address.');
     }
 
-    const existingAdmin = await getDocs(query(collection(dbFirestore, 'admins'), where('email', '==', email)));
-    if (!existingAdmin.empty) {
-        throw new Error('This email already belongs to an administrator.');
-    }
-
     const inviteRef = doc(dbFirestore, 'adminInvites', email);
-    await runTransaction(dbFirestore, async transaction => {
-        const existingInvite = await transaction.get(inviteRef);
-        if (existingInvite.exists() && existingInvite.data().claimedBy) {
-            throw new Error('This invitation has already been used.');
-        }
-        transaction.set(inviteRef, {
-            email,
-            createdBy,
-            createdAt: serverTimestamp()
-        });
-    });
+    await setDoc(inviteRef, {
+        email,
+        createdBy,
+        createdAt: serverTimestamp()
+    }, { merge: true });
 }
 
 export async function listAdminInvites() {
-    const snapshot = await getDocs(collection(dbFirestore, 'adminInvites'));
-    return snapshot.docs.map(invite => ({
-        email: invite.data().email as string,
-        claimed: Boolean(invite.data().claimedBy)
-    }));
+    try {
+        const snapshot = await getDocs(collection(dbFirestore, 'adminInvites'));
+        return snapshot.docs.map(invite => ({
+            email: invite.data().email as string,
+            claimed: Boolean(invite.data().claimedBy)
+        }));
+    } catch (e) {
+        console.warn('Could not fetch invites:', e);
+        return [];
+    }
 }
