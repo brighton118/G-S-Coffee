@@ -1,6 +1,7 @@
 import jsPDF from 'jspdf';
 import autoTable, { RowInput } from 'jspdf-autotable';
 import { format } from 'date-fns';
+import QRCode from 'qrcode';
 import { Worker, AttendanceRecord, PayrollRecord, InventoryItem, InventoryTransaction, FarmExpense, SalesOrder, CloneBatch, ProductionHumidChamber, ProductionSorting, ActivityLog } from '../db';
 import { formatUGX } from './calculations';
 
@@ -879,61 +880,183 @@ export function generateUniversalFarmAuditPDF(logs: ActivityLog[], filterInfo?: 
 }
 
 /**
- * 11. WORKER FARM ID CARD
+ * 11. WORKER FARM ID CARD (G&S FARMS OFFICIAL ID-1 CR80)
  */
-export function generateWorkerIdCardPDF(worker: Worker): void {
+export async function generateWorkerIdCardPDF(worker: Worker): Promise<void> {
     const doc = new jsPDF({
         orientation: 'landscape',
         unit: 'mm',
         format: [85.6, 54] // Standard ID-1 CR80 card size
     });
 
-    // Background Card Styling
-    doc.setFillColor(BRAND_DARK[0], BRAND_DARK[1], BRAND_DARK[2]);
-    doc.rect(0, 0, 85.6, 14, 'F');
+    const cardWidth = 85.6;
+    const cardHeight = 54;
 
-    doc.setFillColor(BRAND_ACCENT[0], BRAND_ACCENT[1], BRAND_ACCENT[2]);
-    doc.rect(0, 14, 85.6, 1.5, 'F');
+    // 1. White Card Background with subtle rounded outer border
+    doc.setFillColor(255, 255, 255);
+    doc.rect(0, 0, cardWidth, cardHeight, 'F');
+    doc.setDrawColor(210, 215, 220);
+    doc.setLineWidth(0.3);
+    doc.roundedRect(0.2, 0.2, cardWidth - 0.4, cardHeight - 0.4, 2.5, 2.5, 'S');
 
-    // Header Text
-    doc.setTextColor(255, 255, 255);
-    doc.setFontSize(8);
+    // 2. Left Green Panel
+    // Starts below top white area: y = 12.5mm down to y = 53.8mm, width = 29.5mm
+    const greenWidth = 29.5;
+    const greenTop = 12.5;
+    doc.setFillColor(116, 164, 52); // #74a434 vibrant farm green
+    doc.rect(0.2, greenTop, greenWidth, cardHeight - greenTop - 0.2, 'F');
+
+    // Bottom decorative watermark / farm plant emblem on green panel
+    const iconCenterX = greenWidth / 2;
+    const iconBottomY = 46.5;
+    doc.setDrawColor(75, 110, 28); // Deep forest green stroke
+    doc.setLineWidth(0.45);
+    
+    // Bottom soil / furrow contours
+    doc.lines([[3.5, 0], [-1.8, 4.5], [-3.5, 0]], iconCenterX - 5, iconBottomY - 4.5, [1, 1], 'S', true);
+    doc.lines([[3.5, 0], [-1.8, 4.5], [-3.5, 0]], iconCenterX + 1.5, iconBottomY - 4.5, [1, 1], 'S', true);
+    doc.line(iconCenterX - 5.5, iconBottomY - 0.3, iconCenterX + 5.5, iconBottomY - 0.3);
+
+    // Top two leaves on watermark
+    doc.lines([[4.5, 3.5], [-4.5, 0]], iconCenterX - 5.5, iconBottomY - 8.5, [1, 1], 'S', true);
+    doc.lines([[4.5, -3.5], [0, 3.5]], iconCenterX + 1, iconBottomY - 5, [1, 1], 'S', true);
+
+    // 3. QR Code Container Box ("the black spot")
+    const qrBoxX = 5.25;
+    const qrBoxY = 8.0;
+    const qrBoxW = 19.0;
+    const qrBoxH = 24.0;
+
+    // Dark charcoal container
+    doc.setFillColor(55, 55, 55); // #373737
+    doc.rect(qrBoxX, qrBoxY, qrBoxW, qrBoxH, 'F');
+
+    // Generate high resolution scannable QR Code
+    try {
+        const qrDataUrl = await QRCode.toDataURL(worker.workerId, {
+            margin: 1,
+            width: 300,
+            color: {
+                dark: '#000000',
+                light: '#ffffff'
+            },
+            errorCorrectionLevel: 'M'
+        });
+        const qrSize = 16.5;
+        const qrX = qrBoxX + (qrBoxW - qrSize) / 2;
+        const qrY = qrBoxY + (qrBoxH - qrSize) / 2;
+        doc.addImage(qrDataUrl, 'PNG', qrX, qrY, qrSize, qrSize);
+    } catch (e) {
+        console.warn('QR Code rendering note:', e);
+        doc.setFillColor(255, 255, 255);
+        doc.rect(qrBoxX + 1.5, qrBoxY + 4, qrBoxW - 3, qrBoxH - 8, 'F');
+        doc.setTextColor(0, 0, 0);
+        doc.setFontSize(6);
+        doc.setFont('helvetica', 'bold');
+        doc.text(worker.workerId, qrBoxX + qrBoxW / 2, qrBoxY + 12, { align: 'center' });
+    }
+
+    // 4. Top Right Logo ("G&S FARMS")
+    const logoX = 56;
+    const logoY = 4.2;
+
+    // Logo Icon: 2 Green leaves + 2 brown soil contour arches
+    // Leaves (Green #74a434)
+    doc.setFillColor(116, 164, 52);
+    doc.lines([[3.2, -3.8], [-0.5, 3.8]], logoX - 11, logoY + 4.2, [1, 1], 'F', true);
+    doc.lines([[3.2, 0], [-2.7, -3.8]], logoX - 7.5, logoY + 4.2, [1, 1], 'F', true);
+
+    // Soil contours (Brown #8a6642)
+    doc.setDrawColor(138, 102, 66);
+    doc.setLineWidth(0.4);
+    doc.lines([[3.0, 0], [-1.5, 3.0], [-3.0, 0]], logoX - 11, logoY + 5.2, [1, 1], 'S', true);
+    doc.lines([[3.0, 0], [-1.5, 3.0], [-3.0, 0]], logoX - 6.5, logoY + 5.2, [1, 1], 'S', true);
+
+    // Text: G&S
+    doc.setTextColor(34, 34, 34);
     doc.setFont('helvetica', 'bold');
-    doc.text('G&S COFFEE FARM', 42.8, 6, { align: 'center' });
+    doc.setFontSize(13);
+    doc.text('G&S', logoX - 2.5, logoY + 4.5);
 
-    doc.setFontSize(5);
-    doc.setFont('helvetica', 'normal');
-    doc.text('OFFICIAL WORKER IDENTIFICATION', 42.8, 10, { align: 'center' });
-
-    // Worker Details
-    doc.setTextColor(TEXT_DARK[0], TEXT_DARK[1], TEXT_DARK[2]);
+    // Text: FARMS
     doc.setFontSize(9);
+    doc.text('FARMS', logoX - 2.5, logoY + 8.5);
+
+    // 5. Role / Company Employee
+    const roleText = worker.position || worker.department || 'Company Employee';
+    doc.setTextColor(24, 24, 27);
     doc.setFont('helvetica', 'bold');
-    doc.text(worker.fullName.toUpperCase(), 42.8, 22, { align: 'center', maxWidth: 75 });
+    doc.setFontSize(7.5);
+    doc.text(roleText, 57.5, 18.5, { align: 'center', maxWidth: 48 });
 
-    doc.setFontSize(6.5);
-    doc.setFont('helvetica', 'normal');
-    doc.text(`ID: ${worker.workerId}`, 10, 28, { maxWidth: 40 });
-    doc.text(`Card: ${worker.farmCardNumber || worker.workerId}`, 10, 33, { maxWidth: 40 });
-    doc.text(`Phone: ${worker.phoneNumber}`, 10, 38, { maxWidth: 40 });
-    doc.text(`Status: ${worker.status}`, 10, 43, { maxWidth: 40 });
-
-    // QR Payload display
-    doc.setDrawColor(200, 200, 200);
-    doc.rect(54, 25, 24, 22);
-    doc.setFontSize(5.5);
+    // 6. Worker Full Name
+    doc.setTextColor(15, 23, 42);
     doc.setFont('helvetica', 'bold');
-    doc.text('SCAN QR CODE', 66, 33, { align: 'center' });
-    doc.setFontSize(5);
-    doc.setFont('helvetica', 'normal');
-    doc.text(worker.workerId, 66, 39, { align: 'center' });
+    const nameFontSize = worker.fullName.length > 22 ? 8.5 : 10;
+    doc.setFontSize(nameFontSize);
+    doc.text(worker.fullName, 57.5, 24, { align: 'center', maxWidth: 50 });
 
-    // Footer
-    doc.setFillColor(245, 245, 245);
-    doc.rect(0, 49, 85.6, 5, 'F');
-    doc.setFontSize(4.5);
-    doc.setTextColor(TEXT_MUTED[0], TEXT_MUTED[1], TEXT_MUTED[2]);
-    doc.text('Authorized by G&S COFFEE Farm Management • Mubende, Uganda', 42.8, 52.5, { align: 'center', maxWidth: 82 });
+    // 7. ID Badge Box
+    // Label "ID:"
+    doc.setTextColor(15, 23, 42);
+    doc.setFont('helvetica', 'bold');
+    doc.setFontSize(8.5);
+    doc.text('ID:', 35, 33.2);
+
+    // Light gray pill
+    const idBoxX = 42;
+    const idBoxY = 29.2;
+    const idBoxW = 38;
+    const idBoxH = 6.6;
+    doc.setFillColor(229, 231, 235); // #e5e7eb
+    doc.roundedRect(idBoxX, idBoxY, idBoxW, idBoxH, 0.8, 0.8, 'F');
+
+    // ID Number inside pill
+    const displayId = worker.farmCardNumber || worker.workerId.replace(/^GSF-W-0*/i, '') || worker.workerId;
+    const formattedIdNumber = displayId.padStart(4, '0');
+    doc.setTextColor(24, 24, 27);
+    doc.setFont('helvetica', 'bold');
+    doc.setFontSize(9.5);
+    doc.text(formattedIdNumber, idBoxX + idBoxW / 2, idBoxY + 4.7, { align: 'center' });
+
+    // 8. Issued and Expiry Dates
+    let issuedDateStr = '01/08/2026';
+    if (worker.dateJoined) {
+        try {
+            const hireD = new Date(worker.dateJoined);
+            if (!isNaN(hireD.getTime())) {
+                issuedDateStr = format(hireD, 'dd/MM/yyyy');
+            }
+        } catch {
+            issuedDateStr = '01/08/2026';
+        }
+    }
+
+    let expiresDateStr = '31/07/2027';
+    if (worker.dateJoined) {
+        try {
+            const hireD = new Date(worker.dateJoined);
+            if (!isNaN(hireD.getTime())) {
+                const expD = new Date(hireD);
+                expD.setFullYear(expD.getFullYear() + 1);
+                expD.setDate(expD.getDate() - 1);
+                expiresDateStr = format(expD, 'dd/MM/yyyy');
+            }
+        } catch {
+            expiresDateStr = '31/07/2027';
+        }
+    }
+
+    // Issued row
+    doc.setTextColor(24, 24, 27);
+    doc.setFont('helvetica', 'bold');
+    doc.setFontSize(7.2);
+    doc.text('Issued:', 35, 40.5);
+    doc.text(issuedDateStr, 50, 40.5);
+
+    // Expires row
+    doc.text('Expires:', 35, 45.8);
+    doc.text(expiresDateStr, 50, 45.8);
 
     doc.save(`GS_FarmCard_${worker.workerId}.pdf`);
 }
