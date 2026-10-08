@@ -16,6 +16,10 @@ import {
 import { notificationService } from '../utils/notificationService';
 import { firestoreSyncService } from '../services/firestoreSync';
 import AdminInvitations from '../components/AdminInvitations';
+import {
+    DEFAULT_ATTENDANCE_SCHEDULE,
+    normalizeAttendanceScheduleSettings
+} from '../utils/attendanceSchedule';
 import './Dashboard.css';
 
 const Settings: React.FC = () => {
@@ -24,8 +28,7 @@ const Settings: React.FC = () => {
         farmLocation: 'Mubende District, Uganda',
         contactEmail: 'admin@gscoffee-farm.com',
         contactPhone: '+256 700 123456',
-        attendanceLateThreshold: '08:00',
-        attendanceLockoutHours: '7',
+        ...DEFAULT_ATTENDANCE_SCHEDULE,
         enableSMSAlerts: true,
         enableEmailAlerts: true,
         notifyLowStock: true,
@@ -41,15 +44,28 @@ const Settings: React.FC = () => {
         const saved = localStorage.getItem('gs_farm_settings');
         if (saved) {
             try {
-                setSettings(JSON.parse(saved));
-            } catch (e) {
-                // ignore
+                const parsedSettings = JSON.parse(saved);
+                setSettings(current => ({
+                    ...current,
+                    ...parsedSettings,
+                    ...normalizeAttendanceScheduleSettings(parsedSettings)
+                }));
+            } catch (error) {
+                console.error('Unable to load farm settings from local storage.', error);
             }
         }
     }, []);
 
     const handleSave = (e: React.FormEvent) => {
         e.preventDefault();
+        if (settings.attendanceTimeInStart >= settings.attendanceTimeInEnd) {
+            alert('The time-in window must end after it starts.');
+            return;
+        }
+        if (settings.attendanceTimeOutStart >= settings.attendanceTimeOutEnd) {
+            alert('The time-out window must end after it starts.');
+            return;
+        }
         localStorage.setItem('gs_farm_settings', JSON.stringify(settings));
         setSaveNotice('Settings and Notification Routing saved successfully.');
         setTimeout(() => setSaveNotice(null), 4000);
@@ -196,14 +212,31 @@ const Settings: React.FC = () => {
                         <h3 style={{ borderBottom: '1px solid var(--color-border)', paddingBottom: '0.75rem', margin: 0, color: 'var(--color-primary-dark)' }}>
                             Operational Thresholds
                         </h3>
-                        <div className="form-group">
-                            <label className="form-label">Daily Attendance Registration Cutoff</label>
-                            <input type="time" className="form-input" value={settings.attendanceLateThreshold} onChange={e => setSettings({ ...settings, attendanceLateThreshold: e.target.value })} />
-                            <small style={{ color: 'var(--color-text-light)', display: 'block', marginTop: '0.25rem' }}>Workers checking in after this time will be flagged as LATE.</small>
+                        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
+                            <div className="form-group">
+                                <label className="form-label">Time-In Window Starts</label>
+                                <input type="time" required className="form-input" value={settings.attendanceTimeInStart} onChange={e => setSettings({ ...settings, attendanceTimeInStart: e.target.value })} />
+                            </div>
+                            <div className="form-group">
+                                <label className="form-label">Time-In Window Ends</label>
+                                <input type="time" required className="form-input" value={settings.attendanceTimeInEnd} onChange={e => setSettings({ ...settings, attendanceTimeInEnd: e.target.value })} />
+                            </div>
                         </div>
+                        <small style={{ color: 'var(--color-text-light)', marginTop: '-0.75rem' }}>Scans after the time-in window ends are recorded as late.</small>
+                        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
+                            <div className="form-group">
+                                <label className="form-label">Time-Out Window Starts</label>
+                                <input type="time" required className="form-input" value={settings.attendanceTimeOutStart} onChange={e => setSettings({ ...settings, attendanceTimeOutStart: e.target.value })} />
+                            </div>
+                            <div className="form-group">
+                                <label className="form-label">Time-Out Window Ends</label>
+                                <input type="time" required className="form-input" value={settings.attendanceTimeOutEnd} onChange={e => setSettings({ ...settings, attendanceTimeOutEnd: e.target.value })} />
+                            </div>
+                        </div>
+                        <small style={{ color: 'var(--color-text-light)', marginTop: '-0.75rem' }}>Scans after the time-out window ends are recorded as overtime.</small>
                         <div className="form-group">
                             <label className="form-label">Scanner Anti-Duplication Lock (Hours)</label>
-                            <input type="number" className="form-input" value={settings.attendanceLockoutHours} onChange={e => setSettings({ ...settings, attendanceLockoutHours: e.target.value })} />
+                            <input type="number" min="0" step="0.25" className="form-input" value={settings.attendanceLockoutHours} onChange={e => setSettings({ ...settings, attendanceLockoutHours: e.target.value })} />
                         </div>
                     </div>
 

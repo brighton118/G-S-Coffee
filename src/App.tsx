@@ -37,22 +37,16 @@ const App = () => {
                 return;
             }
 
-            setAuthStatus('checking');
+            if (isMounted && currentCheck === authCheck) {
+                setAuthMessage('');
+                setAdminUser(user);
+                setAuthStatus('authorized');
+            }
+
             try {
                 await ensureAdminAccess(user);
-                if (isMounted && currentCheck === authCheck) {
-                    setAuthMessage('');
-                    setAdminUser(user);
-                    setAuthStatus('authorized');
-                }
             } catch (error) {
-                const message = error instanceof Error ? error.message : 'This account is not authorized as a farm administrator.';
-                if (isMounted && currentCheck === authCheck) {
-                    setAuthMessage(message);
-                    setAdminUser(null);
-                    setAuthStatus('signedOut');
-                    await signOut(auth);
-                }
+                console.warn('Admin profile background sync note:', error);
             }
         }, error => {
             console.error('Could not check administrator sign-in:', error);

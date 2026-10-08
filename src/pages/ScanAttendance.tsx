@@ -3,12 +3,15 @@ import { Html5QrcodeScanner, Html5QrcodeScanType } from 'html5-qrcode';
 import { db } from '../db';
 import { format } from 'date-fns';
 import { CheckCircle2, AlertTriangle, UserCircle2 } from 'lucide-react';
+import { loadAttendanceScheduleSettings } from '../utils/attendanceSchedule';
+import { calculateWorkingHours, timeToMinutes } from '../utils/calculations';
 import './ScanAttendance.css';
 
 const ScanAttendance = () => {
     const [scanState, setScanState] = useState<'scanning' | 'identifying' | 'identified' | 'success' | 'error' | 'inactive' | 'early_scan'>('scanning');
     const [scannedWorker, setScannedWorker] = useState<any>(null);
     const [todayAttendance, setTodayAttendance] = useState<any>(null);
+    const [earlyScanMessage, setEarlyScanMessage] = useState('');
 
     let html5QrcodeScanner: any = null;
 
@@ -56,34 +59,65 @@ const ScanAttendance = () => {
 
         const today = format(new Date(), 'yyyy-MM-dd');
         const now = format(new Date(), 'HH:mm');
+        const schedule = loadAttendanceScheduleSettings();
         const existingRecord = await db.attendance.where({ workerId, date: today }).first();
 
         let finalRecord = existingRecord;
 
         if (!existingRecord) {
-            // Auto Time In
-            const isLate = now > '08:00';
-            await db.attendance.add({
-                workerId: worker.workerId,
-                date: today,
-                timeIn: now,
-                status: isLate ? 'Late' : 'Present',
-                isLate
-            });
-            finalRecord = await db.attendance.where({ workerId, date: today }).first();
-            setTodayAttendance(finalRecord);
-            setScanState('success');
+            if (now < schedule.attendanceTimeInStart) {
+                setEarlyScanMessage(`Time-in starts at ${schedule.attendanceTimeInStart}.`);
+                setScanState('early_scan');
+            } else {
+                // Record a check-in and flag arrivals after the configured window.
+                const isLate = now > schedule.attendanceTimeInEnd;
+                await db.attendance.add({
+                    workerId: worker.workerId,
+                    date: today,
+                    timeIn: now,
+                    status: isLate ? 'Late' : 'Present',
+                    isLate
+                });
+                finalRecord = await db.attendance.where({ workerId, date: today }).first();
+                setTodayAttendance(finalRecord);
+                setScanState('success');
+            }
         } else if (existingRecord && !existingRecord.timeOut) {
-            // Auto Time Out protect against accidental immediate re-scans (7 hr minimum)
+            // Prevent accidental early re-scans and enforce the configured time-out window.
             const timeInDate = new Date(`${today}T${existingRecord.timeIn}:00`);
             const nowDate = new Date(`${today}T${now}:00`);
             const hoursDiff = (nowDate.getTime() - timeInDate.getTime()) / (1000 * 60 * 60);
+            const minimumHours = Number(schedule.attendanceLockoutHours);
 
-            if (hoursDiff < 7) {
+            if (hoursDiff < minimumHours || now < schedule.attendanceTimeOutStart) {
+                setEarlyScanMessage(
+                    hoursDiff < minimumHours
+                        ? `Already timed in. Wait at least ${minimumHours} hours before timing out.`
+                        : `Time-out starts at ${schedule.attendanceTimeOutStart}.`
+                );
                 setTodayAttendance(existingRecord);
                 setScanState('early_scan');
             } else {
-                await db.attendance.update(existingRecord.id!, { timeOut: now });
+                const overtimeMinutes = Math.max(
+                    0,
+                    timeToMinutes(now) - timeToMinutes(schedule.attendanceTimeOutEnd)
+                );
+                const { actualHours } = calculateWorkingHours(
+                    existingRecord.timeIn,
+                    now,
+                    60
+                );
+                const overtimeHours = Number((overtimeMinutes / 60).toFixed(2));
+
+                await db.attendance.update(existingRecord.id!, {
+                    timeOut: now,
+                    actualHours,
+                    ...(overtimeMinutes > 0 ? {
+                        overtimeHours,
+                        overtimeStatus: 'Pending',
+                        overtimeReason: `Scanned out after the configured time-out window (${schedule.attendanceTimeOutEnd}).`
+                    } : {})
+                });
                 finalRecord = await db.attendance.get(existingRecord.id!);
                 setTodayAttendance(finalRecord);
                 setScanState('success');
@@ -145,13 +179,15 @@ const ScanAttendance = () => {
                         {scanState === 'success' && (
                             <div className="success-banner">
                                 <CheckCircle2 size={20} style={{ marginRight: '8px' }} />
-                                {todayAttendance?.timeOut ? 'TIME OUT RECORDED' : 'ATTENDANCE RECORDED'}
+                                {todayAttendance?.overtimeStatus === 'Pending'
+                                    ? `TIME OUT RECORDED · ${todayAttendance.overtimeHours} OVERTIME HOURS PENDING`
+                                    : todayAttendance?.timeOut ? 'TIME OUT RECORDED' : 'ATTENDANCE RECORDED'}
                             </div>
                         )}
                         {scanState === 'early_scan' && (
                             <div className="success-banner" style={{ background: '#fef08a', color: '#854d0e', borderColor: '#eab308' }}>
                                 <AlertTriangle size={20} style={{ marginRight: '8px' }} />
-                                ALREADY TIMED IN (Requires full 7 hours to Time Out)
+                                {earlyScanMessage}
                             </div>
                         )}
 

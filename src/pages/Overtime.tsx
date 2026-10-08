@@ -14,6 +14,7 @@ import {
 import { format } from 'date-fns';
 import { generateOvertimePDF } from '../utils/pdfGenerator';
 import { DEFAULT_OVERTIME_RULES, formatUGX } from '../utils/calculations';
+import { loadAttendanceScheduleSettings } from '../utils/attendanceSchedule';
 
 interface OvertimeProps {
     embedded?: boolean;
@@ -29,6 +30,7 @@ const Overtime: React.FC<OvertimeProps> = ({ embedded = false }) => {
     const [approvedHoursInput, setApprovedHoursInput] = useState<number>(0);
     const [approvalReason, setApprovalReason] = useState<string>('');
     const [supervisorName, setSupervisorName] = useState<string>('Farm Supervisor');
+    const attendanceSchedule = loadAttendanceScheduleSettings();
 
     // Queries
     const rulesConfig = useLiveQuery(async () => {
@@ -314,7 +316,7 @@ const Overtime: React.FC<OvertimeProps> = ({ embedded = false }) => {
                                                 In: <strong>{record.timeIn || '--:--'}</strong> • Out: <strong>{record.timeOut || '--:--'}</strong>
                                             </div>
                                             <div className="text-light" style={{ fontSize: '0.75rem' }}>
-                                                Actual: {record.actualHours || 0} hrs (Shift: {rulesConfig.shiftStartTime || '08:00'} - {rulesConfig.shiftEndTime || '17:00'})
+                                                Actual: {record.actualHours || 0} hrs (Overtime after {attendanceSchedule.attendanceTimeOutEnd})
                                             </div>
                                         </td>
                                         <td>
