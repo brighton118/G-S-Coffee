@@ -1058,6 +1058,95 @@ export async function generateWorkerIdCardPDF(worker: Worker): Promise<void> {
     doc.text('Expires:', 35, 45.8);
     doc.text(expiresDateStr, 50, 45.8);
 
+    // ==========================================
+    // PAGE 2: BACK SIDE OF WORKER ID CARD
+    // ==========================================
+    doc.addPage([cardWidth, cardHeight], 'landscape');
+
+    // 1. White Top Header Section (y = 0 to 18mm)
+    doc.setFillColor(255, 255, 255);
+    doc.rect(0, 0, cardWidth, cardHeight, 'F');
+    doc.setDrawColor(210, 215, 220);
+    doc.setLineWidth(0.3);
+    doc.roundedRect(0.2, 0.2, cardWidth - 0.4, cardHeight - 0.4, 2.5, 2.5, 'S');
+
+    // Top Centered Brand Logo ("G&S FARMS")
+    const backLogoX = 41.5;
+    const backLogoY = 4.0;
+
+    // Logo Icon: 2 Green leaves + 2 brown soil contours
+    doc.setFillColor(116, 164, 52);
+    doc.lines([[3.2, -3.8], [-0.5, 3.8]], backLogoX - 11, backLogoY + 4.2, [1, 1], 'F', true);
+    doc.lines([[3.2, 0], [-2.7, -3.8]], backLogoX - 7.5, backLogoY + 4.2, [1, 1], 'F', true);
+
+    doc.setDrawColor(138, 102, 66);
+    doc.setLineWidth(0.4);
+    doc.lines([[3.0, 0], [-1.5, 3.0], [-3.0, 0]], backLogoX - 11, backLogoY + 5.2, [1, 1], 'S', true);
+    doc.lines([[3.0, 0], [-1.5, 3.0], [-3.0, 0]], backLogoX - 6.5, backLogoY + 5.2, [1, 1], 'S', true);
+
+    // Text: G&S
+    doc.setTextColor(34, 34, 34);
+    doc.setFont('helvetica', 'bold');
+    doc.setFontSize(13);
+    doc.text('G&S', backLogoX - 2.5, backLogoY + 4.5);
+
+    // Text: FARMS
+    doc.setFontSize(9);
+    doc.text('FARMS', backLogoX - 2.5, backLogoY + 8.5);
+
+    // 2. Green Lower Section (y = 18mm to 53.8mm)
+    const backGreenTop = 18.0;
+    doc.setFillColor(116, 164, 52); // #74a434 vibrant farm green
+    doc.rect(0.2, backGreenTop, cardWidth - 0.4, cardHeight - backGreenTop - 0.2, 'F');
+
+    // Decorative Watermark Emblem on Far Right
+    doc.setFillColor(55, 75, 25);
+    doc.setDrawColor(55, 75, 25);
+    doc.setLineWidth(0.6);
+    doc.lines([[-8, 6], [0, -9], [8, 3]], cardWidth - 3, 28, [1, 1], 'F', true);
+    doc.lines([[-10, 0], [4, 8], [6, 0]], cardWidth - 3, 41, [1, 1], 'S', true);
+    doc.lines([[-8, 0], [3, 6], [5, 0]], cardWidth - 3, 44, [1, 1], 'S', true);
+
+    // 3. Signature & Issued By Form Boxes
+    // Signature Label & White Box
+    doc.setTextColor(255, 255, 255);
+    doc.setFont('helvetica', 'bold');
+    doc.setFontSize(8.0);
+    doc.text('Signature:', 8.5, 25.8);
+
+    const sigBoxX = 26.0;
+    const sigBoxY = 21.0;
+    const sigBoxW = 38.5;
+    const sigBoxH = 6.8;
+    doc.setFillColor(255, 255, 255);
+    doc.rect(sigBoxX, sigBoxY, sigBoxW, sigBoxH, 'F');
+
+    // Issued By Label & White Box with Signature
+    doc.setTextColor(255, 255, 255);
+    doc.setFont('helvetica', 'bold');
+    doc.setFontSize(8.0);
+    doc.text('Issued By:', 8.5, 34.5);
+
+    const issuedBoxY = 29.5;
+    doc.setFillColor(255, 255, 255);
+    doc.rect(sigBoxX, issuedBoxY, sigBoxW, sigBoxH, 'F');
+
+    // Signature Stroke in Issued By Box
+    doc.setDrawColor(30, 41, 59);
+    doc.setLineWidth(0.4);
+    doc.lines([[3, -2.5], [1.5, 3.5], [2.5, -2], [3.5, 2], [5, -1], [2.5, 1]], sigBoxX + 7, issuedBoxY + 4.8, [1, 1], 'S', false);
+    doc.circle(sigBoxX + 20, issuedBoxY + 3.6, 1.6, 'S');
+
+    // 4. Return Contact Details at the Bottom (White Centered Text)
+    doc.setTextColor(255, 255, 255);
+    doc.setFont('helvetica', 'bold');
+    doc.setFontSize(5.8);
+    const textCenterX = 42.8;
+    doc.text('If found, please return to G&S Farms', textCenterX, 40.5, { align: 'center' });
+    doc.text('Rwenshanku, Bubaare', textCenterX, 44.0, { align: 'center' });
+    doc.text('+256 789989420', textCenterX, 47.5, { align: 'center' });
+    doc.text('gs.farms.ug@gmail.com', textCenterX, 51.0, { align: 'center' });
+
     doc.save(`GS_FarmCard_${worker.workerId}.pdf`);
 }
 

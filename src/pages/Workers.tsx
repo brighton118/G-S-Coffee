@@ -24,6 +24,7 @@ const Workers: React.FC = () => {
     const [statusFilter, setStatusFilter] = useState<'All' | 'Active' | 'Inactive'>('All');
     const [showAddModal, setShowAddModal] = useState(false);
     const [selectedWorkerForCard, setSelectedWorkerForCard] = useState<Worker | null>(null);
+    const [cardSide, setCardSide] = useState<'front' | 'back'>('front');
     const [editingWorker, setEditingWorker] = useState<Worker | null>(null);
 
     // Simplified Registration Form State
@@ -466,8 +467,8 @@ const Workers: React.FC = () => {
             {/* Modal: Farm Card Preview & Print */}
             {selectedWorkerForCard && (
                 <div className="modal-overlay">
-                    <div className="modal-content card" style={{ maxWidth: '420px', width: '100%' }}>
-                        <div className="modal-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
+                    <div className="modal-content card" style={{ maxWidth: '440px', width: '100%' }}>
+                        <div className="modal-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.75rem' }}>
                             <h2 style={{ margin: 0, fontSize: '1.2rem' }}>Farm Identification Card</h2>
                             <button
                                 className="btn btn-secondary"
@@ -478,162 +479,284 @@ const Workers: React.FC = () => {
                             </button>
                         </div>
 
-                        {/* Visual Card Component matching G&S FARMS reference design */}
-                        <div
-                            style={{
-                                width: '100%',
-                                maxWidth: '420px',
-                                minHeight: '260px',
-                                margin: '0 auto',
-                                backgroundColor: '#ffffff',
-                                borderRadius: '16px',
-                                border: '1px solid #d1d5db',
-                                position: 'relative',
-                                overflow: 'hidden',
-                                boxShadow: '0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -4px rgba(0, 0, 0, 0.1)',
-                                display: 'flex'
-                            }}
-                        >
-                            {/* Left Green Section */}
-                            <div
+                        {/* Front / Back Side Switcher Tabs */}
+                        <div style={{ display: 'flex', gap: '8px', marginBottom: '1rem', backgroundColor: '#f1f5f9', padding: '4px', borderRadius: '8px' }}>
+                            <button
+                                type="button"
                                 style={{
-                                    position: 'absolute',
-                                    left: 0,
-                                    top: '56px',
-                                    bottom: 0,
-                                    width: '34%',
-                                    backgroundColor: '#74a434',
-                                    display: 'flex',
-                                    flexDirection: 'column',
-                                    justifyContent: 'flex-end',
-                                    alignItems: 'center',
-                                    paddingBottom: '14px'
+                                    flex: 1,
+                                    padding: '6px 12px',
+                                    borderRadius: '6px',
+                                    border: 'none',
+                                    fontWeight: 700,
+                                    fontSize: '0.85rem',
+                                    cursor: 'pointer',
+                                    backgroundColor: cardSide === 'front' ? '#ffffff' : 'transparent',
+                                    color: cardSide === 'front' ? 'var(--color-primary-dark)' : '#64748b',
+                                    boxShadow: cardSide === 'front' ? '0 1px 3px rgba(0,0,0,0.1)' : 'none'
                                 }}
+                                onClick={() => setCardSide('front')}
                             >
-                                {/* Stylized Farm Plant Emblem Watermark */}
-                                <svg width="46" height="42" viewBox="0 0 24 24" fill="none" stroke="#4a681c" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                                    <path d="M12 10a6 6 0 0 0-6-6H3v3a6 6 0 0 0 6 6h3" />
-                                    <path d="M12 10a6 6 0 0 1 6-6h3v3a6 6 0 0 1-6 6h-3" />
-                                    <path d="M4 18h16" />
-                                    <path d="M7 21h10" />
-                                    <path d="M12 10v8" />
-                                </svg>
-                            </div>
+                                Front Side
+                            </button>
+                            <button
+                                type="button"
+                                style={{
+                                    flex: 1,
+                                    padding: '6px 12px',
+                                    borderRadius: '6px',
+                                    border: 'none',
+                                    fontWeight: 700,
+                                    fontSize: '0.85rem',
+                                    cursor: 'pointer',
+                                    backgroundColor: cardSide === 'back' ? '#ffffff' : 'transparent',
+                                    color: cardSide === 'back' ? 'var(--color-primary-dark)' : '#64748b',
+                                    boxShadow: cardSide === 'back' ? '0 1px 3px rgba(0,0,0,0.1)' : 'none'
+                                }}
+                                onClick={() => setCardSide('back')}
+                            >
+                                Back Side
+                            </button>
+                        </div>
 
-                            {/* Dark QR Code Box Container ("the black spot") */}
+                        {/* Visual Card Component (Front or Back) */}
+                        {cardSide === 'front' ? (
                             <div
                                 style={{
-                                    position: 'absolute',
-                                    left: '5.5%',
-                                    top: '14%',
-                                    width: '23%',
-                                    height: '45%',
-                                    backgroundColor: '#373737',
-                                    borderRadius: '4px',
-                                    display: 'flex',
-                                    alignItems: 'center',
-                                    justifyContent: 'center',
-                                    padding: '4px',
-                                    boxShadow: '0 2px 4px rgba(0,0,0,0.25)',
-                                    zIndex: 2
+                                    width: '100%',
+                                    maxWidth: '420px',
+                                    minHeight: '260px',
+                                    margin: '0 auto',
+                                    backgroundColor: '#ffffff',
+                                    borderRadius: '16px',
+                                    border: '1px solid #d1d5db',
+                                    position: 'relative',
+                                    overflow: 'hidden',
+                                    boxShadow: '0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -4px rgba(0, 0, 0, 0.1)',
+                                    display: 'flex'
                                 }}
                             >
-                                <div style={{ backgroundColor: '#ffffff', padding: '3px', borderRadius: '3px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                                    <QRCodeSVG value={selectedWorkerForCard.workerId} size={70} fgColor="#000000" bgColor="#ffffff" />
+                                {/* Left Green Section */}
+                                <div
+                                    style={{
+                                        position: 'absolute',
+                                        left: 0,
+                                        top: '56px',
+                                        bottom: 0,
+                                        width: '34%',
+                                        backgroundColor: '#74a434',
+                                        display: 'flex',
+                                        flexDirection: 'column',
+                                        justifyContent: 'flex-end',
+                                        alignItems: 'center',
+                                        paddingBottom: '14px'
+                                    }}
+                                >
+                                    {/* Stylized Farm Plant Emblem Watermark */}
+                                    <svg width="46" height="42" viewBox="0 0 24 24" fill="none" stroke="#4a681c" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                                        <path d="M12 10a6 6 0 0 0-6-6H3v3a6 6 0 0 0 6 6h3" />
+                                        <path d="M12 10a6 6 0 0 1 6-6h3v3a6 6 0 0 1-6 6h-3" />
+                                        <path d="M4 18h16" />
+                                        <path d="M7 21h10" />
+                                        <path d="M12 10v8" />
+                                    </svg>
+                                </div>
+
+                                {/* Dark QR Code Box Container ("the black spot") */}
+                                <div
+                                    style={{
+                                        position: 'absolute',
+                                        left: '5.5%',
+                                        top: '14%',
+                                        width: '23%',
+                                        height: '45%',
+                                        backgroundColor: '#373737',
+                                        borderRadius: '4px',
+                                        display: 'flex',
+                                        alignItems: 'center',
+                                        justifyContent: 'center',
+                                        padding: '4px',
+                                        boxShadow: '0 2px 4px rgba(0,0,0,0.25)',
+                                        zIndex: 2
+                                    }}
+                                >
+                                    <div style={{ backgroundColor: '#ffffff', padding: '3px', borderRadius: '3px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                                        <QRCodeSVG value={selectedWorkerForCard.workerId} size={70} fgColor="#000000" bgColor="#ffffff" />
+                                    </div>
+                                </div>
+
+                                {/* Right Card Information */}
+                                <div
+                                    style={{
+                                        marginLeft: '34%',
+                                        width: '66%',
+                                        padding: '16px 18px',
+                                        display: 'flex',
+                                        flexDirection: 'column',
+                                        alignItems: 'center',
+                                        textAlign: 'center'
+                                    }}
+                                >
+                                    {/* Top Right Brand Logo */}
+                                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '8px' }}>
+                                        <svg width="28" height="28" viewBox="0 0 24 24" fill="none">
+                                            <path d="M12 10a5 5 0 0 0-5-5H3v3a5 5 0 0 0 5 5h4" fill="#74a434" />
+                                            <path d="M12 10a5 5 0 0 1 5-5h4v3a5 5 0 0 1-5 5h-4" fill="#74a434" />
+                                            <path d="M5 17c2 3 5 3 7 3s5 0 7-3" stroke="#8a6642" strokeWidth="2.5" strokeLinecap="round" />
+                                            <path d="M8 20c1.5 1.5 3 1.5 4 1.5s2.5 0 4-1.5" stroke="#8a6642" strokeWidth="2" strokeLinecap="round" />
+                                        </svg>
+                                        <div style={{ textAlign: 'left', lineHeight: 1 }}>
+                                            <div style={{ fontWeight: 900, fontSize: '1.1rem', color: '#1f2937', letterSpacing: '-0.5px' }}>G&S</div>
+                                            <div style={{ fontWeight: 800, fontSize: '0.7rem', color: '#1f2937', letterSpacing: '2px' }}>FARMS</div>
+                                        </div>
+                                    </div>
+
+                                    {/* Role Title */}
+                                    <div style={{ fontSize: '0.8rem', fontWeight: 700, color: '#1e293b', marginBottom: '3px' }}>
+                                        {selectedWorkerForCard.position || selectedWorkerForCard.department || 'Company Employee'}
+                                    </div>
+
+                                    {/* Full Name */}
+                                    <div style={{ fontSize: '1.05rem', fontWeight: 800, color: '#0f172a', marginBottom: '10px', wordBreak: 'break-word', maxWidth: '230px' }}>
+                                        {selectedWorkerForCard.fullName}
+                                    </div>
+
+                                    {/* ID Badge Box */}
+                                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px', width: '100%', marginBottom: '10px' }}>
+                                        <span style={{ fontSize: '0.85rem', fontWeight: 800, color: '#0f172a' }}>ID:</span>
+                                        <div
+                                            style={{
+                                                flex: 1,
+                                                backgroundColor: '#e5e7eb',
+                                                padding: '4px 10px',
+                                                borderRadius: '6px',
+                                                fontWeight: 800,
+                                                fontSize: '0.95rem',
+                                                color: '#1f2937',
+                                                letterSpacing: '1px'
+                                            }}
+                                        >
+                                            {(selectedWorkerForCard.farmCardNumber || selectedWorkerForCard.workerId.replace(/^GSF-W-0*/i, '') || selectedWorkerForCard.workerId).padStart(4, '0')}
+                                        </div>
+                                    </div>
+
+                                    {/* Issued & Expiry Dates */}
+                                    <div style={{ width: '100%', display: 'flex', flexDirection: 'column', gap: '3px', fontSize: '0.75rem', textAlign: 'left' }}>
+                                        <div style={{ display: 'flex', justifyContent: 'flex-start', gap: '12px' }}>
+                                            <span style={{ fontWeight: 800, color: '#1e293b', minWidth: '55px' }}>Issued:</span>
+                                            <span style={{ fontWeight: 700, color: '#1e293b' }}>
+                                                {selectedWorkerForCard.dateJoined
+                                                    ? format(new Date(selectedWorkerForCard.dateJoined), 'dd/MM/yyyy')
+                                                    : '01/08/2026'}
+                                            </span>
+                                        </div>
+                                        <div style={{ display: 'flex', justifyContent: 'flex-start', gap: '12px' }}>
+                                            <span style={{ fontWeight: 800, color: '#1e293b', minWidth: '55px' }}>Expires:</span>
+                                            <span style={{ fontWeight: 700, color: '#1e293b' }}>
+                                                {(() => {
+                                                    try {
+                                                        const baseD = selectedWorkerForCard.dateJoined ? new Date(selectedWorkerForCard.dateJoined) : new Date('2026-08-01');
+                                                        const expD = new Date(baseD);
+                                                        expD.setFullYear(expD.getFullYear() + 1);
+                                                        expD.setDate(expD.getDate() - 1);
+                                                        return format(expD, 'dd/MM/yyyy');
+                                                    } catch {
+                                                        return '31/07/2027';
+                                                    }
+                                                })()}
+                                            </span>
+                                        </div>
+                                    </div>
                                 </div>
                             </div>
-
-                            {/* Right Card Information */}
+                        ) : (
+                            /* Back Side of Card */
                             <div
                                 style={{
-                                    marginLeft: '34%',
-                                    width: '66%',
-                                    padding: '16px 18px',
+                                    width: '100%',
+                                    maxWidth: '420px',
+                                    minHeight: '260px',
+                                    margin: '0 auto',
+                                    backgroundColor: '#ffffff',
+                                    borderRadius: '16px',
+                                    border: '1px solid #d1d5db',
+                                    position: 'relative',
+                                    overflow: 'hidden',
+                                    boxShadow: '0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -4px rgba(0, 0, 0, 0.1)',
                                     display: 'flex',
-                                    flexDirection: 'column',
-                                    alignItems: 'center',
-                                    textAlign: 'center'
+                                    flexDirection: 'column'
                                 }}
                             >
-                                {/* Top Right Brand Logo */}
-                                <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '8px' }}>
-                                    <svg width="28" height="28" viewBox="0 0 24 24" fill="none">
+                                {/* Top White Header with Centered Logo */}
+                                <div style={{ height: '70px', display: 'flex', justifyContent: 'center', alignItems: 'center', backgroundColor: '#ffffff', gap: '8px' }}>
+                                    <svg width="30" height="30" viewBox="0 0 24 24" fill="none">
                                         <path d="M12 10a5 5 0 0 0-5-5H3v3a5 5 0 0 0 5 5h4" fill="#74a434" />
                                         <path d="M12 10a5 5 0 0 1 5-5h4v3a5 5 0 0 1-5 5h-4" fill="#74a434" />
                                         <path d="M5 17c2 3 5 3 7 3s5 0 7-3" stroke="#8a6642" strokeWidth="2.5" strokeLinecap="round" />
                                         <path d="M8 20c1.5 1.5 3 1.5 4 1.5s2.5 0 4-1.5" stroke="#8a6642" strokeWidth="2" strokeLinecap="round" />
                                     </svg>
                                     <div style={{ textAlign: 'left', lineHeight: 1 }}>
-                                        <div style={{ fontWeight: 900, fontSize: '1.1rem', color: '#1f2937', letterSpacing: '-0.5px' }}>G&S</div>
-                                        <div style={{ fontWeight: 800, fontSize: '0.7rem', color: '#1f2937', letterSpacing: '2px' }}>FARMS</div>
+                                        <div style={{ fontWeight: 900, fontSize: '1.15rem', color: '#1f2937', letterSpacing: '-0.5px' }}>G&S</div>
+                                        <div style={{ fontWeight: 800, fontSize: '0.75rem', color: '#1f2937', letterSpacing: '2px' }}>FARMS</div>
                                     </div>
                                 </div>
 
-                                {/* Role Title */}
-                                <div style={{ fontSize: '0.8rem', fontWeight: 700, color: '#1e293b', marginBottom: '3px' }}>
-                                    {selectedWorkerForCard.position || selectedWorkerForCard.department || 'Company Employee'}
-                                </div>
-
-                                {/* Full Name */}
-                                <div style={{ fontSize: '1.05rem', fontWeight: 800, color: '#0f172a', marginBottom: '10px', wordBreak: 'break-word', maxWidth: '230px' }}>
-                                    {selectedWorkerForCard.fullName}
-                                </div>
-
-                                {/* ID Badge Box */}
-                                <div style={{ display: 'flex', alignItems: 'center', gap: '8px', width: '100%', marginBottom: '10px' }}>
-                                    <span style={{ fontSize: '0.85rem', fontWeight: 800, color: '#0f172a' }}>ID:</span>
-                                    <div
-                                        style={{
-                                            flex: 1,
-                                            backgroundColor: '#e5e7eb',
-                                            padding: '4px 10px',
-                                            borderRadius: '6px',
-                                            fontWeight: 800,
-                                            fontSize: '0.95rem',
-                                            color: '#1f2937',
-                                            letterSpacing: '1px'
-                                        }}
-                                    >
-                                        {(selectedWorkerForCard.farmCardNumber || selectedWorkerForCard.workerId.replace(/^GSF-W-0*/i, '') || selectedWorkerForCard.workerId).padStart(4, '0')}
+                                {/* Lower Green Field */}
+                                <div
+                                    style={{
+                                        flex: 1,
+                                        backgroundColor: '#74a434',
+                                        padding: '16px 20px',
+                                        position: 'relative',
+                                        display: 'flex',
+                                        flexDirection: 'column',
+                                        justifyContent: 'space-between'
+                                    }}
+                                >
+                                    {/* Watermark Emblem on Right Edge */}
+                                    <div style={{ position: 'absolute', right: '-10px', top: '10px', bottom: '0px', pointerEvents: 'none', opacity: 0.9 }}>
+                                        <svg width="85" height="150" viewBox="0 0 24 40" fill="none">
+                                            <path d="M22 6c-8 3-12 10-12 16 0 4 2 7 5 9" stroke="#3d5616" strokeWidth="2.5" strokeLinecap="round" />
+                                            <path d="M10 28c3 4 7 5 12 5" stroke="#3d5616" strokeWidth="2.5" strokeLinecap="round" />
+                                            <path d="M14 34c2 3 4 4 8 4" stroke="#3d5616" strokeWidth="2.5" strokeLinecap="round" />
+                                        </svg>
                                     </div>
-                                </div>
 
-                                {/* Issued & Expiry Dates */}
-                                <div style={{ width: '100%', display: 'flex', flexDirection: 'column', gap: '3px', fontSize: '0.75rem', textAlign: 'left' }}>
-                                    <div style={{ display: 'flex', justifyContent: 'flex-start', gap: '12px' }}>
-                                        <span style={{ fontWeight: 800, color: '#1e293b', minWidth: '55px' }}>Issued:</span>
-                                        <span style={{ fontWeight: 700, color: '#1e293b' }}>
-                                            {selectedWorkerForCard.dateJoined
-                                                ? format(new Date(selectedWorkerForCard.dateJoined), 'dd/MM/yyyy')
-                                                : '01/08/2026'}
-                                        </span>
+                                    {/* Signature and Issued By Form Fields */}
+                                    <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', zIndex: 1, maxWidth: '280px' }}>
+                                        <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                                            <span style={{ color: '#ffffff', fontWeight: 800, fontSize: '0.85rem', width: '80px' }}>Signature:</span>
+                                            <div style={{ flex: 1, height: '28px', backgroundColor: '#ffffff', borderRadius: '4px' }}></div>
+                                        </div>
+                                        <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                                            <span style={{ color: '#ffffff', fontWeight: 800, fontSize: '0.85rem', width: '80px' }}>Issued By:</span>
+                                            <div style={{ flex: 1, height: '28px', backgroundColor: '#ffffff', borderRadius: '4px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                                                {/* Authorized signature script */}
+                                                <svg width="100" height="22" viewBox="0 0 100 24" fill="none" stroke="#1e293b" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+                                                    <path d="M10 16c5-10 10-12 12-4 2 8 6 3 10-2s8 6 12 2c4-4 8 2 12-1 4-3 8-1 12 3" />
+                                                    <circle cx="65" cy="12" r="6" stroke="#1e293b" strokeWidth="1.5" />
+                                                </svg>
+                                            </div>
+                                        </div>
                                     </div>
-                                    <div style={{ display: 'flex', justifyContent: 'flex-start', gap: '12px' }}>
-                                        <span style={{ fontWeight: 800, color: '#1e293b', minWidth: '55px' }}>Expires:</span>
-                                        <span style={{ fontWeight: 700, color: '#1e293b' }}>
-                                            {(() => {
-                                                try {
-                                                    const baseD = selectedWorkerForCard.dateJoined ? new Date(selectedWorkerForCard.dateJoined) : new Date('2026-08-01');
-                                                    const expD = new Date(baseD);
-                                                    expD.setFullYear(expD.getFullYear() + 1);
-                                                    expD.setDate(expD.getDate() - 1);
-                                                    return format(expD, 'dd/MM/yyyy');
-                                                } catch {
-                                                    return '31/07/2027';
-                                                }
-                                            })()}
-                                        </span>
+
+                                    {/* Return Contact Details */}
+                                    <div style={{ textAlign: 'center', color: '#ffffff', fontSize: '0.72rem', fontWeight: 700, lineHeight: 1.4, zIndex: 1, marginTop: '8px' }}>
+                                        <div>If found, please return to G&S Farms</div>
+                                        <div>Rwenshanku, Bubaare</div>
+                                        <div>+256 789989420</div>
+                                        <div>gs.farms.ug@gmail.com</div>
                                     </div>
                                 </div>
                             </div>
-                        </div>
+                        )}
 
                         <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '0.75rem', marginTop: '1.25rem' }}>
                             <button
                                 className="btn btn-primary"
-                                onClick={() => generateWorkerIdCardPDF(selectedWorkerForCard)}
+                                onClick={() => void generateWorkerIdCardPDF(selectedWorkerForCard)}
                             >
-                                <Printer size={18} /> Download Printable PDF Card
+                                <Printer size={18} /> Download Printable Card (Front & Back)
                             </button>
                             <button
                                 className="btn btn-secondary"
