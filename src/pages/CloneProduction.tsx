@@ -21,7 +21,7 @@ import { generateProductionBatchMasterPDF } from '../utils/pdfGenerator';
 import { validateSortingReconciliation } from '../utils/calculations';
 import './CloneProduction.css';
 
-const ALLOWED_VARIETIES: CloneVarietyType[] = ['KR1', 'KR3', 'KR4', 'KR5', 'KR6', 'KR7', 'KR8', 'KR9', 'KR10'];
+const ALLOWED_VARIETIES: CloneVarietyType[] = ['KR1', 'KR3', 'KR4', 'KR5', 'KR6', 'KR7', 'KR8', 'KR9', 'KR10', 'A', 'C', 'D'];
 
 const CloneProduction: React.FC = () => {
     const [selectedVariety, setSelectedVariety] = useState<string>('all');
@@ -44,7 +44,6 @@ const CloneProduction: React.FC = () => {
     const [advanceData, setAdvanceData] = useState({
         quantityReceived: 0,
         quantityRetained: 0, // In sorting: nursery stock; In other stages: advancing quantity
-        forSaleQuantity: 0, // Only in sorting
         quantityLost: 0,
         lossReason: 'Normal desiccation / fungal infection',
         responsibleWorker: 'John Kato',
@@ -64,14 +63,20 @@ const CloneProduction: React.FC = () => {
     const todayStr = format(new Date(), 'yyyy-MM-dd');
 
     // Filter Batches
-    const filteredBatches = batches.filter(b => {
-        const matchesVariety = selectedVariety === 'all' || b.variety === selectedVariety;
-        const matchesSearch =
-            b.batchId.toLowerCase().includes(searchTerm.toLowerCase()) ||
-            b.variety.toLowerCase().includes(searchTerm.toLowerCase()) ||
-            (b.personResponsible || '').toLowerCase().includes(searchTerm.toLowerCase());
-        return matchesVariety && matchesSearch;
-    });
+    const filteredBatches = batches
+        .filter(b => {
+            const matchesVariety = selectedVariety === 'all' || b.variety === selectedVariety;
+            const matchesSearch =
+                b.batchId.toLowerCase().includes(searchTerm.toLowerCase()) ||
+                b.variety.toLowerCase().includes(searchTerm.toLowerCase()) ||
+                (b.personResponsible || '').toLowerCase().includes(searchTerm.toLowerCase());
+            return matchesVariety && matchesSearch;
+        })
+        .sort((a, b) =>
+            b.dateObtained.localeCompare(a.dateObtained) ||
+            (b.createdAt || '').localeCompare(a.createdAt || '') ||
+            b.batchId.localeCompare(a.batchId)
+        );
 
     // Handle Creating a New Batch
     const handleCreateBatch = async (e: React.FormEvent) => {
@@ -123,7 +128,6 @@ const CloneProduction: React.FC = () => {
         setAdvanceData({
             quantityReceived: batch.currentQuantity,
             quantityRetained: batch.currentQuantity,
-            forSaleQuantity: 0,
             quantityLost: 0,
             lossReason: '',
             responsibleWorker: batch.personResponsible || '',
@@ -280,16 +284,13 @@ const CloneProduction: React.FC = () => {
             });
 
         } else if (advancingBatch.currentStage === 'Sorting') {
-            // Strict Sorting Reconciliation Rule:
-            // Quantity Received = Retained Quantity + Quantity Removed for Sale + Lost Quantity
-            // Total Validated Quantity = Retained Quantity + Quantity Removed for Sale
+            // Sorting reconciliation: Quantity Received = Retained Quantity + Lost Quantity.
             const retained = Number(advanceData.quantityRetained);
-            const forSale = Number(advanceData.forSaleQuantity);
             const lost = Number(advanceData.quantityLost);
 
-            const recon = validateSortingReconciliation(qtyReceived, retained, forSale, lost);
+            const recon = validateSortingReconciliation(qtyReceived, retained, lost);
             if (!recon.isValid) {
-                alert(`Strict Reconciliation Error: Received (${qtyReceived}) != Retained (${retained}) + For Sale (${forSale}) + Lost (${lost}). Difference: ${recon.difference}`);
+                alert(`Reconciliation error: Received (${qtyReceived}) must equal Retained (${retained}) + Lost (${lost}). Difference: ${recon.difference}`);
                 return;
             }
 
@@ -300,7 +301,6 @@ const CloneProduction: React.FC = () => {
                 sortingDate: todayStr,
                 quantityReceived: qtyReceived,
                 retainedQuantity: retained,
-                forSaleQuantity: forSale,
                 lostQuantity: lost,
                 totalValidatedQuantity: recon.totalValidated,
                 responsibleWorker: advanceData.responsibleWorker,
@@ -359,7 +359,7 @@ const CloneProduction: React.FC = () => {
                         <ChevronRight size={16} color="#94a3b8" />
                         <span className="badge" style={{ backgroundColor: '#f3e8ff', color: '#6b21a8' }}>4. 2nd Hardening</span>
                         <ChevronRight size={16} color="#94a3b8" />
-                        <span className="badge" style={{ backgroundColor: '#dcfce7', color: '#166534' }}>5. Sorting & Sales</span>
+                        <span className="badge" style={{ backgroundColor: '#dcfce7', color: '#166534' }}>5. Sorting</span>
                     </div>
                 </div>
             </div>
@@ -386,7 +386,7 @@ const CloneProduction: React.FC = () => {
                         value={selectedVariety}
                         onChange={e => setSelectedVariety(e.target.value)}
                     >
-                        <option value="all">All Varieties (KR1, KR3-KR10)</option>
+                        <option value="all">All Varieties</option>
                         {ALLOWED_VARIETIES.map(v => (
                             <option key={v} value={v}>{v}</option>
                         ))}
@@ -512,7 +512,7 @@ const CloneProduction: React.FC = () => {
                                         <strong className="clone-batch-id">{batch.batchId}</strong>
                                         <span className="clone-variety-badge">{batch.variety}</span>
                                     </div>
-                                    <span className="badge" style={stageStyle}>{batch.currentStage}</span>
+                                    <span className="badge clone-batch-stage" style={stageStyle}>{batch.currentStage}</span>
                                 </div>
 
                                 <div className="clone-batch-quantities">
@@ -580,7 +580,7 @@ const CloneProduction: React.FC = () => {
                         <form onSubmit={handleCreateBatch} style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
                             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
                                 <div className="form-group">
-                                    <label className="form-label">Clone Variety (KR1, KR3-KR10) *</label>
+                                    <label className="form-label">Clone Variety *</label>
                                     <select
                                         className="form-input"
                                         value={newBatchData.variety}
@@ -675,29 +675,16 @@ const CloneProduction: React.FC = () => {
                                     <div style={{ fontSize: '0.9rem', fontWeight: 700, color: 'var(--color-primary-dark)' }}>
                                         Sorting Reconciliation Form:
                                     </div>
-                                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
-                                        <div className="form-group">
-                                            <label className="form-label">Retained (Nursery Stock) *</label>
-                                            <input
-                                                type="number"
-                                                className="form-input"
-                                                min="0"
-                                                required
-                                                value={advanceData.quantityRetained}
-                                                onChange={e => setAdvanceData({ ...advanceData, quantityRetained: Number(e.target.value) })}
-                                            />
-                                        </div>
-                                        <div className="form-group">
-                                            <label className="form-label">Removed for Sale (Commercial) *</label>
-                                            <input
-                                                type="number"
-                                                className="form-input"
-                                                min="0"
-                                                required
-                                                value={advanceData.forSaleQuantity}
-                                                onChange={e => setAdvanceData({ ...advanceData, forSaleQuantity: Number(e.target.value) })}
-                                            />
-                                        </div>
+                                    <div className="form-group">
+                                        <label className="form-label">Retained (Nursery Stock) *</label>
+                                        <input
+                                            type="number"
+                                            className="form-input"
+                                            min="0"
+                                            required
+                                            value={advanceData.quantityRetained}
+                                            onChange={e => setAdvanceData({ ...advanceData, quantityRetained: Number(e.target.value) })}
+                                        />
                                     </div>
                                     <div className="form-group">
                                         <label className="form-label">Quantity Lost / Culled *</label>

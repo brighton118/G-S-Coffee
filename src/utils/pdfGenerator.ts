@@ -605,7 +605,7 @@ export function generateProductionStageReportPDF(
     applyHeaderAndFooter(
         doc,
         'COFFEE NURSERY CLONE PRODUCTION TRACKING REPORT',
-        `5-Stage Life Cycle (Cutting -> Humid Chamber -> 1st Hardening -> 2nd Hardening -> Sorting) | Varieties: KR1, KR3-KR10`,
+        `5-Stage Life Cycle (Cutting -> Humid Chamber -> 1st Hardening -> 2nd Hardening -> Sorting) | Varieties: KR1, KR3-KR10, A, C, D`,
         `Stage: ${selectedStage}`
     );
 

@@ -17,8 +17,10 @@ import { generateSalesReceiptPDF, generateSalesSummaryPDF } from '../utils/pdfGe
 import { formatUGX } from '../utils/calculations';
 import './Sales.css';
 
-const VARIETIES: Array<'KR1' | 'KR3' | 'KR4' | 'KR5' | 'KR6' | 'KR7' | 'KR8' | 'KR9' | 'KR10'> = [
-    'KR1', 'KR3', 'KR4', 'KR5', 'KR6', 'KR7', 'KR8', 'KR9', 'KR10'
+type SaleVariety = 'KR1' | 'KR3' | 'KR4' | 'KR5' | 'KR6' | 'KR7' | 'KR8' | 'KR9' | 'KR10' | 'A' | 'C' | 'D';
+
+const VARIETIES: SaleVariety[] = [
+    'KR1', 'KR3', 'KR4', 'KR5', 'KR6', 'KR7', 'KR8', 'KR9', 'KR10', 'A', 'C', 'D'
 ];
 
 const Sales: React.FC = () => {
@@ -32,7 +34,7 @@ const Sales: React.FC = () => {
         customerPhone: string;
         customerEmail: string;
         customerLocation: string;
-        variety: 'KR1' | 'KR3' | 'KR4' | 'KR5' | 'KR6' | 'KR7' | 'KR8' | 'KR9' | 'KR10';
+        variety: SaleVariety;
         quantity: number;
         unitPrice: number;
     }>({
@@ -190,7 +192,7 @@ const Sales: React.FC = () => {
                     <div className="stat-value">
                         {totalPlantletsSold.toLocaleString()}
                     </div>
-                    <div className="stat-change text-light">KR1, KR3–KR10 Clones</div>
+                    <div className="stat-change text-light">Coffee clones</div>
                 </div>
             </div>
 

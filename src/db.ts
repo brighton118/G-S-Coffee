@@ -2,7 +2,7 @@ import Dexie, { type EntityTable } from 'dexie';
 
 // --- Types & Interfaces ---
 
-export type CloneVarietyType = 'KR1' | 'KR3' | 'KR4' | 'KR5' | 'KR6' | 'KR7' | 'KR8' | 'KR9' | 'KR10';
+export type CloneVarietyType = 'KR1' | 'KR3' | 'KR4' | 'KR5' | 'KR6' | 'KR7' | 'KR8' | 'KR9' | 'KR10' | 'A' | 'C' | 'D';
 
 export interface User {
     id?: number;

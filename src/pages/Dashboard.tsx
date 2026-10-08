@@ -216,10 +216,10 @@ const Dashboard = () => {
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.25rem', flexWrap: 'wrap', gap: '0.5rem' }}>
                     <div>
                         <h2 style={{ margin: 0, display: 'flex', alignItems: 'center', gap: '0.5rem', fontSize: '1.25rem' }}>
-                            <Sprout size={24} color="var(--color-primary)" /> Coffee Clone 5-Stage Nursery Pipeline (KR1, KR3–KR10)
+                            <Sprout size={24} color="var(--color-primary)" /> Coffee Clone 5-Stage Nursery Pipeline
                         </h2>
                         <p className="text-light" style={{ margin: '0.25rem 0 0 0', fontSize: '0.875rem' }}>
-                            End-to-end nursery advancement with automatic 1-month chamber timers and validated commercial stock reconciliation.
+                            End-to-end nursery advancement with automatic 1-month chamber timers and validated sorting reconciliation.
                         </p>
                     </div>
                     <Link to="/clones" className="btn btn-secondary" style={{ fontSize: '0.875rem', padding: '0.35rem 0.75rem' }}>

@@ -19,6 +19,7 @@
     justify-content: space-between;
     align-items: flex-start;
     gap: 0.75rem;
+    min-width: 0;
 }
 
 .clone-batch-card-header > div {
@@ -34,6 +35,14 @@
     color: var(--color-primary-dark);
 }
 
+.clone-batch-stage {
+    flex: 0 1 auto;
+    max-width: 100%;
+    white-space: normal;
+    overflow-wrap: anywhere;
+    text-align: right;
+}
+
 .clone-variety-badge {
     padding: 0.2rem 0.5rem;
     border-radius: 4px;
@@ -45,11 +54,12 @@
 
 .clone-batch-quantities {
     display: grid;
-    grid-template-columns: 1fr 1fr;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
     gap: 0.75rem;
     padding: 0.75rem;
     border-radius: var(--border-radius);
     background: var(--color-background);
+    min-width: 0;
 }
 
 .clone-batch-quantities > div,
@@ -63,6 +73,7 @@
 .clone-batch-details {
     display: grid;
     gap: 0.65rem;
+    margin: 0;
 }
 
 .clone-batch-details dt {
@@ -240,11 +251,22 @@
     .clones-pipeline > div:first-child > div:last-child > svg {
         display: none;
     }
+}
+
+@media (max-width: 900px) {
+    .table-responsive.desktop-only {
+        display: none;
+    }
 
     .clone-batch-cards {
         display: grid;
         grid-template-columns: minmax(0, 1fr);
         gap: 0.75rem;
+    }
+
+    .clone-batch-cards .empty-state {
+        min-width: 0;
+        padding: 1.5rem 1rem;
     }
 
     .clone-batch-card {
@@ -253,5 +275,25 @@
         gap: 0.85rem;
         min-width: 0;
         padding: 1rem;
+    }
+
+    .clone-batch-card-header {
+        align-items: center;
+        flex-wrap: wrap;
+    }
+
+    .clone-batch-card-header > div {
+        flex: 1 1 180px;
+    }
+
+    .clone-batch-stage {
+        margin-left: auto;
+    }
+}
+
+@media (max-width: 360px) {
+    .clone-batch-quantities {
+        grid-template-columns: minmax(0, 1fr);
+        gap: 0.5rem;
     }
 }

@@ -1,10 +1,8 @@
 import { FormEvent, useState } from 'react';
 import {
     createUserWithEmailAndPassword,
-    sendEmailVerification,
     sendPasswordResetEmail,
-    signInWithEmailAndPassword,
-    signOut
+    signInWithEmailAndPassword
 } from 'firebase/auth';
 import { Banknote, Coffee, LockKeyhole, Mail } from 'lucide-react';
 import { auth } from '../firebase';
@@ -29,30 +27,29 @@ const AdminAuth = ({ message, onClearMessage }: AdminAuthProps) => {
         onClearMessage();
 
         try {
+            const cleanEmail = email.trim().toLowerCase();
+            const cleanPassword = password.trim();
+
             if (mode === 'signUp') {
-                const credential = await createUserWithEmailAndPassword(auth, email.trim().toLowerCase(), password);
-                await sendEmailVerification(credential.user);
-                await signOut(auth);
-                setFormMessage('Check your inbox and verify your email address. Then sign in to finish administrator setup.');
+                await createUserWithEmailAndPassword(auth, cleanEmail, cleanPassword);
+                setFormMessage('Administrator account created successfully! Signing in...');
             } else {
-                const credential = await signInWithEmailAndPassword(auth, email.trim().toLowerCase(), password);
-                if (!credential.user.emailVerified) {
-                    await signOut(auth);
-                    setFormMessage('Verify your email address using the link we sent, then sign in again.');
-                }
+                await signInWithEmailAndPassword(auth, cleanEmail, cleanPassword);
             }
-        } catch (error) {
-            const code = (error as { code?: string }).code;
+        } catch (error: any) {
+            console.error('Firebase Auth Error:', error);
+            const code = error?.code || '';
             const messages: Record<string, string> = {
                 'auth/email-already-in-use': 'An account already exists for this email. Sign in instead.',
-                'auth/operation-not-allowed': 'Email/password sign-in is not enabled for this Firebase project. Ask the Firebase administrator to enable it.',
+                'auth/operation-not-allowed': 'Email/password sign-in is not enabled for this Firebase project. Please enable it in Firebase Console.',
                 'auth/invalid-credential': 'Email or password is incorrect.',
                 'auth/invalid-email': 'Enter a valid email address.',
                 'auth/weak-password': 'Use a password with at least 6 characters.',
                 'auth/too-many-requests': 'Too many attempts. Wait a few minutes and try again.',
-                'auth/network-request-failed': 'Could not connect. Check your internet connection and try again.'
+                'auth/network-request-failed': 'Connection blocked or offline. Disable browser ad-blockers/shields for this site or try "Continue with Google".',
+                'auth/internal-error': 'Authentication server error. Check email format or try "Continue with Google" for instant sign-in.'
             };
-            setFormMessage(messages[code || ''] || 'Authentication failed. Please try again.');
+            setFormMessage(messages[code] || error?.message || 'Authentication failed. Please try again.');
         } finally {
             setIsSubmitting(false);
         }
@@ -136,12 +133,6 @@ const AdminAuth = ({ message, onClearMessage }: AdminAuthProps) => {
                             placeholder="name@example.com"
                         />
                     </div>
-
-                    {mode === 'signUp' && (
-                        <p className="admin-auth-signup-note">
-                            We’ll email a verification link before granting administrator access.
-                        </p>
-                    )}
 
                     <label htmlFor="admin-password">Password</label>
                     <div className="admin-auth-input-wrap">

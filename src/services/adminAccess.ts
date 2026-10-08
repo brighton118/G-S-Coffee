@@ -17,9 +17,6 @@ export async function ensureAdminAccess(user: FirebaseUser): Promise<void> {
     if (!user.email) {
         throw new Error('An email address is required for administrator access.');
     }
-    if (!user.emailVerified) {
-        throw new Error('Verify your email address using the link we sent, then sign in again.');
-    }
 
     const adminRef = doc(dbFirestore, 'admins', user.uid);
     const existingAdmin = await getDoc(adminRef);

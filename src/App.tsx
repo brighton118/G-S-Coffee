@@ -37,13 +37,6 @@ const App = () => {
                 return;
             }
 
-            if (!user.emailVerified) {
-                setAuthMessage('Verify your email address using the link we sent, then sign in again.');
-                setAdminUser(null);
-                setAuthStatus('signedOut');
-                return;
-            }
-
             setAuthStatus('checking');
             try {
                 await ensureAdminAccess(user);

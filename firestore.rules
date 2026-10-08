@@ -3,8 +3,7 @@ service cloud.firestore {
   match /databases/{database}/documents {
     function signedIn() {
       return request.auth != null
-        && request.auth.token.email is string
-        && request.auth.token.email_verified == true;
+        && request.auth.token.email is string;
     }
 
     function adminPath(uid) {

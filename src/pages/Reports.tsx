@@ -156,7 +156,7 @@ const Reports: React.FC = () => {
         {
             id: 'clones',
             title: 'Coffee Clone Production & Nursery Report',
-            description: 'Complete 5-stage tracking (Cutting -> Humid Chamber -> 1st Hardening -> 2nd Hardening -> Sorting) for KR1 & KR3-KR10.',
+            description: 'Complete 5-stage tracking (Cutting -> Humid Chamber -> 1st Hardening -> 2nd Hardening -> Sorting) for all clone varieties.',
             icon: Layers,
             color: '#8b5cf6',
             count: `${cloneBatchesInRange.length} batches started in range`

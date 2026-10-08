@@ -219,18 +219,17 @@ export function reconcilePlantletSorting(
 export function validateSortingReconciliation(
     qtyReceived: number,
     retained: number,
-    forSale: number,
     lost: number
 ): {
     isValid: boolean;
     difference: number;
     totalValidated: number;
 } {
-    const sum = (Number(retained) || 0) + (Number(forSale) || 0) + (Number(lost) || 0);
+    const sum = (Number(retained) || 0) + (Number(lost) || 0);
     const received = Number(qtyReceived) || 0;
     return {
         isValid: sum === received,
         difference: received - sum,
-        totalValidated: (Number(retained) || 0) + (Number(forSale) || 0)
+        totalValidated: Number(retained) || 0
     };
 }
