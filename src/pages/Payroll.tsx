@@ -5,16 +5,12 @@ import {
     Banknote, 
     Search, 
     Download, 
-    DollarSign, 
-    CheckCircle2, 
-    AlertCircle, 
     Clock, 
     Receipt, 
     CreditCard, 
     X, 
     Printer,
     History,
-    Users,
     ShieldCheck
 } from 'lucide-react';
 import { format } from 'date-fns';

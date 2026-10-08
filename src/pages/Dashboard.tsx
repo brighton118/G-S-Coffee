@@ -3,16 +3,12 @@ import { db } from '../db';
 import { format } from 'date-fns';
 import { Link } from 'react-router-dom';
 import {
-    Users,
     Sprout,
-    ShoppingCart,
     AlertTriangle,
     TrendingUp,
     Clock,
-    DollarSign,
     Package,
     QrCode,
-    FileText,
     ArrowRight
 } from 'lucide-react';
 import './Dashboard.css';
@@ -97,27 +93,21 @@ const Dashboard = () => {
                 </h3>
                 <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(140px, 1fr))', gap: '0.75rem' }}>
                     <Link to="/scan" className="btn btn-secondary" style={{ padding: '0.75rem', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '0.4rem', textAlign: 'center' }}>
-                        <QrCode size={22} color="var(--color-primary)" />
                         <span style={{ fontSize: '0.85rem', fontWeight: 600 }}>Scan QR Attendance</span>
                     </Link>
                     <Link to="/clones" className="btn btn-secondary" style={{ padding: '0.75rem', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '0.4rem', textAlign: 'center' }}>
-                        <Sprout size={22} color="#16a34a" />
                         <span style={{ fontSize: '0.85rem', fontWeight: 600 }}>Clone Batch Registry</span>
                     </Link>
                     <Link to="/sales" className="btn btn-secondary" style={{ padding: '0.75rem', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '0.4rem', textAlign: 'center' }}>
-                        <ShoppingCart size={22} color="#2563eb" />
                         <span style={{ fontSize: '0.85rem', fontWeight: 600 }}>Record Sales Order</span>
                     </Link>
                     <Link to="/inventory" className="btn btn-secondary" style={{ padding: '0.75rem', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '0.4rem', textAlign: 'center' }}>
-                        <Package size={22} color="#8b5cf6" />
                         <span style={{ fontSize: '0.85rem', fontWeight: 600 }}>Inventory Stock-In</span>
                     </Link>
                     <Link to="/payroll" className="btn btn-secondary" style={{ padding: '0.75rem', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '0.4rem', textAlign: 'center' }}>
-                        <DollarSign size={22} color="#ea580c" />
                         <span style={{ fontSize: '0.85rem', fontWeight: 600 }}>Monthly Payroll</span>
                     </Link>
                     <Link to="/reports" className="btn btn-secondary" style={{ padding: '0.75rem', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '0.4rem', textAlign: 'center' }}>
-                        <FileText size={22} color="#0284c7" />
                         <span style={{ fontSize: '0.85rem', fontWeight: 600 }}>Export PDF Reports</span>
                     </Link>
                 </div>
@@ -161,7 +151,6 @@ const Dashboard = () => {
                 <div className="card stat-card" style={{ borderLeft: '4px solid #3b82f6' }}>
                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                         <span className="stat-label">Today's Attendance</span>
-                        <Users size={20} color="#3b82f6" />
                     </div>
                     <span className="stat-value text-primary" style={{ fontSize: '1.75rem' }}>
                         {attendancePercentage}%
@@ -175,7 +164,6 @@ const Dashboard = () => {
                 <div className="card stat-card" style={{ borderLeft: '4px solid #f59e0b' }}>
                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                         <span className="stat-label">Pending Overtime</span>
-                        <Clock size={20} color="#f59e0b" />
                     </div>
                     <span className="stat-value text-warning" style={{ fontSize: '1.75rem' }}>
                         {pendingOvertimeRecords.length} <span style={{ fontSize: '0.9rem', fontWeight: 'normal' }}>requests</span>
@@ -189,7 +177,6 @@ const Dashboard = () => {
                 <div className="card stat-card" style={{ borderLeft: '4px solid #10b981' }}>
                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                         <span className="stat-label">Sales Revenue (UGX)</span>
-                        <ShoppingCart size={20} color="#10b981" />
                     </div>
                     <span className="stat-value text-success" style={{ fontSize: '1.75rem' }}>
                         UGX {totalSalesRevenue.toLocaleString()}
@@ -200,7 +187,6 @@ const Dashboard = () => {
                 <div className="card stat-card" style={{ borderLeft: '4px solid #8b5cf6' }}>
                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                         <span className="stat-label">Inventory Valuation</span>
-                        <Package size={20} color="#8b5cf6" />
                     </div>
                     <span className="stat-value" style={{ fontSize: '1.75rem', color: '#8b5cf6' }}>
                         UGX {totalInventoryValuation.toLocaleString()}
