@@ -60,7 +60,7 @@ const Payroll: React.FC = () => {
         void syncPayrollMonth(selectedMonth).catch(error => {
             console.error(`Could not synchronize payroll for ${selectedMonth}.`, error);
         });
-    }, [selectedMonth, workers, attendanceRecords]);
+    }, [selectedMonth, workers.length, attendanceRecords.length]);
 
     // Current Month Payroll Records
     const currentMonthPayroll = payrollRecords.filter(p => p.payrollMonth === selectedMonth || p.payrollPeriod === selectedMonth);

@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { Html5QrcodeScanner, Html5QrcodeScanType } from 'html5-qrcode';
 import { db } from '../db';
 import { format } from 'date-fns';
@@ -15,35 +15,17 @@ const ScanAttendance = () => {
     const [earlyScanMessage, setEarlyScanMessage] = useState('');
     const [payrollSyncWarning, setPayrollSyncWarning] = useState('');
 
-    let html5QrcodeScanner: any = null;
-
-    useEffect(() => {
-        if (scanState === 'scanning') {
-            const scannerId = "reader";
-            html5QrcodeScanner = new Html5QrcodeScanner(scannerId, {
-                fps: 10,
-                qrbox: { width: 250, height: 250 },
-                supportedScanTypes: [Html5QrcodeScanType.SCAN_TYPE_CAMERA]
-            }, false);
-
-            html5QrcodeScanner.render(
-                async (decodedText: string) => {
-                    html5QrcodeScanner.pause(true);
-                    setScanState('identifying');
-                    await handleIdentify(decodedText);
-                },
-                () => { } // ignore frequent scan errors
-            );
+    const syncPayrollAfterAttendance = useCallback(async (date: string) => {
+        try {
+            await syncPayrollMonth(date.slice(0, 7));
+        } catch (error) {
+            console.error('Attendance was saved, but its payroll calculation failed.', error);
+            const message = error instanceof Error ? error.message : String(error);
+            setPayrollSyncWarning(`Attendance was saved, but payroll could not be recalculated: ${message}`);
         }
+    }, []);
 
-        return () => {
-            if (html5QrcodeScanner) {
-                html5QrcodeScanner.clear().catch(console.error);
-            }
-        };
-    }, [scanState]);
-
-    const handleIdentify = async (scannedText: string) => {
+    const handleIdentify = useCallback(async (scannedText: string) => {
         const workerId = scannedText.split('/').pop() || scannedText;
         const worker = await db.workers.get(workerId);
 
@@ -72,7 +54,6 @@ const ScanAttendance = () => {
                 setEarlyScanMessage(`Time-in starts at ${schedule.attendanceTimeInStart}.`);
                 setScanState('early_scan');
             } else {
-                // Record a check-in and flag arrivals after the configured window.
                 const isLate = now > schedule.attendanceTimeInEnd;
                 await db.attendance.add({
                     workerId: worker.workerId,
@@ -87,7 +68,6 @@ const ScanAttendance = () => {
                 setScanState('success');
             }
         } else if (existingRecord && !existingRecord.timeOut) {
-            // Prevent accidental early re-scans and enforce the configured time-out window.
             const timeInDate = new Date(`${today}T${existingRecord.timeIn}:00`);
             const nowDate = new Date(`${today}T${now}:00`);
             const hoursDiff = (nowDate.getTime() - timeInDate.getTime()) / (1000 * 60 * 60);
@@ -137,17 +117,35 @@ const ScanAttendance = () => {
             setTodayAttendance(null);
             setScanState('scanning');
         }, 5000);
-    };
+    }, [syncPayrollAfterAttendance]);
 
-    const syncPayrollAfterAttendance = async (date: string) => {
-        try {
-            await syncPayrollMonth(date.slice(0, 7));
-        } catch (error) {
-            console.error('Attendance was saved, but its payroll calculation failed.', error);
-            const message = error instanceof Error ? error.message : String(error);
-            setPayrollSyncWarning(`Attendance was saved, but payroll could not be recalculated: ${message}`);
+    useEffect(() => {
+        let scanner: any = null;
+
+        if (scanState === 'scanning') {
+            const scannerId = "reader";
+            scanner = new Html5QrcodeScanner(scannerId, {
+                fps: 10,
+                qrbox: { width: 250, height: 250 },
+                supportedScanTypes: [Html5QrcodeScanType.SCAN_TYPE_CAMERA]
+            }, false);
+
+            scanner.render(
+                async (decodedText: string) => {
+                    scanner.pause(true);
+                    setScanState('identifying');
+                    await handleIdentify(decodedText);
+                },
+                () => { }
+            );
         }
-    };
+
+        return () => {
+            if (scanner) {
+                scanner.clear().catch(console.error);
+            }
+        };
+    }, [scanState, handleIdentify]);
 
     const resetScanner = () => {
         setScannedWorker(null);
