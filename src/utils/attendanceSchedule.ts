@@ -21,7 +21,7 @@ export function normalizeAttendanceScheduleSettings(value: unknown): AttendanceS
     if (!value || typeof value !== 'object') return DEFAULT_ATTENDANCE_SCHEDULE;
 
     const stored = value as Record<string, unknown>;
-    const legacyTimeInEnd = isTimeValue(stored.attendanceLateThreshold)
+    const legacyTimeInEnd = isTimeValue(stored.attendanceLateThreshold) && stored.attendanceLateThreshold !== '08:00'
         ? stored.attendanceLateThreshold
         : DEFAULT_ATTENDANCE_SCHEDULE.attendanceTimeInEnd;
 

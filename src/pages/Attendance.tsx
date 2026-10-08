@@ -15,6 +15,7 @@ import {
 } from 'lucide-react';
 import { format } from 'date-fns';
 import { generateAttendancePDF } from '../utils/pdfGenerator';
+import { loadAttendanceScheduleSettings } from '../utils/attendanceSchedule';
 
 const Attendance: React.FC = () => {
     const [selectedDate, setSelectedDate] = useState<string>(format(new Date(), 'yyyy-MM-dd'));
@@ -23,6 +24,7 @@ const Attendance: React.FC = () => {
 
     const workers = useLiveQuery(() => db.workers.toArray()) || [];
     const attendanceRecords = useLiveQuery(() => db.attendance.toArray()) || [];
+    const attendanceSchedule = loadAttendanceScheduleSettings();
 
     // Filter attendance records by selected date, search term, and status
     const dayRecords = attendanceRecords.filter(record => {
@@ -90,7 +92,7 @@ const Attendance: React.FC = () => {
                     <div className="stat-value" style={{ color: lateToday > 0 ? '#ea580c' : 'var(--color-text)' }}>
                         {lateToday}
                     </div>
-                    <div className="stat-change text-light">Clocked in after 08:00 AM</div>
+                    <div className="stat-change text-light">Clocked in after {attendanceSchedule.attendanceTimeInEnd}</div>
                 </div>
 
                 <div className="stat-card card">
@@ -101,7 +103,7 @@ const Attendance: React.FC = () => {
                     <div className="stat-value" style={{ color: 'var(--color-primary)' }}>
                         {otEligibleCount}
                     </div>
-                    <div className="stat-change text-light">Shift extended past 17:00</div>
+                    <div className="stat-change text-light">Clocked out after {attendanceSchedule.attendanceTimeOutEnd}</div>
                 </div>
 
                 <div className="stat-card card">

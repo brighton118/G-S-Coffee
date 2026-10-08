@@ -20,6 +20,7 @@ import { clearSeededDemoData } from './clearDemoData';
 import { notificationService } from './utils/notificationService';
 import { auth } from './firebase';
 import { ensureAdminAccess } from './services/adminAccess';
+import { syncPayrollMonth } from './services/payrollSync';
 
 const App = () => {
     const [adminUser, setAdminUser] = useState<FirebaseUser | null>(null);
@@ -73,11 +74,25 @@ const App = () => {
         const notificationInterval = setInterval(() => {
             notificationService.runAllNotificationChecks();
         }, 1000 * 60 * 60);
+        const payrollInterval = setInterval(() => {
+            const now = new Date();
+            const payrollMonth = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
+            void syncPayrollMonth(payrollMonth, now).catch(error => {
+                console.error('Automatic payroll synchronization failed.', error);
+            });
+        }, 60 * 1000);
 
         const initializeData = async () => {
             try {
                 await clearSeededDemoData();
                 await firestoreSyncService.syncCloudToLocal();
+                const now = new Date();
+                const payrollMonth = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
+                try {
+                    await syncPayrollMonth(payrollMonth, now);
+                } catch (error) {
+                    console.error('Could not calculate payroll during system startup.', error);
+                }
                 await firestoreSyncService.syncLocalToCloud();
                 firestoreSyncService.startRealtimeSync();
                 await notificationService.runAllNotificationChecks();
@@ -94,6 +109,7 @@ const App = () => {
         return () => {
             isMounted = false;
             clearInterval(notificationInterval);
+            clearInterval(payrollInterval);
             clearInterval(syncInterval);
             firestoreSyncService.stopRealtimeSync();
         };

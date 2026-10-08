@@ -103,6 +103,9 @@ export interface PayrollRecord {
     overtimeEarnings: number; // UGX
     deductions: number; // UGX
     deductionReason?: string;
+    attendanceDeduction?: number;
+    unrecordedWorkdays?: number;
+    manualDeductionReason?: string;
     netPay: number; // Monthly Salary + Overtime Earnings - Deductions
     amountPaid: number; // Total amount paid in UGX
     balance: number; // Outstanding balance in UGX (Net Pay - Amount Paid)

@@ -396,8 +396,10 @@ export function generateIndividualPayslipPDF(payroll: PayrollRecord): void {
     const finalY = (doc as any).lastAutoTable.finalY + 6;
 
     // Deductions Table
+    const attendanceDeduction = payroll.attendanceDeduction || 0;
     const deductionsBody: RowInput[] = [
-        ['Statutory & Farm Deductions', formatUGX(payroll.deductions)],
+        [`Attendance Absence (${payroll.unrecordedWorkdays || 0} missed day(s))`, formatUGX(attendanceDeduction)],
+        ['Other Deductions', formatUGX(Math.max(0, (payroll.deductions || 0) - attendanceDeduction))],
         ['Total Deductions', formatUGX(payroll.deductions)]
     ];
 

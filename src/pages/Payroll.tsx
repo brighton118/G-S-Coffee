@@ -20,6 +20,7 @@ import {
 import { format } from 'date-fns';
 import { generatePayrollMasterPDF, generatePayslipPDF } from '../utils/pdfGenerator';
 import { formatUGX } from '../utils/calculations';
+import { syncPayrollMonth } from '../services/payrollSync';
 import Overtime from './Overtime';
 
 const PAYMENT_METHODS = ['Cash', 'Mobile Money', 'Bank Transfer', 'Other'];
@@ -60,84 +61,9 @@ const Payroll: React.FC = () => {
 
     // Auto-generate or synchronize monthly payroll records when month or workers change
     useEffect(() => {
-        const syncPayrollMonth = async () => {
-            const activeWorkers = await db.workers.where('status').equals('Active').toArray();
-            if (activeWorkers.length === 0) return;
-
-            const existingRecords = await db.payrollRecords.where('payrollMonth').equals(selectedMonth).toArray();
-            const existingWorkerIds = new Set(existingRecords.map(r => r.workerId));
-
-            // Determine next serial number S/M
-            let nextSerial = existingRecords.length > 0 ? Math.max(...existingRecords.map(r => r.serialNumber || 0)) + 1 : 1;
-
-            for (const worker of activeWorkers) {
-                // Aggregate approved overtime hours for this worker in this selectedMonth
-                const approvedOTRecords = await db.attendance
-                    .where({ workerId: worker.workerId })
-                    .filter(a => a.date.startsWith(selectedMonth) && a.overtimeStatus === 'Approved')
-                    .toArray();
-
-                const approvedOTHours = approvedOTRecords.reduce((sum, a) => sum + (a.overtimeApprovedHours || a.overtimeHours || 0), 0);
-                const otRate = worker.overtimeRate || 3500;
-                const otEarnings = Math.round(approvedOTHours * otRate);
-                const monthlySalary = worker.monthlySalary || 0;
-
-                if (!existingWorkerIds.has(worker.workerId)) {
-                    // Create new payroll record
-                    const deductions = 0;
-                    const netPay = Math.round(monthlySalary + otEarnings - deductions);
-                    const amountPaid = 0;
-                    const balance = netPay;
-
-                    const newRecord: PayrollRecord = {
-                        payrollMonth: selectedMonth,
-                        payrollPeriod: selectedMonth,
-                        workerId: worker.workerId,
-                        workerName: worker.fullName,
-                        farmCardNumber: worker.farmCardNumber || worker.workerId,
-                        serialNumber: nextSerial++,
-                        monthlySalary,
-                        approvedOvertimeHours: approvedOTHours,
-                        overtimeHours: approvedOTHours,
-                        overtimeRate: otRate,
-                        overtimeEarnings: otEarnings,
-                        deductions,
-                        netPay,
-                        amountPaid,
-                        balance,
-                        paymentStatus: 'Pending',
-                        status: 'Draft',
-                        generatedAt: new Date().toISOString()
-                    };
-
-                    await db.payrollRecords.add(newRecord);
-                } else {
-                    // Update existing record if overtime or salary was updated
-                    const existing = existingRecords.find(r => r.workerId === worker.workerId);
-                    if (existing && existing.id) {
-                        const netPay = Math.round(monthlySalary + otEarnings - (existing.deductions || 0));
-                        const amountPaid = existing.amountPaid || 0;
-                        const balance = Math.max(0, netPay - amountPaid);
-                        const paymentStatus = amountPaid >= netPay && netPay > 0 ? 'Paid' : amountPaid > 0 ? 'Partially Paid' : 'Pending';
-
-                        await db.payrollRecords.update(existing.id, {
-                            workerName: worker.fullName,
-                            farmCardNumber: worker.farmCardNumber || worker.workerId,
-                            monthlySalary,
-                            approvedOvertimeHours: approvedOTHours,
-                            overtimeHours: approvedOTHours,
-                            overtimeRate: otRate,
-                            overtimeEarnings: otEarnings,
-                            netPay,
-                            balance,
-                            paymentStatus
-                        });
-                    }
-                }
-            }
-        };
-
-        syncPayrollMonth();
+        void syncPayrollMonth(selectedMonth).catch(error => {
+            console.error(`Could not synchronize payroll for ${selectedMonth}.`, error);
+        });
     }, [selectedMonth, workers, attendanceRecords]);
 
     // Current Month Payroll Records
@@ -253,8 +179,8 @@ const Payroll: React.FC = () => {
     // Open Adjustment/Deductions Modal
     const handleOpenDeduction = (record: PayrollRecord) => {
         setSelectedRecordForDeduction(record);
-        setDeductionAmount(record.deductions || 0);
-        setDeductionReason(record.deductionReason || '');
+        setDeductionAmount(Math.max(0, (record.deductions || 0) - (record.attendanceDeduction || 0)));
+        setDeductionReason(record.manualDeductionReason || (record.attendanceDeduction ? '' : record.deductionReason || ''));
         setShowAdjustDeductionModal(true);
     };
 
@@ -264,7 +190,14 @@ const Payroll: React.FC = () => {
         if (!selectedRecordForDeduction || !selectedRecordForDeduction.id) return;
 
         const record = selectedRecordForDeduction;
-        const newDeduction = Math.max(0, Number(deductionAmount));
+        const manualDeduction = Math.max(0, Number(deductionAmount));
+        const attendanceDeduction = record.attendanceDeduction || 0;
+        const newDeduction = manualDeduction + attendanceDeduction;
+        const missedDays = record.unrecordedWorkdays || 0;
+        const attendanceReason = missedDays > 0
+            ? `Attendance: ${missedDays} missed scheduled workday(s)`
+            : '';
+        const combinedReason = [deductionReason.trim(), attendanceReason].filter(Boolean).join('; ') || undefined;
         const netPay = Math.max(0, record.monthlySalary + (record.overtimeEarnings || 0) - newDeduction);
         const amountPaid = record.amountPaid || 0;
         const balance = Math.max(0, netPay - amountPaid);
@@ -272,7 +205,8 @@ const Payroll: React.FC = () => {
 
         await db.payrollRecords.update(record.id, {
             deductions: newDeduction,
-            deductionReason,
+            deductionReason: combinedReason,
+            manualDeductionReason: deductionReason.trim() || undefined,
             netPay,
             balance,
             paymentStatus
@@ -285,7 +219,7 @@ const Payroll: React.FC = () => {
             module: 'Payroll Management',
             recordIdentifier: `${record.workerId} (${selectedMonth})`,
             date: new Date().toISOString(),
-            description: `Updated deductions for ${record.workerName} to ${formatUGX(newDeduction)}. Reason: ${deductionReason}`
+            description: `Manual deductions set to ${formatUGX(manualDeduction)} for ${record.workerName}; automatic attendance deduction is ${formatUGX(attendanceDeduction)}; total deductions are ${formatUGX(newDeduction)}. Reason: ${deductionReason}`
         });
 
         setShowAdjustDeductionModal(false);
@@ -317,7 +251,7 @@ const Payroll: React.FC = () => {
                         <Banknote size={28} color="var(--color-primary)" /> Payroll & Worker Payment Management
                     </h1>
                     <p className="text-light" style={{ margin: '0.25rem 0 0 0' }}>
-                        Central financial module for Base Salaries, Approved Overtime, Deductions, Net Pay, and Disbursements.
+                        Payroll updates with attendance. Missed Monday–Saturday workdays are deducted at monthly salary ÷ 30 after the configured time-out window.
                     </p>
                 </div>
                 <div style={{ display: 'flex', gap: '0.75rem', flexWrap: 'wrap' }}>
@@ -415,7 +349,7 @@ const Payroll: React.FC = () => {
                     <div className="stat-value">
                         {formatUGX(totalDeductions)}
                     </div>
-                    <div className="stat-change text-light">Taxes & salary advances</div>
+                    <div className="stat-change text-light">Attendance, taxes & salary advances</div>
                 </div>
 
                 <div className="stat-card card">
@@ -493,6 +427,7 @@ const Payroll: React.FC = () => {
                             <th>Name</th>
                             <th>Monthly Salary</th>
                             <th>Overtime</th>
+                            <th>Deductions</th>
                             <th>Net Pay</th>
                             <th style={{ textAlign: 'right' }}>Actions</th>
                         </tr>
@@ -500,7 +435,7 @@ const Payroll: React.FC = () => {
                     <tbody>
                         {filteredRecords.length === 0 ? (
                             <tr>
-                                <td colSpan={6} style={{ textAlign: 'center', padding: '3rem', color: 'var(--color-text-light)' }}>
+                                <td colSpan={7} style={{ textAlign: 'center', padding: '3rem', color: 'var(--color-text-light)' }}>
                                     No payroll records found for {selectedMonth}.
                                 </td>
                             </tr>
@@ -525,6 +460,14 @@ const Payroll: React.FC = () => {
                                             <div className="text-light" style={{ fontSize: '0.75rem' }}>
                                                 {(record.approvedOvertimeHours || 0).toFixed(1)} approved hrs
                                             </div>
+                                        </td>
+                                        <td>
+                                            <strong>{formatUGX(record.deductions || 0)}</strong>
+                                            {(record.unrecordedWorkdays || 0) > 0 && (
+                                                <div className="text-light" style={{ fontSize: '0.75rem' }}>
+                                                    {record.unrecordedWorkdays} missed day(s): {formatUGX(record.attendanceDeduction || 0)}
+                                                </div>
+                                            )}
                                         </td>
                                         <td>
                                             <strong style={{ color: 'var(--color-primary)' }}>
@@ -607,6 +550,10 @@ const Payroll: React.FC = () => {
                                     <div>
                                         <span className="text-light">Net Pay:</span>
                                         <div style={{ color: 'var(--color-primary)' }}><strong>{formatUGX(record.netPay)}</strong></div>
+                                    </div>
+                                    <div>
+                                        <span className="text-light">Deductions ({record.unrecordedWorkdays || 0} missed day(s)):</span>
+                                        <div style={{ color: '#dc2626' }}><strong>{formatUGX(record.deductions || 0)}</strong></div>
                                     </div>
                                 </div>
 
@@ -848,10 +795,11 @@ const Payroll: React.FC = () => {
                             <div style={{ background: 'var(--color-background)', padding: '0.75rem', borderRadius: '4px', fontSize: '0.85rem' }}>
                                 <div><strong>{selectedRecordForDeduction.workerName}</strong></div>
                                 <div>Base Salary: {formatUGX(selectedRecordForDeduction.monthlySalary)} + OT: {formatUGX(selectedRecordForDeduction.overtimeEarnings || 0)}</div>
+                                <div>Automatic attendance deduction: {formatUGX(selectedRecordForDeduction.attendanceDeduction || 0)} ({selectedRecordForDeduction.unrecordedWorkdays || 0} missed workdays)</div>
                             </div>
 
                             <div className="form-group">
-                                <label className="form-label">Deduction Amount (UGX) *</label>
+                                <label className="form-label">Other / Manual Deduction Amount (UGX) *</label>
                                 <input 
                                     type="number" 
                                     required 
@@ -931,7 +879,15 @@ const Payroll: React.FC = () => {
                                         <td style={{ textAlign: 'right', padding: '0.4rem', color: '#ea580c' }}>{formatUGX(selectedRecordForPayslip.overtimeEarnings || 0)}</td>
                                     </tr>
                                     <tr style={{ borderBottom: '1px solid #f1f5f9' }}>
-                                        <td style={{ padding: '0.4rem' }}>Applicable Deductions</td>
+                                        <td style={{ padding: '0.4rem' }}>Attendance Absence ({selectedRecordForPayslip.unrecordedWorkdays || 0} missed day(s))</td>
+                                        <td style={{ textAlign: 'right', padding: '0.4rem', color: '#dc2626' }}>- {formatUGX(selectedRecordForPayslip.attendanceDeduction || 0)}</td>
+                                    </tr>
+                                    <tr style={{ borderBottom: '1px solid #f1f5f9' }}>
+                                        <td style={{ padding: '0.4rem' }}>Other Deductions</td>
+                                        <td style={{ textAlign: 'right', padding: '0.4rem', color: '#dc2626' }}>- {formatUGX(Math.max(0, (selectedRecordForPayslip.deductions || 0) - (selectedRecordForPayslip.attendanceDeduction || 0)))}</td>
+                                    </tr>
+                                    <tr style={{ borderBottom: '1px solid #f1f5f9', fontWeight: 700 }}>
+                                        <td style={{ padding: '0.4rem' }}>Total Deductions</td>
                                         <td style={{ textAlign: 'right', padding: '0.4rem', color: '#dc2626' }}>- {formatUGX(selectedRecordForPayslip.deductions || 0)}</td>
                                     </tr>
                                     <tr style={{ background: '#f8fafc', fontWeight: 700 }}>

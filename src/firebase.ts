@@ -1,7 +1,7 @@
 import { initializeApp } from "firebase/app";
 import { getAnalytics } from "firebase/analytics";
 import { getFirestore } from "firebase/firestore";
-import { getAuth } from "firebase/auth";
+import { getAuth, browserLocalPersistence, setPersistence } from "firebase/auth";
 
 // Your web app's Firebase configuration
 const firebaseConfig = {
@@ -16,6 +16,13 @@ const firebaseConfig = {
 
 // Initialize Firebase
 export const app = initializeApp(firebaseConfig);
-export const analytics = getAnalytics(app);
+export const analytics = typeof window !== 'undefined' ? getAnalytics(app) : undefined;
 export const dbFirestore = getFirestore(app);
 export const auth = getAuth(app);
+
+// Guarantee permanent local session persistence so the user stays signed in indefinitely until manually logged out
+if (typeof window !== 'undefined') {
+    void setPersistence(auth, browserLocalPersistence).catch(err => {
+        console.warn('Firebase session persistence configuration note:', err);
+    });
+}

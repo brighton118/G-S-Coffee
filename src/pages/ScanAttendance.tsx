@@ -5,6 +5,7 @@ import { format } from 'date-fns';
 import { CheckCircle2, AlertTriangle, UserCircle2 } from 'lucide-react';
 import { loadAttendanceScheduleSettings } from '../utils/attendanceSchedule';
 import { calculateWorkingHours, timeToMinutes } from '../utils/calculations';
+import { syncPayrollMonth } from '../services/payrollSync';
 import './ScanAttendance.css';
 
 const ScanAttendance = () => {
@@ -12,6 +13,7 @@ const ScanAttendance = () => {
     const [scannedWorker, setScannedWorker] = useState<any>(null);
     const [todayAttendance, setTodayAttendance] = useState<any>(null);
     const [earlyScanMessage, setEarlyScanMessage] = useState('');
+    const [payrollSyncWarning, setPayrollSyncWarning] = useState('');
 
     let html5QrcodeScanner: any = null;
 
@@ -61,6 +63,7 @@ const ScanAttendance = () => {
         const now = format(new Date(), 'HH:mm');
         const schedule = loadAttendanceScheduleSettings();
         const existingRecord = await db.attendance.where({ workerId, date: today }).first();
+        setPayrollSyncWarning('');
 
         let finalRecord = existingRecord;
 
@@ -79,6 +82,7 @@ const ScanAttendance = () => {
                     isLate
                 });
                 finalRecord = await db.attendance.where({ workerId, date: today }).first();
+                await syncPayrollAfterAttendance(today);
                 setTodayAttendance(finalRecord);
                 setScanState('success');
             }
@@ -119,6 +123,7 @@ const ScanAttendance = () => {
                     } : {})
                 });
                 finalRecord = await db.attendance.get(existingRecord.id!);
+                await syncPayrollAfterAttendance(today);
                 setTodayAttendance(finalRecord);
                 setScanState('success');
             }
@@ -134,9 +139,20 @@ const ScanAttendance = () => {
         }, 5000);
     };
 
+    const syncPayrollAfterAttendance = async (date: string) => {
+        try {
+            await syncPayrollMonth(date.slice(0, 7));
+        } catch (error) {
+            console.error('Attendance was saved, but its payroll calculation failed.', error);
+            const message = error instanceof Error ? error.message : String(error);
+            setPayrollSyncWarning(`Attendance was saved, but payroll could not be recalculated: ${message}`);
+        }
+    };
+
     const resetScanner = () => {
         setScannedWorker(null);
         setTodayAttendance(null);
+        setPayrollSyncWarning('');
         setScanState('scanning');
     };
 
@@ -229,6 +245,12 @@ const ScanAttendance = () => {
                                 </div>
                             )}
                         </div>
+
+                        {payrollSyncWarning && (
+                            <p role="alert" style={{ color: '#b91c1c', fontWeight: 600 }}>
+                                {payrollSyncWarning}
+                            </p>
+                        )}
 
                         {(scanState === 'success' || scanState === 'early_scan') && (
                             <div className="action-buttons">
