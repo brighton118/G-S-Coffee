@@ -528,17 +528,20 @@ const Workers: React.FC = () => {
                                         flexDirection: 'column',
                                         justifyContent: 'flex-end',
                                         alignItems: 'center',
-                                        paddingBottom: '14px'
+                                        paddingBottom: '10px'
                                     }}
                                 >
-                                    {/* Stylized Farm Plant Emblem Watermark */}
-                                    <svg width="46" height="42" viewBox="0 0 24 24" fill="none" stroke="#4a681c" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                                        <path d="M12 10a6 6 0 0 0-6-6H3v3a6 6 0 0 0 6 6h3" />
-                                        <path d="M12 10a6 6 0 0 1 6-6h3v3a6 6 0 0 1-6 6h-3" />
-                                        <path d="M4 18h16" />
-                                        <path d="M7 21h10" />
-                                        <path d="M12 10v8" />
-                                    </svg>
+                                    {/* Official Farm Plant Emblem under QR */}
+                                    <img
+                                        src="/assets/card_plant_emblem.png"
+                                        alt="G&S Plant Emblem"
+                                        style={{
+                                            width: '52px',
+                                            height: 'auto',
+                                            objectFit: 'contain',
+                                            display: 'block'
+                                        }}
+                                    />
                                 </div>
 
                                 {/* Dark QR Code Box Container ("the black spot") */}

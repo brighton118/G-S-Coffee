@@ -4,6 +4,7 @@ import { format } from 'date-fns';
 import QRCode from 'qrcode';
 import { Worker, AttendanceRecord, PayrollRecord, InventoryItem, InventoryTransaction, FarmExpense, SalesOrder, CloneBatch, ProductionHumidChamber, ProductionSorting, ActivityLog } from '../db';
 import { formatUGX } from './calculations';
+import { CARD_PLANT_EMBLEM_DATA_URI } from './idCardAssets';
 
 // Color Palette for G&S COFFEE Farm PDF Branding
 const BRAND_PRIMARY: [number, number, number] = [46, 125, 50]; // #2E7D32 Forest Green
@@ -906,20 +907,15 @@ export async function generateWorkerIdCardPDF(worker: Worker): Promise<void> {
     doc.setFillColor(116, 164, 52); // #74a434 vibrant farm green
     doc.rect(0.2, greenTop, greenWidth, cardHeight - greenTop - 0.2, 'F');
 
-    // Bottom decorative watermark / farm plant emblem on green panel
-    const iconCenterX = greenWidth / 2;
-    const iconBottomY = 46.5;
-    doc.setDrawColor(75, 110, 28); // Deep forest green stroke
-    doc.setLineWidth(0.45);
-    
-    // Bottom soil / furrow contours
-    doc.lines([[3.5, 0], [-1.8, 4.5], [-3.5, 0]], iconCenterX - 5, iconBottomY - 4.5, [1, 1], 'S', true);
-    doc.lines([[3.5, 0], [-1.8, 4.5], [-3.5, 0]], iconCenterX + 1.5, iconBottomY - 4.5, [1, 1], 'S', true);
-    doc.line(iconCenterX - 5.5, iconBottomY - 0.3, iconCenterX + 5.5, iconBottomY - 0.3);
-
-    // Top two leaves on watermark
-    doc.lines([[4.5, 3.5], [-4.5, 0]], iconCenterX - 5.5, iconBottomY - 8.5, [1, 1], 'S', true);
-    doc.lines([[4.5, -3.5], [0, 3.5]], iconCenterX + 1, iconBottomY - 5, [1, 1], 'S', true);
+    // Bottom official farm plant emblem image on green panel under QR code
+    try {
+        const emblemSize = 14.0;
+        const emblemX = (greenWidth - emblemSize) / 2;
+        const emblemY = 35.5;
+        doc.addImage(CARD_PLANT_EMBLEM_DATA_URI, 'PNG', emblemX, emblemY, emblemSize, emblemSize);
+    } catch (e) {
+        console.warn('Emblem rendering note:', e);
+    }
 
     // 3. QR Code Container Box ("the black spot")
     const qrBoxX = 5.25;
