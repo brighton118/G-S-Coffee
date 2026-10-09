@@ -901,27 +901,26 @@ export async function generateWorkerIdCardPDF(worker: Worker): Promise<void> {
     doc.roundedRect(0.2, 0.2, cardWidth - 0.4, cardHeight - 0.4, 2.5, 2.5, 'S');
 
     // 2. Left Green Panel
-    // Starts below top white area: y = 12.5mm down to y = 53.8mm, width = 29.5mm
-    const greenWidth = 29.5;
-    const greenTop = 12.5;
+    const greenWidth = 27.5;
+    const greenTop = 9.5;
     doc.setFillColor(116, 164, 52); // #74a434 vibrant farm green
     doc.rect(0.2, greenTop, greenWidth, cardHeight - greenTop - 0.2, 'F');
 
     // Bottom official farm plant emblem image on green panel under QR code
     try {
-        const emblemSize = 14.0;
+        const emblemSize = 13.5;
         const emblemX = (greenWidth - emblemSize) / 2;
-        const emblemY = 35.5;
+        const emblemY = 36.5;
         doc.addImage(CARD_PLANT_EMBLEM_DATA_URI, 'PNG', emblemX, emblemY, emblemSize, emblemSize);
     } catch (e) {
         console.warn('Emblem rendering note:', e);
     }
 
     // 3. QR Code Container Box ("the black spot")
-    const qrBoxX = 5.25;
-    const qrBoxY = 8.0;
-    const qrBoxW = 19.0;
-    const qrBoxH = 24.0;
+    const qrBoxX = 4.8;
+    const qrBoxY = 6.5;
+    const qrBoxW = 20.8;
+    const qrBoxH = 25.5;
 
     // Dark charcoal container
     doc.setFillColor(55, 55, 55); // #373737
@@ -938,7 +937,7 @@ export async function generateWorkerIdCardPDF(worker: Worker): Promise<void> {
             },
             errorCorrectionLevel: 'M'
         });
-        const qrSize = 16.5;
+        const qrSize = 18.0;
         const qrX = qrBoxX + (qrBoxW - qrSize) / 2;
         const qrY = qrBoxY + (qrBoxH - qrSize) / 2;
         doc.addImage(qrDataUrl, 'PNG', qrX, qrY, qrSize, qrSize);

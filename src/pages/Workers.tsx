@@ -503,8 +503,8 @@ const Workers: React.FC = () => {
                             <div
                                 style={{
                                     width: '100%',
-                                    maxWidth: '420px',
-                                    minHeight: '260px',
+                                    maxWidth: '430px',
+                                    minHeight: '270px',
                                     margin: '0 auto',
                                     backgroundColor: '#ffffff',
                                     borderRadius: '16px',
@@ -520,15 +520,15 @@ const Workers: React.FC = () => {
                                     style={{
                                         position: 'absolute',
                                         left: 0,
-                                        top: '56px',
+                                        top: '46px',
                                         bottom: 0,
-                                        width: '34%',
+                                        width: '32%',
                                         backgroundColor: '#74a434',
                                         display: 'flex',
                                         flexDirection: 'column',
                                         justifyContent: 'flex-end',
                                         alignItems: 'center',
-                                        paddingBottom: '10px'
+                                        paddingBottom: '12px'
                                     }}
                                 >
                                     {/* Official Farm Plant Emblem under QR */}
@@ -536,7 +536,7 @@ const Workers: React.FC = () => {
                                         src="/assets/card_plant_emblem.png"
                                         alt="G&S Plant Emblem"
                                         style={{
-                                            width: '52px',
+                                            width: '54px',
                                             height: 'auto',
                                             objectFit: 'contain',
                                             display: 'block'
@@ -549,30 +549,30 @@ const Workers: React.FC = () => {
                                     style={{
                                         position: 'absolute',
                                         left: '5.5%',
-                                        top: '14%',
-                                        width: '23%',
-                                        height: '45%',
+                                        top: '12%',
+                                        width: '24%',
+                                        height: '47%',
                                         backgroundColor: '#373737',
                                         borderRadius: '4px',
                                         display: 'flex',
                                         alignItems: 'center',
                                         justifyContent: 'center',
-                                        padding: '4px',
-                                        boxShadow: '0 2px 4px rgba(0,0,0,0.25)',
+                                        padding: '5px',
+                                        boxShadow: '0 2px 5px rgba(0,0,0,0.25)',
                                         zIndex: 2
                                     }}
                                 >
                                     <div style={{ backgroundColor: '#ffffff', padding: '3px', borderRadius: '3px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                                        <QRCodeSVG value={selectedWorkerForCard.workerId} size={70} fgColor="#000000" bgColor="#ffffff" />
+                                        <QRCodeSVG value={selectedWorkerForCard.workerId} size={74} fgColor="#000000" bgColor="#ffffff" />
                                     </div>
                                 </div>
 
                                 {/* Right Card Information */}
                                 <div
                                     style={{
-                                        marginLeft: '34%',
-                                        width: '66%',
-                                        padding: '16px 18px',
+                                        marginLeft: '32%',
+                                        width: '68%',
+                                        padding: '16px 20px',
                                         display: 'flex',
                                         flexDirection: 'column',
                                         alignItems: 'center',
@@ -581,39 +581,39 @@ const Workers: React.FC = () => {
                                 >
                                     {/* Top Right Brand Logo */}
                                     <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '8px' }}>
-                                        <svg width="28" height="28" viewBox="0 0 24 24" fill="none">
+                                        <svg width="32" height="32" viewBox="0 0 24 24" fill="none">
                                             <path d="M12 10a5 5 0 0 0-5-5H3v3a5 5 0 0 0 5 5h4" fill="#74a434" />
                                             <path d="M12 10a5 5 0 0 1 5-5h4v3a5 5 0 0 1-5 5h-4" fill="#74a434" />
                                             <path d="M5 17c2 3 5 3 7 3s5 0 7-3" stroke="#8a6642" strokeWidth="2.5" strokeLinecap="round" />
                                             <path d="M8 20c1.5 1.5 3 1.5 4 1.5s2.5 0 4-1.5" stroke="#8a6642" strokeWidth="2" strokeLinecap="round" />
                                         </svg>
                                         <div style={{ textAlign: 'left', lineHeight: 1 }}>
-                                            <div style={{ fontWeight: 900, fontSize: '1.1rem', color: '#1f2937', letterSpacing: '-0.5px' }}>G&S</div>
-                                            <div style={{ fontWeight: 800, fontSize: '0.7rem', color: '#1f2937', letterSpacing: '2px' }}>FARMS</div>
+                                            <div style={{ fontWeight: 900, fontSize: '1.2rem', color: '#1f2937', letterSpacing: '-0.5px' }}>G&S</div>
+                                            <div style={{ fontWeight: 800, fontSize: '0.75rem', color: '#1f2937', letterSpacing: '2px' }}>FARMS</div>
                                         </div>
                                     </div>
 
                                     {/* Role Title */}
-                                    <div style={{ fontSize: '0.8rem', fontWeight: 700, color: '#1e293b', marginBottom: '3px' }}>
+                                    <div style={{ fontSize: '0.88rem', fontWeight: 700, color: '#1e293b', marginBottom: '4px' }}>
                                         {selectedWorkerForCard.position || selectedWorkerForCard.department || 'Company Employee'}
                                     </div>
 
                                     {/* Full Name */}
-                                    <div style={{ fontSize: '1.05rem', fontWeight: 800, color: '#0f172a', marginBottom: '10px', wordBreak: 'break-word', maxWidth: '230px' }}>
+                                    <div style={{ fontSize: '1.15rem', fontWeight: 900, color: '#0f172a', marginBottom: '12px', wordBreak: 'break-word', maxWidth: '240px', lineHeight: 1.25 }}>
                                         {selectedWorkerForCard.fullName}
                                     </div>
 
                                     {/* ID Badge Box */}
-                                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px', width: '100%', marginBottom: '10px' }}>
-                                        <span style={{ fontSize: '0.85rem', fontWeight: 800, color: '#0f172a' }}>ID:</span>
+                                    <div style={{ display: 'flex', alignItems: 'center', gap: '10px', width: '100%', marginBottom: '12px' }}>
+                                        <span style={{ fontSize: '0.95rem', fontWeight: 800, color: '#0f172a' }}>ID:</span>
                                         <div
                                             style={{
                                                 flex: 1,
                                                 backgroundColor: '#e5e7eb',
-                                                padding: '4px 10px',
+                                                padding: '5px 12px',
                                                 borderRadius: '6px',
                                                 fontWeight: 800,
-                                                fontSize: '0.95rem',
+                                                fontSize: '1.05rem',
                                                 color: '#1f2937',
                                                 letterSpacing: '1px'
                                             }}
@@ -623,17 +623,17 @@ const Workers: React.FC = () => {
                                     </div>
 
                                     {/* Issued & Expiry Dates */}
-                                    <div style={{ width: '100%', display: 'flex', flexDirection: 'column', gap: '3px', fontSize: '0.75rem', textAlign: 'left' }}>
-                                        <div style={{ display: 'flex', justifyContent: 'flex-start', gap: '12px' }}>
-                                            <span style={{ fontWeight: 800, color: '#1e293b', minWidth: '55px' }}>Issued:</span>
+                                    <div style={{ width: '100%', display: 'flex', flexDirection: 'column', gap: '4px', fontSize: '0.82rem', textAlign: 'left' }}>
+                                        <div style={{ display: 'flex', justifyContent: 'flex-start', gap: '16px' }}>
+                                            <span style={{ fontWeight: 800, color: '#1e293b', minWidth: '60px' }}>Issued:</span>
                                             <span style={{ fontWeight: 700, color: '#1e293b' }}>
                                                 {selectedWorkerForCard.dateJoined
                                                     ? format(new Date(selectedWorkerForCard.dateJoined), 'dd/MM/yyyy')
                                                     : '01/08/2026'}
                                             </span>
                                         </div>
-                                        <div style={{ display: 'flex', justifyContent: 'flex-start', gap: '12px' }}>
-                                            <span style={{ fontWeight: 800, color: '#1e293b', minWidth: '55px' }}>Expires:</span>
+                                        <div style={{ display: 'flex', justifyContent: 'flex-start', gap: '16px' }}>
+                                            <span style={{ fontWeight: 800, color: '#1e293b', minWidth: '60px' }}>Expires:</span>
                                             <span style={{ fontWeight: 700, color: '#1e293b' }}>
                                                 {(() => {
                                                     try {
