@@ -629,7 +629,7 @@ const Workers: React.FC = () => {
                                             <span style={{ fontWeight: 700, color: '#1e293b' }}>
                                                 {selectedWorkerForCard.dateJoined
                                                     ? format(new Date(selectedWorkerForCard.dateJoined), 'dd/MM/yyyy')
-                                                    : '01/08/2026'}
+                                                    : '01/11/2026'}
                                             </span>
                                         </div>
                                         <div style={{ display: 'flex', justifyContent: 'flex-start', gap: '16px' }}>
@@ -643,7 +643,7 @@ const Workers: React.FC = () => {
                                                         expD.setDate(expD.getDate() - 1);
                                                         return format(expD, 'dd/MM/yyyy');
                                                     } catch {
-                                                        return '31/07/2027';
+                                                        return '31/11/2028';
                                                     }
                                                 })()}
                                             </span>
