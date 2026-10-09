@@ -4,7 +4,7 @@ import { format } from 'date-fns';
 import QRCode from 'qrcode';
 import { Worker, AttendanceRecord, PayrollRecord, InventoryItem, InventoryTransaction, FarmExpense, SalesOrder, CloneBatch, ProductionHumidChamber, ProductionSorting, ActivityLog } from '../db';
 import { formatUGX } from './calculations';
-import { CARD_PLANT_EMBLEM_DATA_URI } from './idCardAssets';
+import { CARD_PLANT_EMBLEM_DATA_URI, CARD_BACK_WATERMARK_DATA_URI } from './idCardAssets';
 
 // Color Palette for G&S COFFEE Farm PDF Branding
 const BRAND_PRIMARY: [number, number, number] = [46, 125, 50]; // #2E7D32 Forest Green
@@ -1095,13 +1095,15 @@ export async function generateWorkerIdCardPDF(worker: Worker): Promise<void> {
     doc.setFillColor(116, 164, 52); // #74a434 vibrant farm green
     doc.rect(0.2, backGreenTop, cardWidth - 0.4, cardHeight - backGreenTop - 0.2, 'F');
 
-    // Decorative Watermark Emblem on Far Right
-    doc.setFillColor(55, 75, 25);
-    doc.setDrawColor(55, 75, 25);
-    doc.setLineWidth(0.6);
-    doc.lines([[-8, 6], [0, -9], [8, 3]], cardWidth - 3, 28, [1, 1], 'F', true);
-    doc.lines([[-10, 0], [4, 8], [6, 0]], cardWidth - 3, 41, [1, 1], 'S', true);
-    doc.lines([[-8, 0], [3, 6], [5, 0]], cardWidth - 3, 44, [1, 1], 'S', true);
+    // Official Decorative Watermark Emblem on Right (in front of Signature & Issued By)
+    try {
+        const backEmblemW = 17.5;
+        const backEmblemH = cardHeight - backGreenTop - 0.4;
+        const backEmblemX = cardWidth - 0.2 - backEmblemW;
+        doc.addImage(CARD_BACK_WATERMARK_DATA_URI, 'PNG', backEmblemX, backGreenTop + 0.2, backEmblemW, backEmblemH);
+    } catch (e) {
+        console.warn('Back emblem rendering note:', e);
+    }
 
     // 3. Signature & Issued By Form Boxes
     // Signature Label & White Box

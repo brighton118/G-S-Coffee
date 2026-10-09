@@ -695,13 +695,18 @@ const Workers: React.FC = () => {
                                         justifyContent: 'space-between'
                                     }}
                                 >
-                                    {/* Watermark Emblem on Right Edge */}
-                                    <div style={{ position: 'absolute', right: '-10px', top: '10px', bottom: '0px', pointerEvents: 'none', opacity: 0.9 }}>
-                                        <svg width="85" height="150" viewBox="0 0 24 40" fill="none">
-                                            <path d="M22 6c-8 3-12 10-12 16 0 4 2 7 5 9" stroke="#3d5616" strokeWidth="2.5" strokeLinecap="round" />
-                                            <path d="M10 28c3 4 7 5 12 5" stroke="#3d5616" strokeWidth="2.5" strokeLinecap="round" />
-                                            <path d="M14 34c2 3 4 4 8 4" stroke="#3d5616" strokeWidth="2.5" strokeLinecap="round" />
-                                        </svg>
+                                    {/* Watermark Emblem in front of Signature and Issued By boxes */}
+                                    <div style={{ position: 'absolute', right: '0px', top: '0px', bottom: '0px', width: '90px', pointerEvents: 'none', display: 'flex', alignItems: 'center', justifyContent: 'flex-end', overflow: 'hidden' }}>
+                                        <img
+                                            src="/assets/card_back_watermark.png"
+                                            alt="Back Card Emblem"
+                                            style={{
+                                                height: '100%',
+                                                width: 'auto',
+                                                objectFit: 'contain',
+                                                objectPosition: 'right center'
+                                            }}
+                                        />
                                     </div>
 
                                     {/* Signature and Issued By Form Fields */}
