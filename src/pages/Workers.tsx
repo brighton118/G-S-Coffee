@@ -652,12 +652,11 @@ const Workers: React.FC = () => {
                                 </div>
                             </div>
                         ) : (
-                            /* Back Side of Card */
+                            /* Back Side of Card - Exactly matching the official G&S Farms design */
                             <div
                                 style={{
                                     width: '100%',
                                     maxWidth: '420px',
-                                    minHeight: '260px',
                                     margin: '0 auto',
                                     backgroundColor: '#ffffff',
                                     borderRadius: '16px',
@@ -665,76 +664,19 @@ const Workers: React.FC = () => {
                                     position: 'relative',
                                     overflow: 'hidden',
                                     boxShadow: '0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -4px rgba(0, 0, 0, 0.1)',
-                                    display: 'flex',
-                                    flexDirection: 'column'
+                                    display: 'flex'
                                 }}
                             >
-                                {/* Top White Header with Centered Logo */}
-                                <div style={{ height: '70px', display: 'flex', justifyContent: 'center', alignItems: 'center', backgroundColor: '#ffffff', gap: '8px' }}>
-                                    <svg width="30" height="30" viewBox="0 0 24 24" fill="none">
-                                        <path d="M12 10a5 5 0 0 0-5-5H3v3a5 5 0 0 0 5 5h4" fill="#74a434" />
-                                        <path d="M12 10a5 5 0 0 1 5-5h4v3a5 5 0 0 1-5 5h-4" fill="#74a434" />
-                                        <path d="M5 17c2 3 5 3 7 3s5 0 7-3" stroke="#8a6642" strokeWidth="2.5" strokeLinecap="round" />
-                                        <path d="M8 20c1.5 1.5 3 1.5 4 1.5s2.5 0 4-1.5" stroke="#8a6642" strokeWidth="2" strokeLinecap="round" />
-                                    </svg>
-                                    <div style={{ textAlign: 'left', lineHeight: 1 }}>
-                                        <div style={{ fontWeight: 900, fontSize: '1.15rem', color: '#1f2937', letterSpacing: '-0.5px' }}>G&S</div>
-                                        <div style={{ fontWeight: 800, fontSize: '0.75rem', color: '#1f2937', letterSpacing: '2px' }}>FARMS</div>
-                                    </div>
-                                </div>
-
-                                {/* Lower Green Field */}
-                                <div
+                                <img
+                                    src="/assets/id_card_back_full.png"
+                                    alt="Official G&S Farms Card Back"
                                     style={{
-                                        flex: 1,
-                                        backgroundColor: '#74a434',
-                                        padding: '16px 20px',
-                                        position: 'relative',
-                                        display: 'flex',
-                                        flexDirection: 'column',
-                                        justifyContent: 'space-between'
+                                        width: '100%',
+                                        height: 'auto',
+                                        display: 'block',
+                                        objectFit: 'cover'
                                     }}
-                                >
-                                    {/* Watermark Emblem in front of Signature and Issued By boxes */}
-                                    <div style={{ position: 'absolute', right: '0px', top: '0px', bottom: '0px', width: '90px', pointerEvents: 'none', display: 'flex', alignItems: 'center', justifyContent: 'flex-end', overflow: 'hidden' }}>
-                                        <img
-                                            src="/assets/card_back_watermark.png"
-                                            alt="Back Card Emblem"
-                                            style={{
-                                                height: '100%',
-                                                width: 'auto',
-                                                objectFit: 'contain',
-                                                objectPosition: 'right center'
-                                            }}
-                                        />
-                                    </div>
-
-                                    {/* Signature and Issued By Form Fields */}
-                                    <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', zIndex: 1, maxWidth: '280px' }}>
-                                        <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-                                            <span style={{ color: '#ffffff', fontWeight: 800, fontSize: '0.85rem', width: '80px' }}>Signature:</span>
-                                            <div style={{ flex: 1, height: '28px', backgroundColor: '#ffffff', borderRadius: '4px' }}></div>
-                                        </div>
-                                        <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-                                            <span style={{ color: '#ffffff', fontWeight: 800, fontSize: '0.85rem', width: '80px' }}>Issued By:</span>
-                                            <div style={{ flex: 1, height: '28px', backgroundColor: '#ffffff', borderRadius: '4px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                                                {/* Authorized signature script */}
-                                                <svg width="100" height="22" viewBox="0 0 100 24" fill="none" stroke="#1e293b" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
-                                                    <path d="M10 16c5-10 10-12 12-4 2 8 6 3 10-2s8 6 12 2c4-4 8 2 12-1 4-3 8-1 12 3" />
-                                                    <circle cx="65" cy="12" r="6" stroke="#1e293b" strokeWidth="1.5" />
-                                                </svg>
-                                            </div>
-                                        </div>
-                                    </div>
-
-                                    {/* Return Contact Details */}
-                                    <div style={{ textAlign: 'center', color: '#ffffff', fontSize: '0.72rem', fontWeight: 700, lineHeight: 1.4, zIndex: 1, marginTop: '8px' }}>
-                                        <div>If found, please return to G&S Farms</div>
-                                        <div>Rwenshanku, Bubaare</div>
-                                        <div>+256 789989420</div>
-                                        <div>gs.farms.ug@gmail.com</div>
-                                    </div>
-                                </div>
+                                />
                             </div>
                         )}
 
