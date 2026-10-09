@@ -4,7 +4,7 @@ import { format } from 'date-fns';
 import QRCode from 'qrcode';
 import { Worker, AttendanceRecord, PayrollRecord, InventoryItem, InventoryTransaction, FarmExpense, SalesOrder, CloneBatch, ProductionHumidChamber, ProductionSorting, ActivityLog } from '../db';
 import { formatUGX } from './calculations';
-import { CARD_PLANT_EMBLEM_DATA_URI, CARD_BACK_FULL_DATA_URI } from './idCardAssets';
+import { CARD_FRONT_TEMPLATE_DATA_URI, CARD_BACK_FULL_DATA_URI } from './idCardAssets';
 
 // Color Palette for G&S COFFEE Farm PDF Branding
 const BRAND_PRIMARY: [number, number, number] = [46, 125, 50]; // #2E7D32 Forest Green
@@ -893,40 +893,19 @@ export async function generateWorkerIdCardPDF(worker: Worker): Promise<void> {
     const cardWidth = 85.6;
     const cardHeight = 54;
 
-    // 1. White Card Background with subtle rounded outer border
-    doc.setFillColor(255, 255, 255);
-    doc.rect(0, 0, cardWidth, cardHeight, 'F');
-    doc.setDrawColor(210, 215, 220);
-    doc.setLineWidth(0.3);
-    doc.roundedRect(0.2, 0.2, cardWidth - 0.4, cardHeight - 0.4, 2.5, 2.5, 'S');
-
-    // 2. Left Green Panel
-    const greenWidth = 27.5;
-    const greenTop = 9.5;
-    doc.setFillColor(116, 164, 52); // #74a434 vibrant farm green
-    doc.rect(0.2, greenTop, greenWidth, cardHeight - greenTop - 0.2, 'F');
-
-    // Bottom official farm plant emblem image on green panel under QR code
+    // 1. Draw Official G&S Farms Front Card Base Template
     try {
-        const emblemSize = 13.5;
-        const emblemX = (greenWidth - emblemSize) / 2;
-        const emblemY = 36.5;
-        doc.addImage(CARD_PLANT_EMBLEM_DATA_URI, 'PNG', emblemX, emblemY, emblemSize, emblemSize);
+        doc.addImage(CARD_FRONT_TEMPLATE_DATA_URI, 'PNG', 0, 0, cardWidth, cardHeight);
     } catch (e) {
-        console.warn('Emblem rendering note:', e);
+        console.warn('Front card template note:', e);
     }
 
-    // 3. QR Code Container Box ("the black spot")
-    const qrBoxX = 4.8;
-    const qrBoxY = 6.5;
+    // 2. Generate and position QR code dead-center on the black spot
+    const qrBoxX = 5.6;
+    const qrBoxY = 8.5;
     const qrBoxW = 20.8;
-    const qrBoxH = 25.5;
+    const qrBoxH = 27.0;
 
-    // Dark charcoal container
-    doc.setFillColor(55, 55, 55); // #373737
-    doc.rect(qrBoxX, qrBoxY, qrBoxW, qrBoxH, 'F');
-
-    // Generate high resolution scannable QR Code
     try {
         const qrDataUrl = await QRCode.toDataURL(worker.workerId, {
             margin: 1,
@@ -943,78 +922,24 @@ export async function generateWorkerIdCardPDF(worker: Worker): Promise<void> {
         doc.addImage(qrDataUrl, 'PNG', qrX, qrY, qrSize, qrSize);
     } catch (e) {
         console.warn('QR Code rendering note:', e);
-        doc.setFillColor(255, 255, 255);
-        doc.rect(qrBoxX + 1.5, qrBoxY + 4, qrBoxW - 3, qrBoxH - 8, 'F');
-        doc.setTextColor(0, 0, 0);
-        doc.setFontSize(6);
-        doc.setFont('helvetica', 'bold');
-        doc.text(worker.workerId, qrBoxX + qrBoxW / 2, qrBoxY + 12, { align: 'center' });
     }
 
-    // 4. Top Right Logo ("G&S FARMS")
-    const logoX = 56;
-    const logoY = 4.2;
-
-    // Logo Icon: 2 Green leaves + 2 brown soil contour arches
-    // Leaves (Green #74a434)
-    doc.setFillColor(116, 164, 52);
-    doc.lines([[3.2, -3.8], [-0.5, 3.8]], logoX - 11, logoY + 4.2, [1, 1], 'F', true);
-    doc.lines([[3.2, 0], [-2.7, -3.8]], logoX - 7.5, logoY + 4.2, [1, 1], 'F', true);
-
-    // Soil contours (Brown #8a6642)
-    doc.setDrawColor(138, 102, 66);
-    doc.setLineWidth(0.4);
-    doc.lines([[3.0, 0], [-1.5, 3.0], [-3.0, 0]], logoX - 11, logoY + 5.2, [1, 1], 'S', true);
-    doc.lines([[3.0, 0], [-1.5, 3.0], [-3.0, 0]], logoX - 6.5, logoY + 5.2, [1, 1], 'S', true);
-
-    // Text: G&S
-    doc.setTextColor(34, 34, 34);
+    // 3. Worker Full Name (Centered above ID pill)
+    doc.setTextColor(0, 0, 0);
     doc.setFont('helvetica', 'bold');
-    doc.setFontSize(13);
-    doc.text('G&S', logoX - 2.5, logoY + 4.5);
-
-    // Text: FARMS
-    doc.setFontSize(9);
-    doc.text('FARMS', logoX - 2.5, logoY + 8.5);
-
-    // 5. Role / Company Employee
-    const roleText = worker.position || worker.department || 'Company Employee';
-    doc.setTextColor(24, 24, 27);
-    doc.setFont('helvetica', 'bold');
-    doc.setFontSize(7.5);
-    doc.text(roleText, 57.5, 18.5, { align: 'center', maxWidth: 48 });
-
-    // 6. Worker Full Name
-    doc.setTextColor(15, 23, 42);
-    doc.setFont('helvetica', 'bold');
-    const nameFontSize = worker.fullName.length > 22 ? 8.5 : 10;
+    const nameFontSize = worker.fullName.length > 22 ? 9.5 : 11.5;
     doc.setFontSize(nameFontSize);
-    doc.text(worker.fullName, 57.5, 24, { align: 'center', maxWidth: 50 });
+    doc.text(worker.fullName, 58.0, 23.5, { align: 'center', maxWidth: 46 });
 
-    // 7. ID Badge Box
-    // Label "ID:"
-    doc.setTextColor(15, 23, 42);
-    doc.setFont('helvetica', 'bold');
-    doc.setFontSize(8.5);
-    doc.text('ID:', 35, 33.2);
-
-    // Light gray pill
-    const idBoxX = 42;
-    const idBoxY = 29.2;
-    const idBoxW = 38;
-    const idBoxH = 6.6;
-    doc.setFillColor(229, 231, 235); // #e5e7eb
-    doc.roundedRect(idBoxX, idBoxY, idBoxW, idBoxH, 0.8, 0.8, 'F');
-
-    // ID Number inside pill
+    // 4. ID Badge Number inside the grey box
     const displayId = worker.farmCardNumber || worker.workerId.replace(/^GSF-W-0*/i, '') || worker.workerId;
     const formattedIdNumber = displayId.padStart(4, '0');
     doc.setTextColor(24, 24, 27);
     doc.setFont('helvetica', 'bold');
-    doc.setFontSize(9.5);
-    doc.text(formattedIdNumber, idBoxX + idBoxW / 2, idBoxY + 4.7, { align: 'center' });
+    doc.setFontSize(11.0);
+    doc.text(formattedIdNumber, 61.2, 33.2, { align: 'center' });
 
-    // 8. Issued and Expiry Dates
+    // 5. Issued & Expiry Dates
     let issuedDateStr = '01/08/2026';
     if (worker.dateJoined) {
         try {
@@ -1042,16 +967,11 @@ export async function generateWorkerIdCardPDF(worker: Worker): Promise<void> {
         }
     }
 
-    // Issued row
     doc.setTextColor(24, 24, 27);
     doc.setFont('helvetica', 'bold');
-    doc.setFontSize(7.2);
-    doc.text('Issued:', 35, 40.5);
-    doc.text(issuedDateStr, 50, 40.5);
-
-    // Expires row
-    doc.text('Expires:', 35, 45.8);
-    doc.text(expiresDateStr, 50, 45.8);
+    doc.setFontSize(8.2);
+    doc.text(issuedDateStr, 51.5, 41.8);
+    doc.text(expiresDateStr, 51.5, 46.8);
 
     // ==========================================
     // PAGE 2: BACK SIDE OF WORKER ID CARD

@@ -504,151 +504,129 @@ const Workers: React.FC = () => {
                                 style={{
                                     width: '100%',
                                     maxWidth: '430px',
-                                    minHeight: '270px',
+                                    aspectRatio: '707 / 447',
                                     margin: '0 auto',
                                     backgroundColor: '#ffffff',
                                     borderRadius: '16px',
                                     border: '1px solid #d1d5db',
                                     position: 'relative',
                                     overflow: 'hidden',
-                                    boxShadow: '0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -4px rgba(0, 0, 0, 0.1)',
-                                    display: 'flex'
+                                    boxShadow: '0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -4px rgba(0, 0, 0, 0.1)'
                                 }}
                             >
-                                {/* Left Green Section */}
-                                <div
+                                {/* Base Front Template Image (Exact Reference) */}
+                                <img
+                                    src="/assets/id_card_front_template.png"
+                                    alt="Official G&S Farms Card Front Template"
                                     style={{
-                                        position: 'absolute',
-                                        left: 0,
-                                        top: '46px',
-                                        bottom: 0,
-                                        width: '32%',
-                                        backgroundColor: '#74a434',
-                                        display: 'flex',
-                                        flexDirection: 'column',
-                                        justifyContent: 'flex-end',
-                                        alignItems: 'center',
-                                        paddingBottom: '12px'
+                                        width: '100%',
+                                        height: '100%',
+                                        display: 'block',
+                                        objectFit: 'cover'
                                     }}
-                                >
-                                    {/* Official Farm Plant Emblem under QR */}
-                                    <img
-                                        src="/assets/card_plant_emblem.png"
-                                        alt="G&S Plant Emblem"
-                                        style={{
-                                            width: '54px',
-                                            height: 'auto',
-                                            objectFit: 'contain',
-                                            display: 'block'
-                                        }}
-                                    />
-                                </div>
+                                />
 
-                                {/* Dark QR Code Box Container ("the black spot") */}
+                                {/* QR Code Overlaid directly on the Black Spot */}
                                 <div
                                     style={{
                                         position: 'absolute',
-                                        left: '5.5%',
-                                        top: '12%',
-                                        width: '24%',
-                                        height: '47%',
-                                        backgroundColor: '#373737',
-                                        borderRadius: '4px',
+                                        left: '6.5%',
+                                        top: '15.6%',
+                                        width: '24.3%',
+                                        height: '50.3%',
                                         display: 'flex',
                                         alignItems: 'center',
                                         justifyContent: 'center',
-                                        padding: '5px',
-                                        boxShadow: '0 2px 5px rgba(0,0,0,0.25)',
                                         zIndex: 2
                                     }}
                                 >
-                                    <div style={{ backgroundColor: '#ffffff', padding: '3px', borderRadius: '3px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                                    <div style={{ backgroundColor: '#ffffff', padding: '3px', borderRadius: '4px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                                         <QRCodeSVG value={selectedWorkerForCard.workerId} size={74} fgColor="#000000" bgColor="#ffffff" />
                                     </div>
                                 </div>
 
-                                {/* Right Card Information */}
+                                {/* Dynamic Worker Full Name */}
                                 <div
                                     style={{
-                                        marginLeft: '32%',
-                                        width: '68%',
-                                        padding: '16px 20px',
-                                        display: 'flex',
-                                        flexDirection: 'column',
-                                        alignItems: 'center',
-                                        textAlign: 'center'
+                                        position: 'absolute',
+                                        left: '38%',
+                                        right: '6%',
+                                        top: '40%',
+                                        fontSize: '1.25rem',
+                                        fontWeight: 900,
+                                        color: '#000000',
+                                        textAlign: 'center',
+                                        whiteSpace: 'nowrap',
+                                        overflow: 'hidden',
+                                        textOverflow: 'ellipsis',
+                                        lineHeight: 1.2,
+                                        zIndex: 2
                                     }}
                                 >
-                                    {/* Top Right Brand Logo */}
-                                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '8px' }}>
-                                        <svg width="32" height="32" viewBox="0 0 24 24" fill="none">
-                                            <path d="M12 10a5 5 0 0 0-5-5H3v3a5 5 0 0 0 5 5h4" fill="#74a434" />
-                                            <path d="M12 10a5 5 0 0 1 5-5h4v3a5 5 0 0 1-5 5h-4" fill="#74a434" />
-                                            <path d="M5 17c2 3 5 3 7 3s5 0 7-3" stroke="#8a6642" strokeWidth="2.5" strokeLinecap="round" />
-                                            <path d="M8 20c1.5 1.5 3 1.5 4 1.5s2.5 0 4-1.5" stroke="#8a6642" strokeWidth="2" strokeLinecap="round" />
-                                        </svg>
-                                        <div style={{ textAlign: 'left', lineHeight: 1 }}>
-                                            <div style={{ fontWeight: 900, fontSize: '1.2rem', color: '#1f2937', letterSpacing: '-0.5px' }}>G&S</div>
-                                            <div style={{ fontWeight: 800, fontSize: '0.75rem', color: '#1f2937', letterSpacing: '2px' }}>FARMS</div>
-                                        </div>
-                                    </div>
+                                    {selectedWorkerForCard.fullName}
+                                </div>
 
-                                    {/* Role Title */}
-                                    <div style={{ fontSize: '0.88rem', fontWeight: 700, color: '#1e293b', marginBottom: '4px' }}>
-                                        {selectedWorkerForCard.position || selectedWorkerForCard.department || 'Company Employee'}
-                                    </div>
+                                {/* Dynamic Worker ID Number inside the Grey Box */}
+                                <div
+                                    style={{
+                                        position: 'absolute',
+                                        left: '49.2%',
+                                        top: '60%',
+                                        width: '45%',
+                                        height: '12.3%',
+                                        display: 'flex',
+                                        alignItems: 'center',
+                                        justifyContent: 'center',
+                                        fontSize: '1.2rem',
+                                        fontWeight: 700,
+                                        color: '#111827',
+                                        letterSpacing: '1px',
+                                        zIndex: 2
+                                    }}
+                                >
+                                    {(selectedWorkerForCard.farmCardNumber || selectedWorkerForCard.workerId.replace(/^GSF-W-0*/i, '') || selectedWorkerForCard.workerId).padStart(4, '0')}
+                                </div>
 
-                                    {/* Full Name */}
-                                    <div style={{ fontSize: '1.15rem', fontWeight: 900, color: '#0f172a', marginBottom: '12px', wordBreak: 'break-word', maxWidth: '240px', lineHeight: 1.25 }}>
-                                        {selectedWorkerForCard.fullName}
-                                    </div>
+                                {/* Dynamic Issued Date Value */}
+                                <div
+                                    style={{
+                                        position: 'absolute',
+                                        left: '58%',
+                                        top: '77.2%',
+                                        fontSize: '0.98rem',
+                                        fontWeight: 700,
+                                        color: '#111827',
+                                        zIndex: 2
+                                    }}
+                                >
+                                    {selectedWorkerForCard.dateJoined
+                                        ? format(new Date(selectedWorkerForCard.dateJoined), 'dd/MM/yyyy')
+                                        : '01/08/2026'}
+                                </div>
 
-                                    {/* ID Badge Box */}
-                                    <div style={{ display: 'flex', alignItems: 'center', gap: '10px', width: '100%', marginBottom: '12px' }}>
-                                        <span style={{ fontSize: '0.95rem', fontWeight: 800, color: '#0f172a' }}>ID:</span>
-                                        <div
-                                            style={{
-                                                flex: 1,
-                                                backgroundColor: '#e5e7eb',
-                                                padding: '5px 12px',
-                                                borderRadius: '6px',
-                                                fontWeight: 800,
-                                                fontSize: '1.05rem',
-                                                color: '#1f2937',
-                                                letterSpacing: '1px'
-                                            }}
-                                        >
-                                            {(selectedWorkerForCard.farmCardNumber || selectedWorkerForCard.workerId.replace(/^GSF-W-0*/i, '') || selectedWorkerForCard.workerId).padStart(4, '0')}
-                                        </div>
-                                    </div>
-
-                                    {/* Issued & Expiry Dates */}
-                                    <div style={{ width: '100%', display: 'flex', flexDirection: 'column', gap: '4px', fontSize: '0.82rem', textAlign: 'left' }}>
-                                        <div style={{ display: 'flex', justifyContent: 'flex-start', gap: '16px' }}>
-                                            <span style={{ fontWeight: 800, color: '#1e293b', minWidth: '60px' }}>Issued:</span>
-                                            <span style={{ fontWeight: 700, color: '#1e293b' }}>
-                                                {selectedWorkerForCard.dateJoined
-                                                    ? format(new Date(selectedWorkerForCard.dateJoined), 'dd/MM/yyyy')
-                                                    : '01/11/2026'}
-                                            </span>
-                                        </div>
-                                        <div style={{ display: 'flex', justifyContent: 'flex-start', gap: '16px' }}>
-                                            <span style={{ fontWeight: 800, color: '#1e293b', minWidth: '60px' }}>Expires:</span>
-                                            <span style={{ fontWeight: 700, color: '#1e293b' }}>
-                                                {(() => {
-                                                    try {
-                                                        const baseD = selectedWorkerForCard.dateJoined ? new Date(selectedWorkerForCard.dateJoined) : new Date('2026-08-01');
-                                                        const expD = new Date(baseD);
-                                                        expD.setFullYear(expD.getFullYear() + 1);
-                                                        expD.setDate(expD.getDate() - 1);
-                                                        return format(expD, 'dd/MM/yyyy');
-                                                    } catch {
-                                                        return '31/11/2028';
-                                                    }
-                                                })()}
-                                            </span>
-                                        </div>
-                                    </div>
+                                {/* Dynamic Expires Date Value */}
+                                <div
+                                    style={{
+                                        position: 'absolute',
+                                        left: '58%',
+                                        top: '86.2%',
+                                        fontSize: '0.98rem',
+                                        fontWeight: 700,
+                                        color: '#111827',
+                                        zIndex: 2
+                                    }}
+                                >
+                                    {(() => {
+                                        try {
+                                            const baseD = selectedWorkerForCard.dateJoined ? new Date(selectedWorkerForCard.dateJoined) : new Date('2026-08-01');
+                                            const expD = new Date(baseD);
+                                            expD.setFullYear(expD.getFullYear() + 1);
+                                            expD.setDate(expD.getDate() - 1);
+                                            return format(expD, 'dd/MM/yyyy');
+                                        } catch {
+                                            return '31/07/2027';
+                                        }
+                                    })()}
                                 </div>
                             </div>
                         ) : (
