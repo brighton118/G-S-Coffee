@@ -33,7 +33,6 @@ const Workers: React.FC = () => {
         gender: 'Male' as 'Male' | 'Female',
         phoneNumber: '',
         monthlySalary: 500000,
-        overtimeRate: 3500,
         status: 'Active' as 'Active' | 'Inactive'
     });
 
@@ -65,7 +64,6 @@ const Workers: React.FC = () => {
                 gender: formData.gender as 'Male' | 'Female',
                 phoneNumber: formData.phoneNumber.trim() || '+256 700 000000',
                 monthlySalary: Number(formData.monthlySalary) || 0,
-                overtimeRate: Number(formData.overtimeRate) || 0,
                 status: formData.status as 'Active' | 'Inactive'
             });
             setEditingWorker(null);
@@ -85,8 +83,7 @@ const Workers: React.FC = () => {
                 status: formData.status as 'Active' | 'Inactive',
                 farmCardNumber: farmCardNum,
                 qrCode: newId,
-                monthlySalary: Number(formData.monthlySalary) || 0,
-                overtimeRate: Number(formData.overtimeRate) || 0
+                monthlySalary: Number(formData.monthlySalary) || 0
             };
 
             await db.workers.add(newWorker);
@@ -99,7 +96,6 @@ const Workers: React.FC = () => {
             gender: 'Male',
             phoneNumber: '',
             monthlySalary: 500000,
-            overtimeRate: 3500,
             status: 'Active'
         });
     };
@@ -111,7 +107,6 @@ const Workers: React.FC = () => {
             gender: (worker.gender || 'Male') as 'Male' | 'Female',
             phoneNumber: worker.phoneNumber,
             monthlySalary: worker.monthlySalary || 0,
-            overtimeRate: worker.overtimeRate || 0,
             status: (worker.status || 'Active') as 'Active' | 'Inactive'
         });
         setShowAddModal(true);
@@ -129,10 +124,10 @@ const Workers: React.FC = () => {
             <div className="header-action" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '1rem' }}>
                 <div>
                     <h1 style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', margin: 0 }}>
-                        <Banknote size={28} color="var(--color-primary)" /> Worker Payroll Setup
+                        <Users size={28} color="var(--color-primary)" /> Worker Directory &amp; ID Cards
                     </h1>
                     <p className="text-light" style={{ margin: '0.25rem 0 0 0' }}>
-                        Review monthly base pay and overtime rates for your workforce. Payments are managed in Payroll.
+                        Register workers, manage workforce profiles, and generate QR ID cards. Overtime rates and payments are managed in Payroll.
                     </p>
                 </div>
                 <div style={{ display: 'flex', gap: '0.75rem', flexWrap: 'wrap' }}>
@@ -151,7 +146,6 @@ const Workers: React.FC = () => {
                                 gender: 'Male',
                                 phoneNumber: '',
                                 monthlySalary: 500000,
-                                overtimeRate: 3500,
                                 status: 'Active'
                             });
                             setShowAddModal(true);
@@ -231,9 +225,9 @@ const Workers: React.FC = () => {
                     <thead>
                         <tr>
                             <th>Worker</th>
+                            <th>Phone Number</th>
                             <th>Status</th>
                             <th>Monthly base salary</th>
-                            <th>Overtime rate</th>
                             <th>Date joined</th>
                             <th className="workers-payroll-actions-heading">Actions</th>
                         </tr>
@@ -253,6 +247,10 @@ const Workers: React.FC = () => {
                                         <div className="workers-payroll-id">{w.workerId}</div>
                                     </td>
                                     <td>
+                                        <div>{w.phoneNumber || '-'}</div>
+                                        <div className="workers-payroll-caption">{w.gender || 'Male'}</div>
+                                    </td>
+                                    <td>
                                         <span className={`workers-status-badge ${w.status === 'Active' ? 'is-active' : 'is-inactive'}`}>
                                             {w.status || 'Inactive'}
                                         </span>
@@ -260,10 +258,6 @@ const Workers: React.FC = () => {
                                     <td>
                                         <strong className="workers-payroll-salary">{formatUGX(w.monthlySalary || 0)}</strong>
                                         <div className="workers-payroll-caption">per month</div>
-                                    </td>
-                                    <td>
-                                        <strong>{formatUGX(w.overtimeRate || 0)}</strong>
-                                        <div className="workers-payroll-caption">per hour</div>
                                     </td>
                                     <td className="workers-payroll-date">{w.dateJoined}</td>
                                     <td className="workers-payroll-actions">
@@ -280,7 +274,7 @@ const Workers: React.FC = () => {
                                                 className="btn btn-secondary"
                                                 style={{ padding: '0.35rem 0.55rem', fontSize: '0.8rem' }}
                                                 onClick={() => handleOpenEdit(w)}
-                                                title="Edit worker and pay details"
+                                                title="Edit worker details"
                                                 aria-label={`Edit ${w.fullName}`}
                                             >
                                                 <Edit3 size={14} />
@@ -318,12 +312,12 @@ const Workers: React.FC = () => {
 
                             <div className="workers-payroll-card-details">
                                 <div>
-                                    <span className="workers-payroll-caption">Monthly Salary:</span>
-                                    <strong>{formatUGX(worker.monthlySalary || 0)}</strong>
+                                    <span className="workers-payroll-caption">Phone:</span>
+                                    <strong>{worker.phoneNumber}</strong>
                                 </div>
                                 <div>
-                                    <span className="workers-payroll-caption">Overtime Rate:</span>
-                                    <strong>{formatUGX(worker.overtimeRate || 0)} / hr</strong>
+                                    <span className="workers-payroll-caption">Monthly Salary:</span>
+                                    <strong>{formatUGX(worker.monthlySalary || 0)}</strong>
                                 </div>
                                 <div>
                                     <span className="workers-payroll-caption">Date Joined:</span>
@@ -406,33 +400,18 @@ const Workers: React.FC = () => {
                                 </div>
                             </div>
 
-                            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
-                                <div className="form-group">
-                                    <label className="form-label">Monthly Salary (UGX) *</label>
-                                    <input
-                                        type="number"
-                                        className="form-input"
-                                        min="0"
-                                        step="10000"
-                                        required
-                                        placeholder="500000"
-                                        value={formData.monthlySalary}
-                                        onChange={e => setFormData({ ...formData, monthlySalary: Number(e.target.value) })}
-                                    />
-                                </div>
-                                <div className="form-group">
-                                    <label className="form-label">Overtime Rate / Hr (UGX) *</label>
-                                    <input
-                                        type="number"
-                                        className="form-input"
-                                        min="0"
-                                        step="500"
-                                        required
-                                        placeholder="3500"
-                                        value={formData.overtimeRate}
-                                        onChange={e => setFormData({ ...formData, overtimeRate: Number(e.target.value) })}
-                                    />
-                                </div>
+                            <div className="form-group">
+                                <label className="form-label">Monthly Base Salary (UGX) *</label>
+                                <input
+                                    type="number"
+                                    className="form-input"
+                                    min="0"
+                                    step="10000"
+                                    required
+                                    placeholder="500000"
+                                    value={formData.monthlySalary}
+                                    onChange={e => setFormData({ ...formData, monthlySalary: Number(e.target.value) })}
+                                />
                             </div>
 
                             <div className="form-group">

@@ -48,6 +48,7 @@ const Payroll: React.FC = () => {
 
     const [deductionAmount, setDeductionAmount] = useState<number>(0);
     const [deductionReason, setDeductionReason] = useState<string>('');
+    const [adjustOvertimeRate, setAdjustOvertimeRate] = useState<number>(3500);
 
     // Queries
     const workers = useLiveQuery(() => db.workers.toArray()) || [];
@@ -177,10 +178,11 @@ const Payroll: React.FC = () => {
         setSelectedRecordForDeduction(record);
         setDeductionAmount(Math.max(0, (record.deductions || 0) - (record.attendanceDeduction || 0)));
         setDeductionReason(record.manualDeductionReason || (record.attendanceDeduction ? '' : record.deductionReason || ''));
+        setAdjustOvertimeRate(record.overtimeRate || 3500);
         setShowAdjustDeductionModal(true);
     };
 
-    // Save Deductions
+    // Save Deductions & Overtime Rate
     const handleSaveDeduction = async (e: React.FormEvent) => {
         e.preventDefault();
         if (!selectedRecordForDeduction || !selectedRecordForDeduction.id) return;
@@ -194,12 +196,19 @@ const Payroll: React.FC = () => {
             ? `Attendance: ${missedDays} missed scheduled workday(s)`
             : '';
         const combinedReason = [deductionReason.trim(), attendanceReason].filter(Boolean).join('; ') || undefined;
-        const netPay = Math.max(0, record.monthlySalary + (record.overtimeEarnings || 0) - newDeduction);
+        
+        const newOvertimeRate = Math.max(0, Number(adjustOvertimeRate) || 0);
+        const approvedHours = record.approvedOvertimeHours || record.overtimeHours || 0;
+        const newOvertimeEarnings = Math.round(approvedHours * newOvertimeRate);
+
+        const netPay = Math.max(0, record.monthlySalary + newOvertimeEarnings - newDeduction);
         const amountPaid = record.amountPaid || 0;
         const balance = Math.max(0, netPay - amountPaid);
         const paymentStatus = amountPaid >= netPay && netPay > 0 ? 'Paid' : amountPaid > 0 ? 'Partially Paid' : 'Pending';
 
         await db.payrollRecords.update(record.id, {
+            overtimeRate: newOvertimeRate,
+            overtimeEarnings: newOvertimeEarnings,
             deductions: newDeduction,
             deductionReason: combinedReason,
             manualDeductionReason: deductionReason.trim() || undefined,
@@ -208,14 +217,19 @@ const Payroll: React.FC = () => {
             paymentStatus
         });
 
+        // Also update worker's saved overtime rate in worker profile for future cycles
+        await db.workers.update(record.workerId, {
+            overtimeRate: newOvertimeRate
+        });
+
         // Audit Log
         await db.activityLogs.add({
             user: 'Finance Officer',
-            action: 'Deduction Adjusted',
+            action: 'Payroll Adjusted',
             module: 'Payroll Management',
             recordIdentifier: `${record.workerId} (${selectedMonth})`,
             date: new Date().toISOString(),
-            description: `Manual deductions set to ${formatUGX(manualDeduction)} for ${record.workerName}; automatic attendance deduction is ${formatUGX(attendanceDeduction)}; total deductions are ${formatUGX(newDeduction)}. Reason: ${deductionReason}`
+            description: `Adjusted for ${record.workerName}: Overtime Rate set to ${formatUGX(newOvertimeRate)}/hr; manual deductions set to ${formatUGX(manualDeduction)}; attendance deduction is ${formatUGX(attendanceDeduction)}; new net pay is ${formatUGX(netPay)}.`
         });
 
         setShowAdjustDeductionModal(false);
@@ -448,7 +462,7 @@ const Payroll: React.FC = () => {
                                                 <strong>{formatUGX(record.overtimeEarnings || 0)}</strong>
                                             </div>
                                             <div className="text-light" style={{ fontSize: '0.75rem' }}>
-                                                {(record.approvedOvertimeHours || 0).toFixed(1)} approved hrs
+                                                {(record.approvedOvertimeHours || 0).toFixed(1)} hrs @ {formatUGX(record.overtimeRate || 3500)}/hr
                                             </div>
                                         </td>
                                         <td>
@@ -470,9 +484,9 @@ const Payroll: React.FC = () => {
                                                     className="btn btn-secondary"
                                                     style={{ padding: '0.3rem 0.55rem', fontSize: '0.8rem' }}
                                                     onClick={() => handleOpenDeduction(record)}
-                                                    title="Adjust Deductions"
+                                                    title="Adjust Deductions &amp; Overtime Rate"
                                                 >
-                                                    Edit
+                                                    Adjust
                                                 </button>
                                                 <button
                                                     className="btn btn-primary"
@@ -494,7 +508,7 @@ const Payroll: React.FC = () => {
                                                     className="btn btn-secondary"
                                                     style={{ padding: '0.3rem 0.55rem', fontSize: '0.8rem' }}
                                                     onClick={() => handleOpenPayslip(record)}
-                                                    title="Generate & View Payslip"
+                                                    title="Generate &amp; View Payslip"
                                                 >
                                                     <Receipt size={14} />
                                                 </button>
@@ -535,7 +549,12 @@ const Payroll: React.FC = () => {
                                     </div>
                                     <div>
                                         <span className="text-light">Overtime (Approved):</span>
-                                        <div style={{ color: '#ea580c' }}><strong>{formatUGX(record.overtimeEarnings || 0)}</strong></div>
+                                        <div style={{ color: '#ea580c' }}>
+                                            <strong>{formatUGX(record.overtimeEarnings || 0)}</strong>
+                                            <div style={{ fontSize: '0.75rem', color: '#64748b' }}>
+                                                {(record.approvedOvertimeHours || 0).toFixed(1)} hrs @ {formatUGX(record.overtimeRate || 3500)}/hr
+                                            </div>
+                                        </div>
                                     </div>
                                     <div>
                                         <span className="text-light">Net Pay:</span>
@@ -553,7 +572,7 @@ const Payroll: React.FC = () => {
                                         style={{ flex: 1, minWidth: '90px', padding: '0.4rem', fontSize: '0.85rem' }}
                                         onClick={() => handleOpenDeduction(record)}
                                     >
-                                        Edit Deduction
+                                        Adjust Pay
                                     </button>
                                     <button
                                         className="btn btn-primary"
@@ -770,12 +789,12 @@ const Payroll: React.FC = () => {
                 </div>
             )}
 
-            {/* Adjust Deductions Modal */}
+            {/* Adjust Deductions & Overtime Rate Modal */}
             {showAdjustDeductionModal && selectedRecordForDeduction && (
                 <div className="modal-overlay">
                     <div className="modal-content card" style={{ maxWidth: '450px', width: '100%' }}>
                         <div className="modal-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.25rem' }}>
-                            <h2 style={{ margin: 0 }}>Adjust Deductions</h2>
+                            <h2 style={{ margin: 0 }}>Adjust Pay &amp; Deductions</h2>
                             <button className="btn btn-secondary" style={{ padding: '0.25rem', border: 'none' }} onClick={() => setShowAdjustDeductionModal(false)}>
                                 <X size={18} />
                             </button>
@@ -783,9 +802,25 @@ const Payroll: React.FC = () => {
 
                         <form onSubmit={handleSaveDeduction} style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
                             <div style={{ background: 'var(--color-background)', padding: '0.75rem', borderRadius: '4px', fontSize: '0.85rem' }}>
-                                <div><strong>{selectedRecordForDeduction.workerName}</strong></div>
-                                <div>Base Salary: {formatUGX(selectedRecordForDeduction.monthlySalary)} + OT: {formatUGX(selectedRecordForDeduction.overtimeEarnings || 0)}</div>
-                                <div>Automatic attendance deduction: {formatUGX(selectedRecordForDeduction.attendanceDeduction || 0)} ({selectedRecordForDeduction.unrecordedWorkdays || 0} missed workdays)</div>
+                                <div><strong>{selectedRecordForDeduction.workerName}</strong> ({selectedRecordForDeduction.workerId})</div>
+                                <div>Base Salary: {formatUGX(selectedRecordForDeduction.monthlySalary)} | Approved OT: {(selectedRecordForDeduction.approvedOvertimeHours || 0).toFixed(1)} hrs</div>
+                                <div>Attendance deduction: {formatUGX(selectedRecordForDeduction.attendanceDeduction || 0)} ({selectedRecordForDeduction.unrecordedWorkdays || 0} missed workdays)</div>
+                            </div>
+
+                            <div className="form-group">
+                                <label className="form-label">Worker Overtime Rate (UGX / Hour) *</label>
+                                <input 
+                                    type="number" 
+                                    required 
+                                    min="0"
+                                    step="100"
+                                    className="form-input" 
+                                    value={adjustOvertimeRate}
+                                    onChange={e => setAdjustOvertimeRate(Number(e.target.value))}
+                                />
+                                <span className="text-light" style={{ fontSize: '0.75rem', marginTop: '0.2rem' }}>
+                                    Current OT Earnings: {formatUGX(((selectedRecordForDeduction.approvedOvertimeHours || 0) * (adjustOvertimeRate || 0)))}
+                                </span>
                             </div>
 
                             <div className="form-group">
@@ -816,7 +851,7 @@ const Payroll: React.FC = () => {
                                     Cancel
                                 </button>
                                 <button type="submit" className="btn btn-primary" style={{ flex: 1 }}>
-                                    Save Deductions
+                                    Save Adjustments
                                 </button>
                             </div>
                         </form>

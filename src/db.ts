@@ -19,7 +19,7 @@ export interface Worker {
     dateJoined: string;
     status: 'Active' | 'Inactive' | string;
     monthlySalary: number; // Monthly Base Salary in UGX
-    overtimeRate: number; // Hourly Overtime Rate in UGX
+    overtimeRate?: number; // Hourly Overtime Rate in UGX (configured in Payroll)
     farmCardNumber?: string;
     qrCode?: string;
     position?: string;

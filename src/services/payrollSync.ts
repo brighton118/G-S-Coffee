@@ -119,7 +119,7 @@ async function synchronizePayrollMonth(payrollMonth: string, now: Date): Promise
                 (sum, record) => sum + (record.overtimeApprovedHours || record.overtimeHours || 0),
                 0
             );
-            const overtimeRate = worker.overtimeRate || 3500;
+            const overtimeRate = existing?.overtimeRate || worker.overtimeRate || 3500;
             const overtimeEarnings = Math.round(approvedOTHours * overtimeRate);
             const netPay = Math.max(0, Math.round(monthlySalary + overtimeEarnings - deductions));
             const amountPaid = existing?.amountPaid || 0;
