@@ -19,6 +19,8 @@ const LOCAL_INVENTORY_RESET_KEY = 'gs_all_inventory_cleared_v3';
 const INVENTORY_RESET_MIGRATION = 'systemMigrations/inventory-reset-v3';
 const LOCAL_CLONES_RESET_KEY = 'gs_all_clones_cleared_v2';
 const CLONES_RESET_MIGRATION = 'systemMigrations/clones-production-reset-v2';
+const LOCAL_SALES_RESET_KEY = 'gs_all_sales_expenses_cleared_v1';
+const SALES_RESET_MIGRATION = 'systemMigrations/sales-expenses-reset-v1';
 
 const demoWorkerIds = [
     'GSF-W-0001',
@@ -326,6 +328,41 @@ async function clearAllCloudClonesAndProduction(): Promise<void> {
     ]);
 }
 
+async function clearAllLocalSalesAndExpenses(): Promise<void> {
+    await db.transaction(
+        'rw',
+        [
+            db.salesOrders,
+            db.farmExpenses,
+            db.plantletSales,
+            db.plantletSorts,
+            db.activityLogs,
+            db.notificationLogs,
+            db.notifications
+        ],
+        async () => {
+            await db.salesOrders.clear();
+            await db.farmExpenses.clear();
+            await db.plantletSales.clear();
+            await db.plantletSorts.clear();
+            await db.activityLogs.clear();
+            await db.notificationLogs.clear();
+            await db.notifications.clear();
+        }
+    );
+}
+
+async function clearAllCloudSalesAndExpenses(): Promise<void> {
+    await runCloudCollectionReset(SALES_RESET_MIGRATION, [
+        'salesOrders',
+        'farmExpenses',
+        'plantletSales',
+        'plantletSorts',
+        'activityLogs',
+        'notificationLogs'
+    ]);
+}
+
 export async function clearSeededDemoData(): Promise<void> {
     if (localStorage.getItem(LOCAL_CLEANUP_KEY) !== 'true') {
         await clearLocalDemoData();
@@ -372,6 +409,17 @@ export async function clearSeededDemoData(): Promise<void> {
         await clearAllCloudClonesAndProduction();
     } catch (e) {
         console.warn('Cloud clones reset deferred:', e);
+    }
+
+    if (localStorage.getItem(LOCAL_SALES_RESET_KEY) !== 'true') {
+        await clearAllLocalSalesAndExpenses();
+        localStorage.setItem(LOCAL_SALES_RESET_KEY, 'true');
+    }
+
+    try {
+        await clearAllCloudSalesAndExpenses();
+    } catch (e) {
+        console.warn('Cloud sales reset deferred:', e);
     }
 }
 
@@ -502,5 +550,81 @@ export async function deleteAllInventorySystemWide(): Promise<void> {
         console.warn('Cloud all inventory deletion note:', e);
     }
 }
+
+export async function deleteSingleSalesOrderSystemWide(orderIdOrInvoice: string, numericId?: number): Promise<void> {
+    await db.transaction('rw', [db.salesOrders, db.activityLogs], async () => {
+        if (numericId !== undefined) {
+            await db.salesOrders.delete(numericId);
+        }
+        const matches = await db.salesOrders.filter(o => 
+            o.invoiceNumber === orderIdOrInvoice || 
+            o.orderId === orderIdOrInvoice ||
+            `SALE-${o.id}` === orderIdOrInvoice
+        ).toArray();
+        for (const m of matches) {
+            if (m.id !== undefined) {
+                await db.salesOrders.delete(m.id);
+            }
+        }
+    });
+
+    try {
+        await deleteDoc(doc(dbFirestore, 'salesOrders', orderIdOrInvoice));
+        if (numericId !== undefined) {
+            await deleteDoc(doc(dbFirestore, 'salesOrders', `SALE-${numericId}`));
+        }
+        const snap = await getDocs(collection(dbFirestore, 'salesOrders'));
+        const docs = snap.docs.filter(d => {
+            const data = d.data();
+            return d.id === orderIdOrInvoice || data.invoiceNumber === orderIdOrInvoice || data.orderId === orderIdOrInvoice;
+        });
+        if (docs.length > 0) {
+            const batch = writeBatch(dbFirestore);
+            docs.forEach(d => batch.delete(d.ref));
+            await batch.commit();
+        }
+    } catch (e) {
+        console.warn('Cloud single sale deletion note:', e);
+    }
+}
+
+export async function deleteAllSalesSystemWide(): Promise<void> {
+    await db.transaction('rw', [db.salesOrders, db.plantletSales, db.plantletSorts], async () => {
+        await db.salesOrders.clear();
+        await db.plantletSales.clear();
+        await db.plantletSorts.clear();
+    });
+    try {
+        await clearCloudCollection('salesOrders');
+        await clearCloudCollection('plantletSales');
+        await clearCloudCollection('plantletSorts');
+    } catch (e) {
+        console.warn('Cloud all sales deletion note:', e);
+    }
+}
+
+export async function deleteSingleExpenseSystemWide(expenseId: string, numericId?: number): Promise<void> {
+    await db.transaction('rw', [db.farmExpenses], async () => {
+        if (numericId !== undefined) {
+            await db.farmExpenses.delete(numericId);
+        }
+        await db.farmExpenses.where('expenseId').equals(expenseId).delete();
+    });
+    try {
+        await deleteDoc(doc(dbFirestore, 'farmExpenses', expenseId));
+    } catch (e) {
+        console.warn('Cloud single expense deletion note:', e);
+    }
+}
+
+export async function deleteAllExpensesSystemWide(): Promise<void> {
+    await db.farmExpenses.clear();
+    try {
+        await clearCloudCollection('farmExpenses');
+    } catch (e) {
+        console.warn('Cloud all expenses deletion note:', e);
+    }
+}
+
 
 

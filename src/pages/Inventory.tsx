@@ -19,7 +19,12 @@ import {
 } from 'lucide-react';
 import { generateFarmExpensesPDF, generateInventoryPDF } from '../utils/pdfGenerator';
 import { isStockLow, calculateInventoryValuation } from '../utils/calculations';
-import { deleteAllInventorySystemWide, deleteSingleInventoryItemSystemWide } from '../clearDemoData';
+import { 
+    deleteAllInventorySystemWide, 
+    deleteSingleInventoryItemSystemWide,
+    deleteAllExpensesSystemWide,
+    deleteSingleExpenseSystemWide
+} from '../clearDemoData';
 
 const CATEGORIES = [
     { name: 'Fertilizers', icon: Sparkles, color: '#16a34a' },
@@ -47,7 +52,9 @@ const Inventory: React.FC = () => {
     const [showExpenseModal, setShowExpenseModal] = useState(false);
     const [showStockModal, setShowStockModal] = useState(false);
     const [showDeleteAllModal, setShowDeleteAllModal] = useState(false);
+    const [showDeleteAllExpensesModal, setShowDeleteAllExpensesModal] = useState(false);
     const [itemToDelete, setItemToDelete] = useState<InventoryItem | null>(null);
+    const [expenseToDelete, setExpenseToDelete] = useState<FarmExpense | null>(null);
     const [isDeleting, setIsDeleting] = useState(false);
     const [deleteError, setDeleteError] = useState('');
     const [selectedItemForStock, setSelectedItemForStock] = useState<InventoryItem | null>(null);
@@ -119,6 +126,35 @@ const Inventory: React.FC = () => {
         } catch (err: any) {
             console.error('Failed to delete inventory item:', err);
             setDeleteError(err?.message || 'Failed to delete inventory item. Please try again.');
+        } finally {
+            setIsDeleting(false);
+        }
+    };
+
+    const handleConfirmDeleteAllExpenses = async () => {
+        setIsDeleting(true);
+        setDeleteError('');
+        try {
+            await deleteAllExpensesSystemWide();
+            setShowDeleteAllExpensesModal(false);
+        } catch (err: any) {
+            console.error('Failed to delete all farm expenses:', err);
+            setDeleteError(err?.message || 'Failed to delete expenses. Please try again.');
+        } finally {
+            setIsDeleting(false);
+        }
+    };
+
+    const handleConfirmDeleteSingleExpense = async () => {
+        if (!expenseToDelete) return;
+        setIsDeleting(true);
+        setDeleteError('');
+        try {
+            await deleteSingleExpenseSystemWide(expenseToDelete.expenseId, expenseToDelete.id);
+            setExpenseToDelete(null);
+        } catch (err: any) {
+            console.error('Failed to delete farm expense:', err);
+            setDeleteError(err?.message || 'Failed to delete expense. Please try again.');
         } finally {
             setIsDeleting(false);
         }
@@ -325,6 +361,18 @@ const Inventory: React.FC = () => {
                         </>
                     ) : (
                         <>
+                            {expenses.length > 0 && (
+                                <button
+                                    type="button"
+                                    className="btn btn-outline-danger"
+                                    onClick={() => {
+                                        setDeleteError('');
+                                        setShowDeleteAllExpensesModal(true);
+                                    }}
+                                >
+                                    <Trash2 size={16} /> Delete All Expenses
+                                </button>
+                            )}
                             <button className="btn btn-secondary" onClick={() => generateFarmExpensesPDF(expenses)}>
                                 <Download size={16} /> Export Expenses PDF
                             </button>
@@ -381,11 +429,12 @@ const Inventory: React.FC = () => {
                                     <th>Paid To</th>
                                     <th>Recorded By</th>
                                     <th style={{ textAlign: 'right' }}>Amount (UGX)</th>
+                                    <th style={{ textAlign: 'center', width: '70px' }}>Action</th>
                                 </tr>
                             </thead>
                             <tbody>
                                 {expenses.length === 0 ? (
-                                    <tr><td colSpan={6} style={{ textAlign: 'center', padding: '2rem', color: 'var(--color-text-light)' }}>No farm expenses recorded yet.</td></tr>
+                                    <tr><td colSpan={7} style={{ textAlign: 'center', padding: '2rem', color: 'var(--color-text-light)' }}>No farm expenses recorded yet.</td></tr>
                                 ) : [...expenses].sort((a, b) => b.date.localeCompare(a.date) || (b.id || 0) - (a.id || 0)).map(expense => (
                                     <tr key={expense.id}>
                                         <td>{expense.date}</td>
@@ -394,12 +443,26 @@ const Inventory: React.FC = () => {
                                         <td>{expense.paidTo || '-'}</td>
                                         <td>{expense.recordedBy}</td>
                                         <td style={{ textAlign: 'right' }}><strong>UGX {expense.amount.toLocaleString()}</strong></td>
+                                        <td style={{ textAlign: 'center' }}>
+                                            <button
+                                                className="btn btn-outline-danger"
+                                                style={{ padding: '0.3rem 0.5rem', fontSize: '0.8rem' }}
+                                                onClick={() => {
+                                                    setDeleteError('');
+                                                    setExpenseToDelete(expense);
+                                                }}
+                                                title="Delete Expense"
+                                                aria-label={`Delete expense ${expense.description}`}
+                                            >
+                                                <Trash2 size={13} />
+                                            </button>
+                                        </td>
                                     </tr>
                                 ))}
                             </tbody>
                             {expenses.length > 0 && (
                                 <tfoot>
-                                    <tr><th colSpan={5} style={{ textAlign: 'right' }}>Total</th><th style={{ textAlign: 'right' }}>UGX {totalMiscExpenses.toLocaleString()}</th></tr>
+                                    <tr><th colSpan={5} style={{ textAlign: 'right' }}>Total</th><th style={{ textAlign: 'right' }}>UGX {totalMiscExpenses.toLocaleString()}</th><th></th></tr>
                                 </tfoot>
                             )}
                         </table>
@@ -971,6 +1034,106 @@ const Inventory: React.FC = () => {
                                 style={{ minWidth: '110px' }}
                             >
                                 {isDeleting ? 'Deleting...' : 'Delete Item'}
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
+
+            {/* Modal: Confirm Delete All Farm Expenses */}
+            {showDeleteAllExpensesModal && (
+                <div className="modal-overlay">
+                    <div className="modal-content card" style={{ maxWidth: '480px', width: '100%' }}>
+                        <div className="modal-header" style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', marginBottom: '1rem' }}>
+                            <div style={{ background: '#fee2e2', borderRadius: '50%', padding: '0.5rem', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                                <AlertTriangle size={24} color="#dc2626" />
+                            </div>
+                            <div>
+                                <h3 style={{ margin: 0, color: '#dc2626' }}>Delete All Farm Expenses</h3>
+                                <p style={{ margin: 0, fontSize: '0.85rem', color: 'var(--color-text-light)' }}>Permanent System-wide Removal</p>
+                            </div>
+                        </div>
+
+                        <p style={{ fontSize: '0.92rem', color: 'var(--color-text)', lineHeight: 1.5, marginBottom: '1.25rem' }}>
+                            Are you sure you want to delete <strong>all {expenses.length} miscellaneous farm expenses</strong>? This will permanently remove all expense records from both local storage and the cloud database.
+                        </p>
+
+                        {deleteError && (
+                            <div style={{ background: '#fef2f2', border: '1px solid #fca5a5', color: '#b91c1c', padding: '0.75rem', borderRadius: '6px', marginBottom: '1rem', fontSize: '0.875rem' }}>
+                                {deleteError}
+                            </div>
+                        )}
+
+                        <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '0.75rem' }}>
+                            <button
+                                type="button"
+                                className="btn btn-secondary"
+                                onClick={() => {
+                                    setShowDeleteAllExpensesModal(false);
+                                    setDeleteError('');
+                                }}
+                                disabled={isDeleting}
+                            >
+                                Cancel
+                            </button>
+                            <button
+                                type="button"
+                                className="btn btn-danger"
+                                onClick={handleConfirmDeleteAllExpenses}
+                                disabled={isDeleting}
+                                style={{ minWidth: '130px' }}
+                            >
+                                {isDeleting ? 'Deleting...' : 'Yes, Delete All'}
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
+
+            {/* Modal: Confirm Delete Single Expense */}
+            {expenseToDelete && (
+                <div className="modal-overlay">
+                    <div className="modal-content card" style={{ maxWidth: '440px', width: '100%' }}>
+                        <div className="modal-header" style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', marginBottom: '1rem' }}>
+                            <div style={{ background: '#fee2e2', borderRadius: '50%', padding: '0.5rem', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                                <Trash2 size={22} color="#dc2626" />
+                            </div>
+                            <div>
+                                <h3 style={{ margin: 0, color: '#dc2626' }}>Delete Farm Expense</h3>
+                                <p style={{ margin: 0, fontSize: '0.85rem', color: 'var(--color-text-light)' }}>{expenseToDelete.expenseId}</p>
+                            </div>
+                        </div>
+
+                        <p style={{ fontSize: '0.92rem', color: 'var(--color-text)', lineHeight: 1.5, marginBottom: '1.25rem' }}>
+                            Are you sure you want to delete the expense for <strong>{expenseToDelete.description}</strong> (UGX {expenseToDelete.amount.toLocaleString()})? This record will be permanently deleted from the database.
+                        </p>
+
+                        {deleteError && (
+                            <div style={{ background: '#fef2f2', border: '1px solid #fca5a5', color: '#b91c1c', padding: '0.75rem', borderRadius: '6px', marginBottom: '1rem', fontSize: '0.875rem' }}>
+                                {deleteError}
+                            </div>
+                        )}
+
+                        <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '0.75rem' }}>
+                            <button
+                                type="button"
+                                className="btn btn-secondary"
+                                onClick={() => {
+                                    setExpenseToDelete(null);
+                                    setDeleteError('');
+                                }}
+                                disabled={isDeleting}
+                            >
+                                Cancel
+                            </button>
+                            <button
+                                type="button"
+                                className="btn btn-danger"
+                                onClick={handleConfirmDeleteSingleExpense}
+                                disabled={isDeleting}
+                                style={{ minWidth: '110px' }}
+                            >
+                                {isDeleting ? 'Deleting...' : 'Delete Expense'}
                             </button>
                         </div>
                     </div>

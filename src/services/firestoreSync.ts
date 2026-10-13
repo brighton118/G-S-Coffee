@@ -200,6 +200,19 @@ class FirestoreSyncService {
                         if (!existing) {
                             await db.salesOrders.add(data as any);
                         }
+                    } else if (change.type === 'removed') {
+                        const docId = change.doc.id;
+                        const orders = await db.salesOrders.toArray();
+                        const matches = orders.filter(o =>
+                            o.invoiceNumber === docId ||
+                            o.orderId === docId ||
+                            `SALE-${o.id}` === docId
+                        );
+                        for (const match of matches) {
+                            if (match.id !== undefined) {
+                                await db.salesOrders.delete(match.id);
+                            }
+                        }
                     }
                 });
             }, (err) => console.info('Firestore sales listener active:', err.message));
@@ -215,6 +228,9 @@ class FirestoreSyncService {
                         }
                         const existing = await db.farmExpenses.where('expenseId').equals(expenseId).first();
                         await db.farmExpenses.put({ ...data, expenseId, id: existing?.id } as any);
+                    } else if (change.type === 'removed') {
+                        const expenseId = change.doc.id;
+                        await db.farmExpenses.where('expenseId').equals(expenseId).delete();
                     }
                 });
             }, (err) => console.info('Firestore farm expense listener active:', err.message));

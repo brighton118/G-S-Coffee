@@ -11,10 +11,13 @@ import {
     X, 
     Receipt, 
     Banknote, 
-    ShoppingCart 
+    ShoppingCart,
+    Trash2,
+    AlertTriangle
 } from 'lucide-react';
 import { generateSalesReceiptPDF, generateSalesSummaryPDF } from '../utils/pdfGenerator';
 import { formatUGX } from '../utils/calculations';
+import { deleteAllSalesSystemWide, deleteSingleSalesOrderSystemWide } from '../clearDemoData';
 import './Sales.css';
 
 type SaleVariety = 'KR1' | 'KR3' | 'KR4' | 'KR5' | 'KR6' | 'KR7' | 'KR8' | 'KR9' | 'KR10' | 'A' | 'C' | 'D';
@@ -27,6 +30,10 @@ const Sales: React.FC = () => {
     const [searchTerm, setSearchTerm] = useState('');
     const [selectedVariety, setSelectedVariety] = useState<string>('All');
     const [showNewOrderModal, setShowNewOrderModal] = useState(false);
+    const [showDeleteAllModal, setShowDeleteAllModal] = useState(false);
+    const [orderToDelete, setOrderToDelete] = useState<SalesOrder | null>(null);
+    const [isDeleting, setIsDeleting] = useState(false);
+    const [deleteError, setDeleteError] = useState('');
 
     // Sales are recorded as fully paid cash transactions.
     const [formData, setFormData] = useState<{
@@ -43,7 +50,7 @@ const Sales: React.FC = () => {
         customerEmail: '',
         customerLocation: '',
         variety: 'KR1',
-        quantity: 100,
+        quantity: 0,
         unitPrice: 2500 // Master Default Price
     });
 
@@ -119,9 +126,39 @@ const Sales: React.FC = () => {
             customerEmail: '',
             customerLocation: '',
             variety: 'KR1',
-            quantity: 100,
+            quantity: 0,
             unitPrice: 2500
         });
+    };
+
+    const handleConfirmDeleteAll = async () => {
+        setIsDeleting(true);
+        setDeleteError('');
+        try {
+            await deleteAllSalesSystemWide();
+            setShowDeleteAllModal(false);
+        } catch (err: any) {
+            console.error('Failed to delete all sales:', err);
+            setDeleteError(err?.message || 'Failed to delete all sales. Please try again.');
+        } finally {
+            setIsDeleting(false);
+        }
+    };
+
+    const handleConfirmDeleteSingle = async () => {
+        if (!orderToDelete) return;
+        setIsDeleting(true);
+        setDeleteError('');
+        try {
+            const inv = orderToDelete.invoiceNumber || orderToDelete.orderId || `SALE-${orderToDelete.id}`;
+            await deleteSingleSalesOrderSystemWide(inv, orderToDelete.id);
+            setOrderToDelete(null);
+        } catch (err: any) {
+            console.error('Failed to delete sale:', err);
+            setDeleteError(err?.message || 'Failed to delete sale. Please try again.');
+        } finally {
+            setIsDeleting(false);
+        }
     };
 
     return (
@@ -137,6 +174,18 @@ const Sales: React.FC = () => {
                     </p>
                 </div>
                 <div style={{ display: 'flex', gap: '0.75rem', flexWrap: 'wrap' }}>
+                    {orders.length > 0 && (
+                        <button 
+                            type="button" 
+                            className="btn btn-outline-danger" 
+                            onClick={() => {
+                                setDeleteError('');
+                                setShowDeleteAllModal(true);
+                            }}
+                        >
+                            <Trash2 size={16} /> Delete All Sales
+                        </button>
+                    )}
                     <button 
                         className="btn btn-secondary" 
                         onClick={() => generateSalesSummaryPDF(orders)}
@@ -284,14 +333,28 @@ const Sales: React.FC = () => {
                                             <strong style={{ color: '#16a34a' }}>{formatUGX(order.totalAmount)}</strong>
                                         </td>
                                         <td style={{ whiteSpace: 'nowrap', textAlign: 'right', padding: '0.75rem 1rem' }}>
-                                            <button 
-                                                className="btn btn-secondary" 
-                                                style={{ padding: '0.35rem 0.65rem', fontSize: '0.8rem', display: 'inline-flex', alignItems: 'center', gap: '0.35rem' }}
-                                                title="Print Official Cash Receipt"
-                                                onClick={() => generateSalesReceiptPDF(order)}
-                                            >
-                                                <Receipt size={14} /> Cash Receipt
-                                            </button>
+                                            <div style={{ display: 'inline-flex', gap: '0.4rem', alignItems: 'center' }}>
+                                                <button 
+                                                    className="btn btn-secondary" 
+                                                    style={{ padding: '0.35rem 0.65rem', fontSize: '0.8rem', display: 'inline-flex', alignItems: 'center', gap: '0.35rem' }}
+                                                    title="Print Official Cash Receipt"
+                                                    onClick={() => generateSalesReceiptPDF(order)}
+                                                >
+                                                    <Receipt size={14} /> Cash Receipt
+                                                </button>
+                                                <button 
+                                                    className="btn btn-outline-danger" 
+                                                    style={{ padding: '0.35rem 0.5rem', fontSize: '0.8rem', display: 'inline-flex', alignItems: 'center' }}
+                                                    title="Delete Sale"
+                                                    aria-label={`Delete sale ${inv}`}
+                                                    onClick={() => {
+                                                        setDeleteError('');
+                                                        setOrderToDelete(order);
+                                                    }}
+                                                >
+                                                    <Trash2 size={14} />
+                                                </button>
+                                            </div>
                                         </td>
                                     </tr>
                                 );
@@ -346,12 +409,27 @@ const Sales: React.FC = () => {
                                     </div>
                                 </div>
 
-                                <button
-                                    className="btn btn-secondary sales-receipt-button"
-                                    onClick={() => generateSalesReceiptPDF(order)}
-                                >
-                                    <Receipt size={15} /> Cash Receipt
-                                </button>
+                                <div style={{ display: 'flex', gap: '0.5rem', marginTop: '0.75rem' }}>
+                                    <button
+                                        className="btn btn-secondary sales-receipt-button"
+                                        style={{ flex: 1, margin: 0 }}
+                                        onClick={() => generateSalesReceiptPDF(order)}
+                                    >
+                                        <Receipt size={15} /> Cash Receipt
+                                    </button>
+                                    <button
+                                        className="btn btn-outline-danger"
+                                        style={{ padding: '0.5rem 0.75rem', display: 'inline-flex', alignItems: 'center', justifyContent: 'center' }}
+                                        title="Delete Sale"
+                                        aria-label={`Delete sale ${inv}`}
+                                        onClick={() => {
+                                            setDeleteError('');
+                                            setOrderToDelete(order);
+                                        }}
+                                    >
+                                        <Trash2 size={16} />
+                                    </button>
+                                </div>
                             </article>
                         );
                     })
@@ -486,6 +564,108 @@ const Sales: React.FC = () => {
                                 </button>
                             </div>
                         </form>
+                    </div>
+                </div>
+            )}
+
+            {/* Modal: Confirm Delete All Sales */}
+            {showDeleteAllModal && (
+                <div className="modal-overlay">
+                    <div className="modal-content card" style={{ maxWidth: '480px', width: '100%' }}>
+                        <div className="modal-header" style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', marginBottom: '1rem' }}>
+                            <div style={{ background: '#fee2e2', borderRadius: '50%', padding: '0.5rem', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                                <AlertTriangle size={24} color="#dc2626" />
+                            </div>
+                            <div>
+                                <h3 style={{ margin: 0, color: '#dc2626' }}>Delete All Sales Records</h3>
+                                <p style={{ margin: 0, fontSize: '0.85rem', color: 'var(--color-text-light)' }}>Permanent System-wide Removal</p>
+                            </div>
+                        </div>
+
+                        <p style={{ fontSize: '0.92rem', color: 'var(--color-text)', lineHeight: 1.5, marginBottom: '1.25rem' }}>
+                            Are you sure you want to delete <strong>all {orders.length} sales orders & invoices</strong>? This will clear all historical sales records, invoice logs, and plantlet sales from both local storage and the cloud database.
+                        </p>
+
+                        {deleteError && (
+                            <div style={{ background: '#fef2f2', border: '1px solid #fca5a5', color: '#b91c1c', padding: '0.75rem', borderRadius: '6px', marginBottom: '1rem', fontSize: '0.875rem' }}>
+                                {deleteError}
+                            </div>
+                        )}
+
+                        <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '0.75rem' }}>
+                            <button
+                                type="button"
+                                className="btn btn-secondary"
+                                onClick={() => {
+                                    setShowDeleteAllModal(false);
+                                    setDeleteError('');
+                                }}
+                                disabled={isDeleting}
+                            >
+                                Cancel
+                            </button>
+                            <button
+                                type="button"
+                                className="btn btn-danger"
+                                onClick={handleConfirmDeleteAll}
+                                disabled={isDeleting}
+                                style={{ minWidth: '130px' }}
+                            >
+                                {isDeleting ? 'Deleting...' : 'Yes, Delete All'}
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
+
+            {/* Modal: Confirm Delete Single Sale */}
+            {orderToDelete && (
+                <div className="modal-overlay">
+                    <div className="modal-content card" style={{ maxWidth: '440px', width: '100%' }}>
+                        <div className="modal-header" style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', marginBottom: '1rem' }}>
+                            <div style={{ background: '#fee2e2', borderRadius: '50%', padding: '0.5rem', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                                <Trash2 size={22} color="#dc2626" />
+                            </div>
+                            <div>
+                                <h3 style={{ margin: 0, color: '#dc2626' }}>Delete Sales Record</h3>
+                                <p style={{ margin: 0, fontSize: '0.85rem', color: 'var(--color-text-light)' }}>
+                                    {orderToDelete.invoiceNumber || orderToDelete.orderId || 'Invoice'}
+                                </p>
+                            </div>
+                        </div>
+
+                        <p style={{ fontSize: '0.92rem', color: 'var(--color-text)', lineHeight: 1.5, marginBottom: '1.25rem' }}>
+                            Are you sure you want to delete the sale for <strong>{orderToDelete.customerName}</strong> ({formatUGX(orderToDelete.totalAmount)})? This record will be permanently deleted from the database.
+                        </p>
+
+                        {deleteError && (
+                            <div style={{ background: '#fef2f2', border: '1px solid #fca5a5', color: '#b91c1c', padding: '0.75rem', borderRadius: '6px', marginBottom: '1rem', fontSize: '0.875rem' }}>
+                                {deleteError}
+                            </div>
+                        )}
+
+                        <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '0.75rem' }}>
+                            <button
+                                type="button"
+                                className="btn btn-secondary"
+                                onClick={() => {
+                                    setOrderToDelete(null);
+                                    setDeleteError('');
+                                }}
+                                disabled={isDeleting}
+                            >
+                                Cancel
+                            </button>
+                            <button
+                                type="button"
+                                className="btn btn-danger"
+                                onClick={handleConfirmDeleteSingle}
+                                disabled={isDeleting}
+                                style={{ minWidth: '110px' }}
+                            >
+                                {isDeleting ? 'Deleting...' : 'Delete Sale'}
+                            </button>
+                        </div>
                     </div>
                 </div>
             )}
