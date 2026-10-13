@@ -183,7 +183,7 @@ const ScanAttendance = () => {
                         <AlertTriangle size={36} />
                         <div className="feedback-details">
                             <h3>Worker Not Found</h3>
-                            <p>This QR code is not registered to a G&S COFFEE Farm worker.</p>
+                            <p>This QR code is not registered to a G&S FARM worker.</p>
                         </div>
                         <button className="btn btn-primary" onClick={resetScanner} style={{ marginTop: '1rem' }}>
                             Scan Again
@@ -209,7 +209,7 @@ const ScanAttendance = () => {
                         )}
 
                         <div style={{ textAlign: 'center', paddingTop: '1.5rem' }}>
-                            <h4 style={{ color: 'var(--color-primary-dark)', letterSpacing: '2px', margin: 0 }}>G&S COFFEE FARM</h4>
+                            <h4 style={{ color: 'var(--color-primary-dark)', letterSpacing: '2px', margin: 0 }}>G&S FARM</h4>
                         </div>
                         <div className="worker-header" style={{ flexDirection: 'column', textAlign: 'center' }}>
                             <div className="worker-avatar">

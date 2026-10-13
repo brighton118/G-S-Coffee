@@ -2,7 +2,7 @@ import { db, AppNotification } from '../db';
 import { format, differenceInDays, parseISO } from 'date-fns';
 
 /**
- * G&S COFFEE Farm Notification & Communication Engine
+ * G&S FARM Notification & Communication Engine
  * Manages In-App Alerts, SMS Mobile Dispatching, and Automated System Scans.
  */
 

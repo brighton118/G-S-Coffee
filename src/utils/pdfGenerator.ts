@@ -6,7 +6,7 @@ import { Worker, AttendanceRecord, PayrollRecord, InventoryItem, InventoryTransa
 import { formatUGX } from './calculations';
 import { CARD_FRONT_TEMPLATE_DATA_URI, CARD_BACK_FULL_DATA_URI } from './idCardAssets';
 
-// Color Palette for G&S COFFEE Farm PDF Branding
+// Color Palette for G&S FARM PDF Branding
 const BRAND_PRIMARY: [number, number, number] = [46, 125, 50]; // #2E7D32 Forest Green
 const BRAND_DARK: [number, number, number] = [27, 94, 32]; // #1B5E20 Dark Green
 const BRAND_ACCENT: [number, number, number] = [139, 69, 19]; // Saddle Brown (Coffee)
@@ -42,7 +42,7 @@ function applyHeaderAndFooter(
             doc.setTextColor(255, 255, 255);
             doc.setFontSize(16);
             doc.setFont('helvetica', 'bold');
-            doc.text('G&S COFFEE FARM MANAGEMENT SYSTEM', 14, 14);
+            doc.text('G&S FARM MANAGEMENT SYSTEM', 14, 14);
 
             doc.setFontSize(9);
             doc.setFont('helvetica', 'normal');
@@ -73,7 +73,7 @@ function applyHeaderAndFooter(
             doc.setTextColor(TEXT_MUTED[0], TEXT_MUTED[1], TEXT_MUTED[2]);
             doc.setFontSize(8);
             doc.setFont('helvetica', 'normal');
-            doc.text(`G&S COFFEE Farm — ${title}`, 14, 8);
+            doc.text(`G&S FARM — ${title}`, 14, 8);
             doc.text(`Generated: ${format(new Date(), 'yyyy-MM-dd HH:mm')}`, pageWidth - 14, 8, { align: 'right' });
         }
 
@@ -84,7 +84,7 @@ function applyHeaderAndFooter(
         doc.setTextColor(TEXT_MUTED[0], TEXT_MUTED[1], TEXT_MUTED[2]);
         doc.setFontSize(8);
         doc.setFont('helvetica', 'normal');
-        doc.text('Confidential • Internal G&S COFFEE Farm Operations Record', 14, pageHeight - 8);
+        doc.text('Confidential • Internal G&S FARM Operations Record', 14, pageHeight - 8);
         doc.text(`Page ${i} of ${pageCount}`, pageWidth - 14, pageHeight - 8, { align: 'right' });
     }
 }
@@ -337,7 +337,7 @@ export function generateIndividualPayslipPDF(payroll: PayrollRecord): void {
     doc.setTextColor(255, 255, 255);
     doc.setFontSize(15);
     doc.setFont('helvetica', 'bold');
-    doc.text('G&S COFFEE FARM', pageWidth / 2, 20, { align: 'center' });
+    doc.text('G&S FARM', pageWidth / 2, 20, { align: 'center' });
 
     doc.setFontSize(9);
     doc.setFont('helvetica', 'normal');
@@ -755,7 +755,7 @@ export function generatePlantletReceiptPDF(order: SalesOrder): void {
     doc.setTextColor(255, 255, 255);
     doc.setFontSize(16);
     doc.setFont('helvetica', 'bold');
-    doc.text('G&S COFFEE FARM', pageWidth / 2, 20, { align: 'center' });
+    doc.text('G&S FARM', pageWidth / 2, 20, { align: 'center' });
 
     doc.setFontSize(9);
     doc.setFont('helvetica', 'normal');
@@ -828,7 +828,7 @@ export function generatePlantletReceiptPDF(order: SalesOrder): void {
 
     // Signatures
     doc.line(14, finalY + 40, 70, finalY + 40);
-    doc.text('Issued by (G&S COFFEE Farm)', 14, finalY + 44);
+    doc.text('Issued by (G&S FARM)', 14, finalY + 44);
 
     doc.line(pageWidth - 70, finalY + 40, pageWidth - 14, finalY + 40);
     doc.text('Customer Received by', pageWidth - 70, finalY + 44);
