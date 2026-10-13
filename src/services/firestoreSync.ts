@@ -185,6 +185,8 @@ class FirestoreSyncService {
                     if (change.type === 'added' || change.type === 'modified') {
                         const data = change.doc.data();
                         await db.workers.put(data as any);
+                    } else if (change.type === 'removed') {
+                        await db.workers.delete(change.doc.id);
                     }
                 });
             }, (err) => console.info('Firestore workers listener active:', err.message));

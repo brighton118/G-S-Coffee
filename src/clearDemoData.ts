@@ -13,8 +13,8 @@ import { dbFirestore } from './firebase';
 
 const LOCAL_CLEANUP_KEY = 'gs_demo_local_cleared_v1';
 const CLOUD_CLEANUP_KEY = 'gs_demo_cloud_cleared_v1';
-const LOCAL_WORKER_RESET_KEY = 'gs_all_workers_cleared_v1';
-const WORKER_RESET_MIGRATION = 'systemMigrations/workers-payroll-reset-v1';
+const LOCAL_WORKER_RESET_KEY = 'gs_all_workers_cleared_v2';
+const WORKER_RESET_MIGRATION = 'systemMigrations/workers-payroll-reset-v2';
 const LOCAL_INVENTORY_RESET_KEY = 'gs_all_inventory_cleared_v2';
 const INVENTORY_RESET_MIGRATION = 'systemMigrations/inventory-reset-v2';
 
@@ -314,5 +314,52 @@ export async function clearSeededDemoData(): Promise<void> {
         await clearAllCloudInventory();
     } catch (e) {
         console.warn('Cloud inventory reset deferred:', e);
+    }
+}
+
+export async function deleteSingleWorkerSystemWide(workerId: string): Promise<void> {
+    await db.transaction(
+        'rw',
+        [db.workers, db.attendance, db.payrollRecords, db.payrollPayments],
+        async () => {
+            await db.workers.delete(workerId);
+            await db.attendance.where('workerId').equals(workerId).delete();
+            await db.payrollRecords.where('workerId').equals(workerId).delete();
+            await db.payrollPayments.where('workerId').equals(workerId).delete();
+        }
+    );
+
+    try {
+        await deleteDoc(doc(dbFirestore, 'workers', workerId));
+
+        const attSnap = await getDocs(collection(dbFirestore, 'attendance'));
+        const attDocs = attSnap.docs.filter(d => d.data().workerId === workerId);
+        if (attDocs.length > 0) {
+            const batch = writeBatch(dbFirestore);
+            attDocs.forEach(d => batch.delete(d.ref));
+            await batch.commit();
+        }
+
+        const paySnap = await getDocs(collection(dbFirestore, 'payrollRecords'));
+        const payDocs = paySnap.docs.filter(d => d.data().workerId === workerId);
+        if (payDocs.length > 0) {
+            const batch = writeBatch(dbFirestore);
+            payDocs.forEach(d => batch.delete(d.ref));
+            await batch.commit();
+        }
+    } catch (e) {
+        console.warn('Cloud single worker deletion note:', e);
+    }
+}
+
+export async function deleteAllWorkersSystemWide(): Promise<void> {
+    await clearAllLocalWorkersAndPayroll();
+    try {
+        await clearCloudCollection('workers');
+        await clearCloudCollection('attendance');
+        await clearCloudCollection('payrollRecords');
+        await clearCloudCollection('payrollPayments');
+    } catch (e) {
+        console.warn('Cloud all workers deletion note:', e);
     }
 }

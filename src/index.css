@@ -221,6 +221,31 @@ a {
   background-color: #e5e5e5;
 }
 
+.btn-danger {
+  background-color: #dc2626;
+  color: white;
+}
+.btn-danger:hover {
+  background-color: #b91c1c;
+}
+.btn-danger:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.btn-outline-danger {
+  background-color: transparent;
+  color: #dc2626;
+  border: 1px solid #fca5a5;
+}
+.btn-outline-danger:hover {
+  background-color: #fef2f2;
+}
+.btn-outline-danger:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
 /* Badges */
 .badge {
   display: inline-flex;

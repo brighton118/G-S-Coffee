@@ -11,12 +11,15 @@ import {
     CheckCircle2,
     Edit3,
     QrCode,
-    Banknote
+    Banknote,
+    Trash2,
+    AlertTriangle
 } from 'lucide-react';
 import { QRCodeSVG } from 'qrcode.react';
 import { format } from 'date-fns';
 import { generateWorkersMasterPDF, generateWorkerIdCardPDF } from '../utils/pdfGenerator';
 import { formatUGX } from '../utils/calculations';
+import { deleteAllWorkersSystemWide, deleteSingleWorkerSystemWide } from '../clearDemoData';
 import './Workers.css';
 
 const Workers: React.FC = () => {
@@ -26,6 +29,10 @@ const Workers: React.FC = () => {
     const [selectedWorkerForCard, setSelectedWorkerForCard] = useState<Worker | null>(null);
     const [cardSide, setCardSide] = useState<'front' | 'back'>('front');
     const [editingWorker, setEditingWorker] = useState<Worker | null>(null);
+    const [showDeleteAllModal, setShowDeleteAllModal] = useState(false);
+    const [workerToDelete, setWorkerToDelete] = useState<Worker | null>(null);
+    const [isDeleting, setIsDeleting] = useState(false);
+    const [deleteError, setDeleteError] = useState('');
 
     // Simplified Registration Form State
     const [formData, setFormData] = useState({
@@ -112,6 +119,35 @@ const Workers: React.FC = () => {
         setShowAddModal(true);
     };
 
+    const handleConfirmDeleteAll = async () => {
+        setIsDeleting(true);
+        setDeleteError('');
+        try {
+            await deleteAllWorkersSystemWide();
+            setShowDeleteAllModal(false);
+        } catch (err: any) {
+            console.error('Failed to delete all workers:', err);
+            setDeleteError(err?.message || 'Failed to delete all workers. Please try again.');
+        } finally {
+            setIsDeleting(false);
+        }
+    };
+
+    const handleConfirmDeleteSingle = async () => {
+        if (!workerToDelete) return;
+        setIsDeleting(true);
+        setDeleteError('');
+        try {
+            await deleteSingleWorkerSystemWide(workerToDelete.workerId);
+            setWorkerToDelete(null);
+        } catch (err: any) {
+            console.error('Failed to delete worker:', err);
+            setDeleteError(err?.message || 'Failed to delete worker. Please try again.');
+        } finally {
+            setIsDeleting(false);
+        }
+    };
+
     const activeCount = workers.filter(w => w.status === 'Active').length;
     const inactiveCount = workers.length - activeCount;
     const monthlyPayroll = workers
@@ -134,9 +170,22 @@ const Workers: React.FC = () => {
                     <button
                         className="btn btn-secondary"
                         onClick={() => generateWorkersMasterPDF(filteredWorkers)}
+                        disabled={filteredWorkers.length === 0}
                     >
                         <FileDown size={18} /> Download Workforce PDF
                     </button>
+                    {workers.length > 0 && (
+                        <button
+                            className="btn btn-outline-danger"
+                            onClick={() => {
+                                setDeleteError('');
+                                setShowDeleteAllModal(true);
+                            }}
+                            title="Delete all workers from the system"
+                        >
+                            <Trash2 size={18} /> Delete All Workers
+                        </button>
+                    )}
                     <button
                         className="btn btn-primary"
                         onClick={() => {
@@ -279,6 +328,18 @@ const Workers: React.FC = () => {
                                             >
                                                 <Edit3 size={14} />
                                             </button>
+                                            <button
+                                                className="btn btn-outline-danger"
+                                                style={{ padding: '0.35rem 0.55rem', fontSize: '0.8rem' }}
+                                                onClick={() => {
+                                                    setDeleteError('');
+                                                    setWorkerToDelete(w);
+                                                }}
+                                                title="Delete worker"
+                                                aria-label={`Delete ${w.fullName}`}
+                                            >
+                                                <Trash2 size={14} />
+                                            </button>
                                         </div>
                                     </td>
                                 </tr>
@@ -337,6 +398,18 @@ const Workers: React.FC = () => {
                                     onClick={() => setSelectedWorkerForCard(worker)}
                                 >
                                     <QrCode size={15} /> Farm Card
+                                </button>
+                                <button
+                                    className="btn btn-outline-danger"
+                                    style={{ flex: '0 0 auto', padding: '0.45rem 0.75rem' }}
+                                    onClick={() => {
+                                        setDeleteError('');
+                                        setWorkerToDelete(worker);
+                                    }}
+                                    title="Delete worker"
+                                    aria-label={`Delete ${worker.fullName}`}
+                                >
+                                    <Trash2 size={15} />
                                 </button>
                             </div>
                         </article>
@@ -670,6 +743,102 @@ const Workers: React.FC = () => {
                                 onClick={() => setSelectedWorkerForCard(null)}
                             >
                                 Close
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
+
+            {/* Modal: Confirm Delete All Workers */}
+            {showDeleteAllModal && (
+                <div className="modal-overlay">
+                    <div className="modal-content card" style={{ maxWidth: '480px', width: '100%' }}>
+                        <div className="modal-header" style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', marginBottom: '1rem' }}>
+                            <div style={{ background: '#fee2e2', borderRadius: '50%', padding: '0.5rem', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                                <AlertTriangle size={24} color="#dc2626" />
+                            </div>
+                            <div>
+                                <h3 style={{ margin: 0, color: '#dc2626' }}>Delete All Workers</h3>
+                                <p style={{ margin: 0, fontSize: '0.85rem', color: 'var(--color-text-light)' }}>Permanent System-wide Removal</p>
+                            </div>
+                        </div>
+
+                        <p style={{ fontSize: '0.92rem', color: 'var(--color-text)', lineHeight: 1.5, marginBottom: '1.25rem' }}>
+                            Are you sure you want to delete <strong>all {workers.length} workers</strong>? This will permanently remove all worker profiles, associated attendance logs, and payroll records from both local storage and cloud database.
+                        </p>
+
+                        {deleteError && (
+                            <div style={{ background: '#fef2f2', border: '1px solid #fca5a5', color: '#b91c1c', padding: '0.75rem', borderRadius: '6px', marginBottom: '1rem', fontSize: '0.875rem' }}>
+                                {deleteError}
+                            </div>
+                        )}
+
+                        <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '0.75rem' }}>
+                            <button
+                                className="btn btn-secondary"
+                                onClick={() => {
+                                    setShowDeleteAllModal(false);
+                                    setDeleteError('');
+                                }}
+                                disabled={isDeleting}
+                            >
+                                Cancel
+                            </button>
+                            <button
+                                className="btn btn-danger"
+                                onClick={handleConfirmDeleteAll}
+                                disabled={isDeleting}
+                                style={{ minWidth: '130px' }}
+                            >
+                                {isDeleting ? 'Deleting...' : 'Yes, Delete All'}
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
+
+            {/* Modal: Confirm Delete Single Worker */}
+            {workerToDelete && (
+                <div className="modal-overlay">
+                    <div className="modal-content card" style={{ maxWidth: '440px', width: '100%' }}>
+                        <div className="modal-header" style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', marginBottom: '1rem' }}>
+                            <div style={{ background: '#fee2e2', borderRadius: '50%', padding: '0.5rem', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                                <Trash2 size={22} color="#dc2626" />
+                            </div>
+                            <div>
+                                <h3 style={{ margin: 0, color: '#dc2626' }}>Delete Worker</h3>
+                                <p style={{ margin: 0, fontSize: '0.85rem', color: 'var(--color-text-light)' }}>{workerToDelete.workerId}</p>
+                            </div>
+                        </div>
+
+                        <p style={{ fontSize: '0.92rem', color: 'var(--color-text)', lineHeight: 1.5, marginBottom: '1.25rem' }}>
+                            Are you sure you want to delete <strong>{workerToDelete.fullName}</strong> ({workerToDelete.workerId})? All linked attendance and payroll records will also be removed.
+                        </p>
+
+                        {deleteError && (
+                            <div style={{ background: '#fef2f2', border: '1px solid #fca5a5', color: '#b91c1c', padding: '0.75rem', borderRadius: '6px', marginBottom: '1rem', fontSize: '0.875rem' }}>
+                                {deleteError}
+                            </div>
+                        )}
+
+                        <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '0.75rem' }}>
+                            <button
+                                className="btn btn-secondary"
+                                onClick={() => {
+                                    setWorkerToDelete(null);
+                                    setDeleteError('');
+                                }}
+                                disabled={isDeleting}
+                            >
+                                Cancel
+                            </button>
+                            <button
+                                className="btn btn-danger"
+                                onClick={handleConfirmDeleteSingle}
+                                disabled={isDeleting}
+                                style={{ minWidth: '110px' }}
+                            >
+                                {isDeleting ? 'Deleting...' : 'Delete Worker'}
                             </button>
                         </div>
                     </div>
