@@ -22,11 +22,13 @@ import { generateProductionBatchMasterPDF } from '../utils/pdfGenerator';
 import { validateSortingReconciliation } from '../utils/calculations';
 import { deleteAllClonesSystemWide, deleteSingleCloneBatchSystemWide } from '../clearDemoData';
 import { firestoreSyncService } from '../services/firestoreSync';
+import { useUserRole } from '../context/UserRoleContext';
 import './CloneProduction.css';
 
 const ALLOWED_VARIETIES: CloneVarietyType[] = ['KR1', 'KR3', 'KR4', 'KR5', 'KR6', 'KR7', 'KR8', 'KR9', 'KR10', 'A', 'C', 'D'];
 
 const CloneProduction: React.FC = () => {
+    const { isAdmin, canEdit } = useUserRole();
     const [selectedVariety, setSelectedVariety] = useState<string>('all');
     const [searchTerm, setSearchTerm] = useState('');
 
@@ -377,7 +379,7 @@ const CloneProduction: React.FC = () => {
                     >
                         <FileDown size={18} /> Download Production PDF
                     </button>
-                    {batches.length > 0 && (
+                    {isAdmin && batches.length > 0 && (
                         <button
                             className="btn btn-outline-danger"
                             onClick={() => {
@@ -389,9 +391,15 @@ const CloneProduction: React.FC = () => {
                             <Trash2 size={18} /> Delete All Batches
                         </button>
                     )}
-                    <button className="btn btn-primary" onClick={() => setShowNewBatchModal(true)}>
-                        <Plus size={18} /> New Clone Batch
-                    </button>
+                    {canEdit ? (
+                        <button className="btn btn-primary" onClick={() => setShowNewBatchModal(true)}>
+                            <Plus size={18} /> New Clone Batch
+                        </button>
+                    ) : (
+                        <span className="badge badge-info" style={{ alignSelf: 'center', padding: '0.45rem 0.85rem', fontWeight: 600 }}>
+                            Staff View-Only
+                        </span>
+                    )}
                 </div>
             </div>
 
@@ -524,7 +532,7 @@ const CloneProduction: React.FC = () => {
                                         </td>
                                         <td style={{ textAlign: 'right' }}>
                                             <div style={{ display: 'inline-flex', gap: '0.4rem', justifyContent: 'flex-end', alignItems: 'center' }}>
-                                                {batch.currentStage !== 'Completed' && (
+                                                {canEdit && batch.currentStage !== 'Completed' && (
                                                     <button
                                                         className="btn btn-primary"
                                                         style={{ padding: '0.3rem 0.6rem', fontSize: '0.8rem', display: 'inline-flex', alignItems: 'center', gap: '0.3rem' }}
@@ -533,18 +541,20 @@ const CloneProduction: React.FC = () => {
                                                         Advance <ArrowRight size={14} />
                                                     </button>
                                                 )}
-                                                <button
-                                                    className="btn btn-outline-danger"
-                                                    style={{ padding: '0.3rem 0.5rem', fontSize: '0.8rem' }}
-                                                    onClick={() => {
-                                                        setDeleteError('');
-                                                        setBatchToDelete(batch);
-                                                    }}
-                                                    title="Delete batch"
-                                                    aria-label={`Delete ${batch.batchId}`}
-                                                >
-                                                    <Trash2 size={14} />
-                                                </button>
+                                                {isAdmin && (
+                                                    <button
+                                                        className="btn btn-outline-danger"
+                                                        style={{ padding: '0.3rem 0.5rem', fontSize: '0.8rem' }}
+                                                        onClick={() => {
+                                                            setDeleteError('');
+                                                            setBatchToDelete(batch);
+                                                        }}
+                                                        title="Delete batch"
+                                                        aria-label={`Delete ${batch.batchId}`}
+                                                    >
+                                                        <Trash2 size={14} />
+                                                    </button>
+                                                )}
                                             </div>
                                         </td>
                                     </tr>
@@ -617,7 +627,7 @@ const CloneProduction: React.FC = () => {
                                 </dl>
 
                                 <div style={{ display: 'flex', gap: '0.5rem', marginTop: '0.5rem' }}>
-                                    {batch.currentStage !== 'Completed' && (
+                                    {canEdit && batch.currentStage !== 'Completed' && (
                                         <button
                                             className="btn btn-primary clone-advance-button"
                                             style={{ flex: 1 }}
@@ -626,18 +636,20 @@ const CloneProduction: React.FC = () => {
                                             Advance <ArrowRight size={16} />
                                         </button>
                                     )}
-                                    <button
-                                        className="btn btn-outline-danger"
-                                        style={{ padding: '0.45rem 0.75rem' }}
-                                        onClick={() => {
-                                            setDeleteError('');
-                                            setBatchToDelete(batch);
-                                        }}
-                                        title="Delete batch"
-                                        aria-label={`Delete ${batch.batchId}`}
-                                    >
-                                        <Trash2 size={16} />
-                                    </button>
+                                    {isAdmin && (
+                                        <button
+                                            className="btn btn-outline-danger"
+                                            style={{ padding: '0.45rem 0.75rem' }}
+                                            onClick={() => {
+                                                setDeleteError('');
+                                                setBatchToDelete(batch);
+                                            }}
+                                            title="Delete batch"
+                                            aria-label={`Delete ${batch.batchId}`}
+                                        >
+                                            <Trash2 size={16} />
+                                        </button>
+                                    )}
                                 </div>
                             </article>
                         );

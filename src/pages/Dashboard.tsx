@@ -9,11 +9,16 @@ import {
     Clock,
     Package,
     QrCode,
-    ArrowRight
+    ArrowRight,
+    Briefcase,
+    Eye,
+    ShieldCheck
 } from 'lucide-react';
+import { useUserRole } from '../context/UserRoleContext';
 import './Dashboard.css';
 
 const Dashboard = () => {
+    const { isAdmin, isManager, isStaff } = useUserRole();
     const todayDateStr = format(new Date(), 'yyyy-MM-dd');
 
     // Queries
@@ -80,11 +85,65 @@ const Dashboard = () => {
                     <Link to="/scan" className="btn btn-primary" style={{ display: 'inline-flex', alignItems: 'center', gap: '0.5rem' }}>
                         <QrCode size={18} /> Clock-In / Scan Attendance
                     </Link>
-                    <Link to="/clones" className="btn btn-secondary" style={{ display: 'inline-flex', alignItems: 'center', gap: '0.5rem' }}>
-                        <Sprout size={18} /> New Clone Batch
-                    </Link>
+                    {!isStaff && (
+                        <Link to="/clones" className="btn btn-secondary" style={{ display: 'inline-flex', alignItems: 'center', gap: '0.5rem' }}>
+                            <Sprout size={18} /> New Clone Batch
+                        </Link>
+                    )}
                 </div>
             </div>
+
+            {/* Role Access Information Banner */}
+            {isAdmin && (
+                <div className="card" style={{ padding: '0.85rem 1.25rem', background: '#fefce8', border: '1px solid #fef08a', borderRadius: '8px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '0.75rem' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+                        <ShieldCheck size={24} color="#854d0e" />
+                        <div>
+                            <strong style={{ color: '#854d0e', fontSize: '0.95rem' }}>Administrator Master Session</strong>
+                            <div style={{ color: '#713f12', fontSize: '0.82rem' }}>
+                                Full access. All records entered by Managers and Staff are synchronized live to your dashboard.
+                            </div>
+                        </div>
+                    </div>
+                    <span className="badge badge-warning" style={{ fontWeight: 700, padding: '0.35rem 0.75rem' }}>
+                        👑 ADMIN ACCESS
+                    </span>
+                </div>
+            )}
+
+            {isManager && (
+                <div className="card" style={{ padding: '0.85rem 1.25rem', background: '#f0fdf4', border: '1px solid #bbf7d0', borderRadius: '8px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '0.75rem' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+                        <Briefcase size={24} color="#15803d" />
+                        <div>
+                            <strong style={{ color: '#15803d', fontSize: '0.95rem' }}>Manager Operations Mode</strong>
+                            <div style={{ color: '#166534', fontSize: '0.82rem' }}>
+                                Operational data entry enabled (workers, clones, sales, stock). All entries you make are automatically visible to Administrators.
+                            </div>
+                        </div>
+                    </div>
+                    <span className="badge badge-success" style={{ fontWeight: 700, padding: '0.35rem 0.75rem' }}>
+                        💼 MANAGER (DATA ENTRY)
+                    </span>
+                </div>
+            )}
+
+            {isStaff && (
+                <div className="card" style={{ padding: '0.85rem 1.25rem', background: '#eff6ff', border: '1px solid #bfdbfe', borderRadius: '8px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '0.75rem' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+                        <Eye size={24} color="#1d4ed8" />
+                        <div>
+                            <strong style={{ color: '#1d4ed8', fontSize: '0.95rem' }}>Staff View-Only Session</strong>
+                            <div style={{ color: '#1e40af', fontSize: '0.82rem' }}>
+                                You have view-only access to browse farm metrics, records, and reports. Data entry and edits are reserved for Managers and Administrators.
+                            </div>
+                        </div>
+                    </div>
+                    <span className="badge badge-info" style={{ fontWeight: 700, padding: '0.35rem 0.75rem' }}>
+                        👁️ STAFF (VIEW ONLY)
+                    </span>
+                </div>
+            )}
 
             {/* Operational Quick Actions */}
             <section className="card">

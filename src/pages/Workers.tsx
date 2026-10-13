@@ -21,9 +21,11 @@ import { generateWorkersMasterPDF, generateWorkerIdCardPDF } from '../utils/pdfG
 import { formatUGX } from '../utils/calculations';
 import { deleteAllWorkersSystemWide, deleteSingleWorkerSystemWide } from '../clearDemoData';
 import { firestoreSyncService } from '../services/firestoreSync';
+import { useUserRole } from '../context/UserRoleContext';
 import './Workers.css';
 
 const Workers: React.FC = () => {
+    const { isAdmin, canEdit } = useUserRole();
     const [searchTerm, setSearchTerm] = useState('');
     const [statusFilter, setStatusFilter] = useState<'All' | 'Active' | 'Inactive'>('All');
     const [showAddModal, setShowAddModal] = useState(false);
@@ -179,7 +181,7 @@ const Workers: React.FC = () => {
                     >
                         <FileDown size={18} /> Download Workforce PDF
                     </button>
-                    {workers.length > 0 && (
+                    {isAdmin && workers.length > 0 && (
                         <button
                             className="btn btn-outline-danger"
                             onClick={() => {
@@ -191,22 +193,28 @@ const Workers: React.FC = () => {
                             <Trash2 size={18} /> Delete All Workers
                         </button>
                     )}
-                    <button
-                        className="btn btn-primary"
-                        onClick={() => {
-                            setEditingWorker(null);
-                            setFormData({
-                                fullName: '',
-                                gender: 'Male',
-                                phoneNumber: '',
-                                monthlySalary: 500000,
-                                status: 'Active'
-                            });
-                            setShowAddModal(true);
-                        }}
-                    >
-                        <Plus size={18} /> Register Worker
-                    </button>
+                    {canEdit ? (
+                        <button
+                            className="btn btn-primary"
+                            onClick={() => {
+                                setEditingWorker(null);
+                                setFormData({
+                                    fullName: '',
+                                    gender: 'Male',
+                                    phoneNumber: '',
+                                    monthlySalary: 500000,
+                                    status: 'Active'
+                                });
+                                setShowAddModal(true);
+                            }}
+                        >
+                            <Plus size={18} /> Register Worker
+                        </button>
+                    ) : (
+                        <span className="badge badge-info" style={{ alignSelf: 'center', padding: '0.45rem 0.85rem', fontWeight: 600 }}>
+                            Staff View-Only
+                        </span>
+                    )}
                 </div>
             </div>
 
@@ -324,27 +332,31 @@ const Workers: React.FC = () => {
                                             >
                                                 <QrCode size={14} /> Card
                                             </button>
-                                            <button
-                                                className="btn btn-secondary"
-                                                style={{ padding: '0.35rem 0.55rem', fontSize: '0.8rem' }}
-                                                onClick={() => handleOpenEdit(w)}
-                                                title="Edit worker details"
-                                                aria-label={`Edit ${w.fullName}`}
-                                            >
-                                                <Edit3 size={14} />
-                                            </button>
-                                            <button
-                                                className="btn btn-outline-danger"
-                                                style={{ padding: '0.35rem 0.55rem', fontSize: '0.8rem' }}
-                                                onClick={() => {
-                                                    setDeleteError('');
-                                                    setWorkerToDelete(w);
-                                                }}
-                                                title="Delete worker"
-                                                aria-label={`Delete ${w.fullName}`}
-                                            >
-                                                <Trash2 size={14} />
-                                            </button>
+                                            {canEdit && (
+                                                <button
+                                                    className="btn btn-secondary"
+                                                    style={{ padding: '0.35rem 0.55rem', fontSize: '0.8rem' }}
+                                                    onClick={() => handleOpenEdit(w)}
+                                                    title="Edit worker details"
+                                                    aria-label={`Edit ${w.fullName}`}
+                                                >
+                                                    <Edit3 size={14} />
+                                                </button>
+                                            )}
+                                            {isAdmin && (
+                                                <button
+                                                    className="btn btn-outline-danger"
+                                                    style={{ padding: '0.35rem 0.55rem', fontSize: '0.8rem' }}
+                                                    onClick={() => {
+                                                        setDeleteError('');
+                                                        setWorkerToDelete(w);
+                                                    }}
+                                                    title="Delete worker"
+                                                    aria-label={`Delete ${w.fullName}`}
+                                                >
+                                                    <Trash2 size={14} />
+                                                </button>
+                                            )}
                                         </div>
                                     </td>
                                 </tr>
@@ -392,30 +404,34 @@ const Workers: React.FC = () => {
                             </div>
 
                             <div className="workers-payroll-card-actions">
-                                <button
-                                    className="btn btn-secondary"
-                                    onClick={() => handleOpenEdit(worker)}
-                                >
-                                    <Edit3 size={15} /> Edit Worker
-                                </button>
+                                {canEdit && (
+                                    <button
+                                        className="btn btn-secondary"
+                                        onClick={() => handleOpenEdit(worker)}
+                                    >
+                                        <Edit3 size={15} /> Edit Worker
+                                    </button>
+                                )}
                                 <button
                                     className="btn btn-primary"
                                     onClick={() => setSelectedWorkerForCard(worker)}
                                 >
                                     <QrCode size={15} /> Farm Card
                                 </button>
-                                <button
-                                    className="btn btn-outline-danger"
-                                    style={{ flex: '0 0 auto', padding: '0.45rem 0.75rem' }}
-                                    onClick={() => {
-                                        setDeleteError('');
-                                        setWorkerToDelete(worker);
-                                    }}
-                                    title="Delete worker"
-                                    aria-label={`Delete ${worker.fullName}`}
-                                >
-                                    <Trash2 size={15} />
-                                </button>
+                                {isAdmin && (
+                                    <button
+                                        className="btn btn-outline-danger"
+                                        style={{ flex: '0 0 auto', padding: '0.45rem 0.75rem' }}
+                                        onClick={() => {
+                                            setDeleteError('');
+                                            setWorkerToDelete(worker);
+                                        }}
+                                        title="Delete worker"
+                                        aria-label={`Delete ${worker.fullName}`}
+                                    >
+                                        <Trash2 size={15} />
+                                    </button>
+                                )}
                             </div>
                         </article>
                     ))

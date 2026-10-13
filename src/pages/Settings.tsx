@@ -20,9 +20,11 @@ import {
     DEFAULT_ATTENDANCE_SCHEDULE,
     normalizeAttendanceScheduleSettings
 } from '../utils/attendanceSchedule';
+import { useUserRole } from '../context/UserRoleContext';
 import './Dashboard.css';
 
 const Settings: React.FC = () => {
+    const { isAdmin } = useUserRole();
     const [settings, setSettings] = useState({
         farmName: 'G&S FARM',
         farmLocation: 'Mubende District, Uganda',
@@ -241,7 +243,7 @@ const Settings: React.FC = () => {
                     </div>
 
                     {/* Security and Cloud Sync */}
-                    <AdminInvitations />
+                    {isAdmin && <AdminInvitations />}
 
                     <div className="card" style={{ borderLeft: '4px solid var(--color-primary)', display: 'flex', flexDirection: 'column', gap: '1rem' }}>
                         <h3 style={{ borderBottom: '1px solid var(--color-border)', paddingBottom: '0.75rem', margin: 0, color: 'var(--color-primary-dark)' }}>
@@ -263,14 +265,16 @@ const Settings: React.FC = () => {
                                 <RefreshCw size={14} className={isSyncing ? 'spin' : ''} />
                                 {isSyncing ? 'Syncing...' : 'Force Cloud Sync'}
                             </button>
-                            <button 
-                                type="button" 
-                                className="btn btn-secondary" 
-                                style={{ background: '#fef2f2', color: 'var(--color-danger)', borderColor: 'var(--color-danger)' }} 
-                                onClick={handleClearData}
-                            >
-                                <Trash2 size={14} /> Clear Cache
-                            </button>
+                            {isAdmin && (
+                                <button 
+                                    type="button" 
+                                    className="btn btn-secondary" 
+                                    style={{ background: '#fef2f2', color: 'var(--color-danger)', borderColor: 'var(--color-danger)' }} 
+                                    onClick={handleClearData}
+                                >
+                                    <Trash2 size={14} /> Clear Cache
+                                </button>
+                            )}
                         </div>
                     </div>
 
@@ -278,9 +282,15 @@ const Settings: React.FC = () => {
 
                 {/* Save Button Bar */}
                 <div style={{ marginTop: '1.5rem', display: 'flex', justifyContent: 'flex-start' }}>
-                    <button type="submit" className="btn btn-primary" style={{ padding: '0.6rem 1.5rem', fontSize: '1rem', display: 'inline-flex', alignItems: 'center', gap: '0.5rem' }}>
-                        <Save size={18} /> Save All Configurations
-                    </button>
+                    {isAdmin ? (
+                        <button type="submit" className="btn btn-primary" style={{ padding: '0.6rem 1.5rem', fontSize: '1rem', display: 'inline-flex', alignItems: 'center', gap: '0.5rem' }}>
+                            <Save size={18} /> Save All Configurations
+                        </button>
+                    ) : (
+                        <div className="badge badge-warning" style={{ padding: '0.6rem 1.25rem', fontSize: '0.85rem', fontWeight: 600 }}>
+                            ⚠️ System configuration changes are restricted to Administrators (View-Only Mode)
+                        </div>
+                    )}
                 </div>
             </form>
         </div>

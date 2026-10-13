@@ -26,6 +26,7 @@ import {
     deleteSingleExpenseSystemWide
 } from '../clearDemoData';
 import { firestoreSyncService } from '../services/firestoreSync';
+import { useUserRole } from '../context/UserRoleContext';
 
 const CATEGORIES = [
     { name: 'Fertilizers', icon: Sparkles, color: '#16a34a' },
@@ -46,6 +47,7 @@ const PREDEFINED_NURSERY_SUPPLIES = [
 const EXPENSE_CATEGORIES = ['Transport', 'Fuel', 'Repairs', 'Communication', 'Other Farm Expense'];
 
 const Inventory: React.FC = () => {
+    const { isAdmin, isStaff, canEdit } = useUserRole();
     const [activeSection, setActiveSection] = useState<'inventory' | 'expenses'>('inventory');
     const [selectedCategory, setSelectedCategory] = useState<string>('All');
     const [searchTerm, setSearchTerm] = useState('');
@@ -333,7 +335,7 @@ const Inventory: React.FC = () => {
                             >
                                 <Download size={16} /> Export Inventory PDF
                             </button>
-                            {items.length > 0 && (
+                            {isAdmin && items.length > 0 && (
                                 <button
                                     className="btn btn-outline-danger"
                                     onClick={() => {
@@ -345,31 +347,37 @@ const Inventory: React.FC = () => {
                                     <Trash2 size={16} /> Delete All Inventory
                                 </button>
                             )}
-                            <button
-                                className="btn btn-primary"
-                                onClick={() => {
-                                    setFormData({
-                                        name: '',
-                                        category: selectedCategory === 'All' ? 'Fertilizers' : selectedCategory,
-                                        type: '',
-                                        unit: selectedCategory === 'Pesticides' ? 'Litres' : selectedCategory === 'Farm Tools' ? 'Pieces' : 'kg',
-                                        quantity: 0,
-                                        purchasePrice: 0,
-                                        supplier: '',
-                                        minStockLevel: 5,
-                                        condition: 'New',
-                                        location: '',
-                                        notes: ''
-                                    });
-                                    setShowAddModal(true);
-                                }}
-                            >
-                                <Plus size={18} /> Add Inventory Item
-                            </button>
+                            {canEdit ? (
+                                <button
+                                    className="btn btn-primary"
+                                    onClick={() => {
+                                        setFormData({
+                                            name: '',
+                                            category: selectedCategory === 'All' ? 'Fertilizers' : selectedCategory,
+                                            type: '',
+                                            unit: selectedCategory === 'Pesticides' ? 'Litres' : selectedCategory === 'Farm Tools' ? 'Pieces' : 'kg',
+                                            quantity: 0,
+                                            purchasePrice: 0,
+                                            supplier: '',
+                                            minStockLevel: 5,
+                                            condition: 'New',
+                                            location: '',
+                                            notes: ''
+                                        });
+                                        setShowAddModal(true);
+                                    }}
+                                >
+                                    <Plus size={18} /> Add Inventory Item
+                                </button>
+                            ) : (
+                                <span className="badge badge-info" style={{ alignSelf: 'center', padding: '0.45rem 0.85rem', fontWeight: 600 }}>
+                                    Staff View-Only
+                                </span>
+                            )}
                         </>
                     ) : (
                         <>
-                            {expenses.length > 0 && (
+                            {isAdmin && expenses.length > 0 && (
                                 <button
                                     type="button"
                                     className="btn btn-outline-danger"
@@ -384,9 +392,15 @@ const Inventory: React.FC = () => {
                             <button className="btn btn-secondary" onClick={() => generateFarmExpensesPDF(expenses)}>
                                 <Download size={16} /> Export Expenses PDF
                             </button>
-                            <button className="btn btn-primary" onClick={() => setShowExpenseModal(true)}>
-                                <Plus size={18} /> Record Farm Expense
-                            </button>
+                            {canEdit ? (
+                                <button className="btn btn-primary" onClick={() => setShowExpenseModal(true)}>
+                                    <Plus size={18} /> Record Farm Expense
+                                </button>
+                            ) : (
+                                <span className="badge badge-info" style={{ alignSelf: 'center', padding: '0.45rem 0.85rem', fontWeight: 600 }}>
+                                    Staff View-Only
+                                </span>
+                            )}
                         </>
                     )}
                 </div>
@@ -452,18 +466,22 @@ const Inventory: React.FC = () => {
                                         <td>{expense.recordedBy}</td>
                                         <td style={{ textAlign: 'right' }}><strong>UGX {expense.amount.toLocaleString()}</strong></td>
                                         <td style={{ textAlign: 'center' }}>
-                                            <button
-                                                className="btn btn-outline-danger"
-                                                style={{ padding: '0.3rem 0.5rem', fontSize: '0.8rem' }}
-                                                onClick={() => {
-                                                    setDeleteError('');
-                                                    setExpenseToDelete(expense);
-                                                }}
-                                                title="Delete Expense"
-                                                aria-label={`Delete expense ${expense.description}`}
-                                            >
-                                                <Trash2 size={13} />
-                                            </button>
+                                            {isAdmin ? (
+                                                <button
+                                                    className="btn btn-outline-danger"
+                                                    style={{ padding: '0.3rem 0.5rem', fontSize: '0.8rem' }}
+                                                    onClick={() => {
+                                                        setDeleteError('');
+                                                        setExpenseToDelete(expense);
+                                                    }}
+                                                    title="Delete Expense"
+                                                    aria-label={`Delete expense ${expense.description}`}
+                                                >
+                                                    <Trash2 size={13} />
+                                                </button>
+                                            ) : (
+                                                <span className="text-light" style={{ fontSize: '0.75rem' }}>-</span>
+                                            )}
                                         </td>
                                     </tr>
                                 ))}
@@ -612,32 +630,39 @@ const Inventory: React.FC = () => {
                                         </td>
                                         <td style={{ padding: '0.75rem 1rem', textAlign: 'right', whiteSpace: 'nowrap' }}>
                                             <div style={{ display: 'inline-flex', gap: '0.4rem', justifyContent: 'flex-end', alignItems: 'center' }}>
-                                                <button
-                                                    className="btn btn-secondary"
-                                                    style={{ padding: '0.3rem 0.6rem', fontSize: '0.8rem' }}
-                                                    onClick={() => {
-                                                        setSelectedItemForStock(item);
-                                                        setStockAction('IN');
-                                                        setStockChangeAmount(10);
-                                                        setStockReason('Stock Adjustment');
-                                                        setShowStockModal(true);
-                                                    }}
-                                                    title="Adjust stock in/out"
-                                                >
-                                                    <RefreshCw size={13} /> Stock
-                                                </button>
-                                                <button
-                                                    className="btn btn-outline-danger"
-                                                    style={{ padding: '0.3rem 0.5rem', fontSize: '0.8rem' }}
-                                                    onClick={() => {
-                                                        setDeleteError('');
-                                                        setItemToDelete(item);
-                                                    }}
-                                                    title="Delete item"
-                                                    aria-label={`Delete ${item.name}`}
-                                                >
-                                                    <Trash2 size={13} />
-                                                </button>
+                                                {canEdit && (
+                                                    <button
+                                                        className="btn btn-secondary"
+                                                        style={{ padding: '0.3rem 0.6rem', fontSize: '0.8rem' }}
+                                                        onClick={() => {
+                                                            setSelectedItemForStock(item);
+                                                            setStockAction('IN');
+                                                            setStockChangeAmount(10);
+                                                            setStockReason('Stock Adjustment');
+                                                            setShowStockModal(true);
+                                                        }}
+                                                        title="Adjust stock in/out"
+                                                    >
+                                                        <RefreshCw size={13} /> Stock
+                                                    </button>
+                                                )}
+                                                {isAdmin && (
+                                                    <button
+                                                        className="btn btn-outline-danger"
+                                                        style={{ padding: '0.3rem 0.5rem', fontSize: '0.8rem' }}
+                                                        onClick={() => {
+                                                            setDeleteError('');
+                                                            setItemToDelete(item);
+                                                        }}
+                                                        title="Delete item"
+                                                        aria-label={`Delete ${item.name}`}
+                                                    >
+                                                        <Trash2 size={13} />
+                                                    </button>
+                                                )}
+                                                {isStaff && (
+                                                    <span className="text-light" style={{ fontSize: '0.75rem' }}>View-Only</span>
+                                                )}
                                             </div>
                                         </td>
                                     </tr>

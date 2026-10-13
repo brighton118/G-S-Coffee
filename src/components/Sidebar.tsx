@@ -3,6 +3,7 @@ import { NavLink, useLocation } from 'react-router-dom';
 import { useLiveQuery } from 'dexie-react-hooks';
 import { db } from '../db';
 import { LayoutDashboard, Users, ScanLine, Sprout, ShoppingCart, BarChart3, Bell, ScrollText, Settings, X, Banknote, CalendarDays, ChevronDown, ChevronRight, LogOut } from 'lucide-react';
+import { useUserRole } from '../context/UserRoleContext';
 import './Sidebar.css';
 
 interface SidebarProps {
@@ -13,6 +14,7 @@ interface SidebarProps {
 }
 
 const Sidebar = ({ isOpen, setIsOpen, adminEmail, onSignOut }: SidebarProps) => {
+    const { role } = useUserRole();
     const [isAttendanceExpanded, setIsAttendanceExpanded] = useState(false);
     const location = useLocation();
     const handleClose = () => setIsOpen(false);
@@ -89,6 +91,11 @@ const Sidebar = ({ isOpen, setIsOpen, adminEmail, onSignOut }: SidebarProps) => 
             </nav>
             <div className="sidebar-account">
                 <div className="sidebar-account-email" title={adminEmail}>{adminEmail}</div>
+                <div className="sidebar-role-badge-wrap">
+                    <span className={`sidebar-role-badge role-${role}`}>
+                        {role === 'admin' ? '👑 Admin (Full Access)' : role === 'manager' ? '💼 Manager (Operations)' : '👁️ Staff (View Only)'}
+                    </span>
+                </div>
                 <button type="button" className="nav-item sidebar-sign-out" onClick={() => { handleClose(); onSignOut(); }}>
                     <LogOut size={19} /> Sign out
                 </button>

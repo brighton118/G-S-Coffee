@@ -23,11 +23,44 @@
 
 .sidebar-account-email {
     overflow: hidden;
-    padding: 0.5rem 1.5rem;
+    padding: 0.35rem 1.5rem 0.15rem;
     color: var(--color-text-light);
     font-size: 0.75rem;
     text-overflow: ellipsis;
     white-space: nowrap;
+}
+
+.sidebar-role-badge-wrap {
+    padding: 0 1.5rem 0.5rem;
+}
+
+.sidebar-role-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.3rem;
+    padding: 0.2rem 0.55rem;
+    border-radius: 999px;
+    font-size: 0.7rem;
+    font-weight: 600;
+    line-height: 1.2;
+}
+
+.sidebar-role-badge.role-admin {
+    background: #fef3c7;
+    color: #92400e;
+    border: 1px solid #fde68a;
+}
+
+.sidebar-role-badge.role-manager {
+    background: #dcfce7;
+    color: #166534;
+    border: 1px solid #bbf7d0;
+}
+
+.sidebar-role-badge.role-staff {
+    background: #e0f2fe;
+    color: #0369a1;
+    border: 1px solid #bae6fd;
 }
 
 .sidebar-sign-out {

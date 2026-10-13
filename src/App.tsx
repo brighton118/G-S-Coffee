@@ -19,11 +19,13 @@ import { firestoreSyncService } from './services/firestoreSync';
 import { clearSeededDemoData } from './clearDemoData';
 import { notificationService } from './utils/notificationService';
 import { auth } from './firebase';
-import { ensureAdminAccess } from './services/adminAccess';
+import { ensureAdminAccess, getUserRole } from './services/adminAccess';
 import { syncPayrollMonth } from './services/payrollSync';
+import { UserRoleContext, type UserRole } from './context/UserRoleContext';
 
 const App = () => {
     const [adminUser, setAdminUser] = useState<FirebaseUser | null>(null);
+    const [userRole, setUserRole] = useState<UserRole>(() => (localStorage.getItem('gs_user_role') as UserRole) || 'admin');
     const [authStatus, setAuthStatus] = useState<'loading' | 'signedOut' | 'checking' | 'authorized'>('loading');
     const [authMessage, setAuthMessage] = useState('');
 
@@ -36,6 +38,15 @@ const App = () => {
                 setAdminUser(null);
                 setAuthStatus('signedOut');
                 return;
+            }
+
+            try {
+                const role = await getUserRole(user);
+                if (isMounted) {
+                    setUserRole(role);
+                }
+            } catch (roleErr) {
+                console.warn('Could not read user role:', roleErr);
             }
 
             if (isMounted && currentCheck === authCheck) {
@@ -129,24 +140,36 @@ const App = () => {
     }
 
     return (
-        <Router>
-            <Layout adminEmail={adminUser?.email || ''} onSignOut={() => signOut(auth)}>
-                <Routes>
-                    <Route path="/" element={<Dashboard />} />
-                    <Route path="/clones" element={<CloneProduction />} />
-                    <Route path="/workers" element={<Workers />} />
-                    <Route path="/attendance" element={<Attendance />} />
-                    <Route path="/worker/:workerId" element={<WorkerProfile />} />
-                    <Route path="/scan" element={<ScanAttendance />} />
-                    <Route path="/payroll" element={<Payroll />} />
-                    <Route path="/inventory" element={<Inventory />} />
-                    <Route path="/sales" element={<Sales />} />
-                    <Route path="/reports" element={<Reports />} />
-                    <Route path="/notifications" element={<Notifications />} />
-                    <Route path="/settings" element={<Settings />} />
-                </Routes>
-            </Layout>
-        </Router>
+        <UserRoleContext.Provider
+            value={{
+                role: userRole,
+                isAdmin: userRole === 'admin',
+                isManager: userRole === 'manager',
+                isStaff: userRole === 'staff',
+                canEdit: userRole === 'admin' || userRole === 'manager',
+                userEmail: adminUser?.email || '',
+                userName: adminUser?.displayName || adminUser?.email?.split('@')[0] || ''
+            }}
+        >
+            <Router>
+                <Layout adminEmail={adminUser?.email || ''} onSignOut={() => signOut(auth)}>
+                    <Routes>
+                        <Route path="/" element={<Dashboard />} />
+                        <Route path="/clones" element={<CloneProduction />} />
+                        <Route path="/workers" element={<Workers />} />
+                        <Route path="/attendance" element={<Attendance />} />
+                        <Route path="/worker/:workerId" element={<WorkerProfile />} />
+                        <Route path="/scan" element={<ScanAttendance />} />
+                        <Route path="/payroll" element={<Payroll />} />
+                        <Route path="/inventory" element={<Inventory />} />
+                        <Route path="/sales" element={<Sales />} />
+                        <Route path="/reports" element={<Reports />} />
+                        <Route path="/notifications" element={<Notifications />} />
+                        <Route path="/settings" element={<Settings />} />
+                    </Routes>
+                </Layout>
+            </Router>
+        </UserRoleContext.Provider>
     );
 };
 

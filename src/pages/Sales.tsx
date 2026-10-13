@@ -19,6 +19,7 @@ import { generateSalesReceiptPDF, generateSalesSummaryPDF } from '../utils/pdfGe
 import { formatUGX } from '../utils/calculations';
 import { deleteAllSalesSystemWide, deleteSingleSalesOrderSystemWide } from '../clearDemoData';
 import { firestoreSyncService } from '../services/firestoreSync';
+import { useUserRole } from '../context/UserRoleContext';
 import './Sales.css';
 
 type SaleVariety = 'KR1' | 'KR3' | 'KR4' | 'KR5' | 'KR6' | 'KR7' | 'KR8' | 'KR9' | 'KR10' | 'A' | 'C' | 'D';
@@ -28,6 +29,7 @@ const VARIETIES: SaleVariety[] = [
 ];
 
 const Sales: React.FC = () => {
+    const { isAdmin, canEdit } = useUserRole();
     const [searchTerm, setSearchTerm] = useState('');
     const [selectedVariety, setSelectedVariety] = useState<string>('All');
     const [showNewOrderModal, setShowNewOrderModal] = useState(false);
@@ -176,7 +178,7 @@ const Sales: React.FC = () => {
                     </p>
                 </div>
                 <div style={{ display: 'flex', gap: '0.75rem', flexWrap: 'wrap' }}>
-                    {orders.length > 0 && (
+                    {isAdmin && orders.length > 0 && (
                         <button 
                             type="button" 
                             className="btn btn-outline-danger" 
@@ -194,9 +196,15 @@ const Sales: React.FC = () => {
                     >
                         <Download size={16} /> Export Sales Summary (PDF)
                     </button>
-                    <button className="btn btn-primary" onClick={() => setShowNewOrderModal(true)}>
-                        <Plus size={18} /> Record Cash Sale
-                    </button>
+                    {canEdit ? (
+                        <button className="btn btn-primary" onClick={() => setShowNewOrderModal(true)}>
+                            <Plus size={18} /> Record Cash Sale
+                        </button>
+                    ) : (
+                        <span className="badge badge-info" style={{ alignSelf: 'center', padding: '0.45rem 0.85rem', fontWeight: 600 }}>
+                            Staff View-Only
+                        </span>
+                    )}
                 </div>
             </div>
 
@@ -419,18 +427,20 @@ const Sales: React.FC = () => {
                                     >
                                         <Receipt size={15} /> Cash Receipt
                                     </button>
-                                    <button
-                                        className="btn btn-outline-danger"
-                                        style={{ padding: '0.5rem 0.75rem', display: 'inline-flex', alignItems: 'center', justifyContent: 'center' }}
-                                        title="Delete Sale"
-                                        aria-label={`Delete sale ${inv}`}
-                                        onClick={() => {
-                                            setDeleteError('');
-                                            setOrderToDelete(order);
-                                        }}
-                                    >
-                                        <Trash2 size={16} />
-                                    </button>
+                                    {isAdmin && (
+                                        <button
+                                            className="btn btn-outline-danger"
+                                            style={{ padding: '0.5rem 0.75rem', display: 'inline-flex', alignItems: 'center', justifyContent: 'center' }}
+                                            title="Delete Sale"
+                                            aria-label={`Delete sale ${inv}`}
+                                            onClick={() => {
+                                                setDeleteError('');
+                                                setOrderToDelete(order);
+                                            }}
+                                        >
+                                            <Trash2 size={16} />
+                                        </button>
+                                    )}
                                 </div>
                             </article>
                         );
