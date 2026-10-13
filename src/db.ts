@@ -6,9 +6,15 @@ export type CloneVarietyType = 'KR1' | 'KR3' | 'KR4' | 'KR5' | 'KR6' | 'KR7' | '
 
 export interface User {
     id?: number;
+    uid?: string;
+    email?: string;
     username: string;
-    role: 'Administrator' | 'Farm Manager' | 'Nursery Supervisor' | 'Store/Inventory Manager' | 'Attendance Officer' | 'Viewer';
+    name?: string;
+    role: 'admin' | 'manager' | 'staff' | 'Administrator' | 'Farm Manager' | 'Nursery Supervisor' | 'Store/Inventory Manager' | 'Attendance Officer' | 'Viewer';
     active: boolean;
+    permissions?: string[];
+    createdAt?: string;
+    updatedAt?: string;
 }
 
 export interface Worker {
@@ -458,6 +464,10 @@ db.version(2).stores({
 
 db.version(3).stores({
     farmExpenses: '++id, expenseId, category, date, recordedBy'
+});
+
+db.version(4).stores({
+    users: '++id, uid, email, username, role, active'
 });
 
 export { db };

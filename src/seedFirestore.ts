@@ -193,8 +193,47 @@ export const createFirestoreTables = async () => {
             await setDoc(doc(collection(dbFirestore, 'activityLogs'), log.id), log, { merge: true });
         }
 
+        // 7. Role Tables & User Directory: admins, managers, staff, users
+        await setDoc(doc(collection(dbFirestore, 'admins'), '_schema'), {
+            collection: 'admins',
+            name: 'Farm Administrators Table',
+            role: 'admin',
+            description: 'System administrators with full access to view, edit, configure, and oversee all farm operations.',
+            permissions: ['all', 'admin_access', 'manage_users', 'edit_all', 'delete_all', 'view_all'],
+            _isSystemSchema: true,
+            updatedAt: new Date().toISOString()
+        }, { merge: true });
+
+        await setDoc(doc(collection(dbFirestore, 'managers'), '_schema'), {
+            collection: 'managers',
+            name: 'Farm Managers Table',
+            role: 'manager',
+            description: 'Operational managers with create and edit permissions for workers, clones, inventory, and sales.',
+            permissions: ['operations', 'create_records', 'edit_records', 'view_all'],
+            _isSystemSchema: true,
+            updatedAt: new Date().toISOString()
+        }, { merge: true });
+
+        await setDoc(doc(collection(dbFirestore, 'staff'), '_schema'), {
+            collection: 'staff',
+            name: 'Farm Staff Table',
+            role: 'staff',
+            description: 'Staff members with view-only visibility across farm records, clone batches, inventory, and reports.',
+            permissions: ['view_only', 'read_all'],
+            _isSystemSchema: true,
+            updatedAt: new Date().toISOString()
+        }, { merge: true });
+
+        await setDoc(doc(collection(dbFirestore, 'users'), '_schema'), {
+            collection: 'users',
+            name: 'Unified Farm Users Directory',
+            description: 'Central registry of all authenticated accounts with their assigned roles (admin, manager, staff).',
+            _isSystemSchema: true,
+            updatedAt: new Date().toISOString()
+        }, { merge: true });
+
         sessionStorage.setItem('gs_firestore_seeded', 'true');
-        console.log('Cloud Firestore backend tables and initial records initialized.');
+        console.log('Cloud Firestore backend tables (including admins, managers, staff, users) and initial records initialized.');
     } catch (error: any) {
         sessionStorage.setItem('gs_firestore_seeded', 'true');
         if (error?.code === 'permission-denied') {
