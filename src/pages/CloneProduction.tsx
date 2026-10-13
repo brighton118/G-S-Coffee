@@ -14,11 +14,13 @@ import {
     FileDown,
     X,
     Layers,
-    ChevronRight
+    ChevronRight,
+    Trash2
 } from 'lucide-react';
 import { format, addMonths } from 'date-fns';
 import { generateProductionBatchMasterPDF } from '../utils/pdfGenerator';
 import { validateSortingReconciliation } from '../utils/calculations';
+import { deleteAllClonesSystemWide, deleteSingleCloneBatchSystemWide } from '../clearDemoData';
 import './CloneProduction.css';
 
 const ALLOWED_VARIETIES: CloneVarietyType[] = ['KR1', 'KR3', 'KR4', 'KR5', 'KR6', 'KR7', 'KR8', 'KR9', 'KR10', 'A', 'C', 'D'];
@@ -30,6 +32,10 @@ const CloneProduction: React.FC = () => {
     // Modals
     const [showNewBatchModal, setShowNewBatchModal] = useState(false);
     const [advancingBatch, setAdvancingBatch] = useState<CloneBatch | null>(null);
+    const [showDeleteAllModal, setShowDeleteAllModal] = useState(false);
+    const [batchToDelete, setBatchToDelete] = useState<CloneBatch | null>(null);
+    const [isDeleting, setIsDeleting] = useState(false);
+    const [deleteError, setDeleteError] = useState('');
 
     // Form state for New Batch
     const [newBatchData, setNewBatchData] = useState({
@@ -318,6 +324,35 @@ const CloneProduction: React.FC = () => {
         setAdvancingBatch(null);
     };
 
+    const handleConfirmDeleteAll = async () => {
+        setIsDeleting(true);
+        setDeleteError('');
+        try {
+            await deleteAllClonesSystemWide();
+            setShowDeleteAllModal(false);
+        } catch (err: any) {
+            console.error('Failed to delete all clone batches:', err);
+            setDeleteError(err?.message || 'Failed to delete all clone batches. Please try again.');
+        } finally {
+            setIsDeleting(false);
+        }
+    };
+
+    const handleConfirmDeleteSingle = async () => {
+        if (!batchToDelete) return;
+        setIsDeleting(true);
+        setDeleteError('');
+        try {
+            await deleteSingleCloneBatchSystemWide(batchToDelete.batchId);
+            setBatchToDelete(null);
+        } catch (err: any) {
+            console.error('Failed to delete clone batch:', err);
+            setDeleteError(err?.message || 'Failed to delete clone batch. Please try again.');
+        } finally {
+            setIsDeleting(false);
+        }
+    };
+
     return (
         <div className="page-wrapper" style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
             {/* Header */}
@@ -334,9 +369,22 @@ const CloneProduction: React.FC = () => {
                     <button
                         className="btn btn-secondary"
                         onClick={() => generateProductionBatchMasterPDF(batches, humidChambers, sortings)}
+                        disabled={batches.length === 0}
                     >
                         <FileDown size={18} /> Download Production PDF
                     </button>
+                    {batches.length > 0 && (
+                        <button
+                            className="btn btn-outline-danger"
+                            onClick={() => {
+                                setDeleteError('');
+                                setShowDeleteAllModal(true);
+                            }}
+                            title="Delete all clone batches from the system"
+                        >
+                            <Trash2 size={18} /> Delete All Batches
+                        </button>
+                    )}
                     <button className="btn btn-primary" onClick={() => setShowNewBatchModal(true)}>
                         <Plus size={18} /> New Clone Batch
                     </button>
@@ -471,15 +519,29 @@ const CloneProduction: React.FC = () => {
                                             ) : '-'}
                                         </td>
                                         <td style={{ textAlign: 'right' }}>
-                                            {batch.currentStage !== 'Completed' && (
+                                            <div style={{ display: 'inline-flex', gap: '0.4rem', justifyContent: 'flex-end', alignItems: 'center' }}>
+                                                {batch.currentStage !== 'Completed' && (
+                                                    <button
+                                                        className="btn btn-primary"
+                                                        style={{ padding: '0.3rem 0.6rem', fontSize: '0.8rem', display: 'inline-flex', alignItems: 'center', gap: '0.3rem' }}
+                                                        onClick={() => handleOpenAdvance(batch)}
+                                                    >
+                                                        Advance <ArrowRight size={14} />
+                                                    </button>
+                                                )}
                                                 <button
-                                                    className="btn btn-primary"
-                                                    style={{ padding: '0.3rem 0.6rem', fontSize: '0.8rem', display: 'inline-flex', alignItems: 'center', gap: '0.3rem' }}
-                                                    onClick={() => handleOpenAdvance(batch)}
+                                                    className="btn btn-outline-danger"
+                                                    style={{ padding: '0.3rem 0.5rem', fontSize: '0.8rem' }}
+                                                    onClick={() => {
+                                                        setDeleteError('');
+                                                        setBatchToDelete(batch);
+                                                    }}
+                                                    title="Delete batch"
+                                                    aria-label={`Delete ${batch.batchId}`}
                                                 >
-                                                    Advance <ArrowRight size={14} />
+                                                    <Trash2 size={14} />
                                                 </button>
-                                            )}
+                                            </div>
                                         </td>
                                     </tr>
                                 );
@@ -550,14 +612,29 @@ const CloneProduction: React.FC = () => {
                                     )}
                                 </dl>
 
-                                {batch.currentStage !== 'Completed' && (
+                                <div style={{ display: 'flex', gap: '0.5rem', marginTop: '0.5rem' }}>
+                                    {batch.currentStage !== 'Completed' && (
+                                        <button
+                                            className="btn btn-primary clone-advance-button"
+                                            style={{ flex: 1 }}
+                                            onClick={() => handleOpenAdvance(batch)}
+                                        >
+                                            Advance <ArrowRight size={16} />
+                                        </button>
+                                    )}
                                     <button
-                                        className="btn btn-primary clone-advance-button"
-                                        onClick={() => handleOpenAdvance(batch)}
+                                        className="btn btn-outline-danger"
+                                        style={{ padding: '0.45rem 0.75rem' }}
+                                        onClick={() => {
+                                            setDeleteError('');
+                                            setBatchToDelete(batch);
+                                        }}
+                                        title="Delete batch"
+                                        aria-label={`Delete ${batch.batchId}`}
                                     >
-                                        Advance <ArrowRight size={16} />
+                                        <Trash2 size={16} />
                                     </button>
-                                )}
+                                </div>
                             </article>
                         );
                     })
@@ -758,6 +835,106 @@ const CloneProduction: React.FC = () => {
                                 </button>
                             </div>
                         </form>
+                    </div>
+                </div>
+            )}
+
+            {/* Modal: Confirm Delete All Clone Batches */}
+            {showDeleteAllModal && (
+                <div className="modal-overlay">
+                    <div className="modal-content card" style={{ maxWidth: '480px', width: '100%' }}>
+                        <div className="modal-header" style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', marginBottom: '1rem' }}>
+                            <div style={{ background: '#fee2e2', borderRadius: '50%', padding: '0.5rem', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                                <AlertTriangle size={24} color="#dc2626" />
+                            </div>
+                            <div>
+                                <h3 style={{ margin: 0, color: '#dc2626' }}>Delete All Clone Batches</h3>
+                                <p style={{ margin: 0, fontSize: '0.85rem', color: 'var(--color-text-light)' }}>Permanent System-wide Removal</p>
+                            </div>
+                        </div>
+
+                        <p style={{ fontSize: '0.92rem', color: 'var(--color-text)', lineHeight: 1.5, marginBottom: '1.25rem' }}>
+                            Are you sure you want to delete <strong>all {batches.length} clone batches</strong>? This will permanently remove all batch profiles, propagation stages (Cuttings, Humid Chamber, 1st & 2nd Hardening, Sorting), and stage history from both local storage and cloud database.
+                        </p>
+
+                        {deleteError && (
+                            <div style={{ background: '#fef2f2', border: '1px solid #fca5a5', color: '#b91c1c', padding: '0.75rem', borderRadius: '6px', marginBottom: '1rem', fontSize: '0.875rem' }}>
+                                {deleteError}
+                            </div>
+                        )}
+
+                        <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '0.75rem' }}>
+                            <button
+                                type="button"
+                                className="btn btn-secondary"
+                                onClick={() => {
+                                    setShowDeleteAllModal(false);
+                                    setDeleteError('');
+                                }}
+                                disabled={isDeleting}
+                            >
+                                Cancel
+                            </button>
+                            <button
+                                type="button"
+                                className="btn btn-danger"
+                                onClick={handleConfirmDeleteAll}
+                                disabled={isDeleting}
+                                style={{ minWidth: '130px' }}
+                            >
+                                {isDeleting ? 'Deleting...' : 'Yes, Delete All'}
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
+
+            {/* Modal: Confirm Delete Single Batch */}
+            {batchToDelete && (
+                <div className="modal-overlay">
+                    <div className="modal-content card" style={{ maxWidth: '440px', width: '100%' }}>
+                        <div className="modal-header" style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', marginBottom: '1rem' }}>
+                            <div style={{ background: '#fee2e2', borderRadius: '50%', padding: '0.5rem', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                                <Trash2 size={22} color="#dc2626" />
+                            </div>
+                            <div>
+                                <h3 style={{ margin: 0, color: '#dc2626' }}>Delete Clone Batch</h3>
+                                <p style={{ margin: 0, fontSize: '0.85rem', color: 'var(--color-text-light)' }}>{batchToDelete.batchId} ({batchToDelete.variety})</p>
+                            </div>
+                        </div>
+
+                        <p style={{ fontSize: '0.92rem', color: 'var(--color-text)', lineHeight: 1.5, marginBottom: '1.25rem' }}>
+                            Are you sure you want to delete batch <strong>{batchToDelete.batchId}</strong> ({batchToDelete.variety})? All associated propagation stage records and history will also be permanently removed.
+                        </p>
+
+                        {deleteError && (
+                            <div style={{ background: '#fef2f2', border: '1px solid #fca5a5', color: '#b91c1c', padding: '0.75rem', borderRadius: '6px', marginBottom: '1rem', fontSize: '0.875rem' }}>
+                                {deleteError}
+                            </div>
+                        )}
+
+                        <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '0.75rem' }}>
+                            <button
+                                type="button"
+                                className="btn btn-secondary"
+                                onClick={() => {
+                                    setBatchToDelete(null);
+                                    setDeleteError('');
+                                }}
+                                disabled={isDeleting}
+                            >
+                                Cancel
+                            </button>
+                            <button
+                                type="button"
+                                className="btn btn-danger"
+                                onClick={handleConfirmDeleteSingle}
+                                disabled={isDeleting}
+                                style={{ minWidth: '110px' }}
+                            >
+                                {isDeleting ? 'Deleting...' : 'Delete Batch'}
+                            </button>
+                        </div>
                     </div>
                 </div>
             )}

@@ -219,7 +219,24 @@ class FirestoreSyncService {
                 });
             }, (err) => console.info('Firestore farm expense listener active:', err.message));
 
-            this.syncListeners.push(unsubWorkers, unsubSales, unsubFarmExpenses);
+            // Listen for Clone Batches updates
+            const unsubCloneBatches = onSnapshot(collection(dbFirestore, 'cloneBatches'), (snap) => {
+                snap.docChanges().forEach(async (change) => {
+                    if (change.type === 'added' || change.type === 'modified') {
+                        const data = change.doc.data();
+                        await db.cloneBatches.put(data as any);
+                    } else if (change.type === 'removed') {
+                        await db.cloneBatches.delete(change.doc.id);
+                        await db.productionCuttings.where('batchId').equals(change.doc.id).delete();
+                        await db.productionHumidChamber.where('batchId').equals(change.doc.id).delete();
+                        await db.productionFirstHardening.where('batchId').equals(change.doc.id).delete();
+                        await db.productionSecondHardening.where('batchId').equals(change.doc.id).delete();
+                        await db.productionSortings.where('batchId').equals(change.doc.id).delete();
+                    }
+                });
+            }, (err) => console.info('Firestore cloneBatches listener active:', err.message));
+
+            this.syncListeners.push(unsubWorkers, unsubSales, unsubFarmExpenses, unsubCloneBatches);
         } catch (err: any) {
             console.info('Realtime sync setup completed:', err?.message || err);
         }

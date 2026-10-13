@@ -17,6 +17,8 @@ const LOCAL_WORKER_RESET_KEY = 'gs_all_workers_cleared_v2';
 const WORKER_RESET_MIGRATION = 'systemMigrations/workers-payroll-reset-v2';
 const LOCAL_INVENTORY_RESET_KEY = 'gs_all_inventory_cleared_v2';
 const INVENTORY_RESET_MIGRATION = 'systemMigrations/inventory-reset-v2';
+const LOCAL_CLONES_RESET_KEY = 'gs_all_clones_cleared_v2';
+const CLONES_RESET_MIGRATION = 'systemMigrations/clones-production-reset-v2';
 
 const demoWorkerIds = [
     'GSF-W-0001',
@@ -200,6 +202,36 @@ async function clearAllLocalInventory(): Promise<void> {
     });
 }
 
+async function clearAllLocalClonesAndProduction(): Promise<void> {
+    await db.transaction(
+        'rw',
+        [
+            db.cloneBatches,
+            db.productionCuttings,
+            db.productionHumidChamber,
+            db.productionFirstHardening,
+            db.productionSecondHardening,
+            db.productionSortings,
+            db.cloneStageHistory,
+            db.plantletSales,
+            db.plantletSorts,
+            db.notifications
+        ],
+        async () => {
+            await db.cloneBatches.clear();
+            await db.productionCuttings.clear();
+            await db.productionHumidChamber.clear();
+            await db.productionFirstHardening.clear();
+            await db.productionSecondHardening.clear();
+            await db.productionSortings.clear();
+            await db.cloneStageHistory.clear();
+            await db.plantletSales.clear();
+            await db.plantletSorts.clear();
+            await db.notifications.where('type').equals('Chamber Overdue').delete();
+        }
+    );
+}
+
 async function clearCloudCollection(collectionName: string): Promise<void> {
     const snapshot = await getDocs(collection(dbFirestore, collectionName));
     const documents = snapshot.docs;
@@ -279,6 +311,20 @@ async function clearAllCloudInventory(): Promise<void> {
     ]);
 }
 
+async function clearAllCloudClonesAndProduction(): Promise<void> {
+    await runCloudCollectionReset(CLONES_RESET_MIGRATION, [
+        'cloneBatches',
+        'productionCuttings',
+        'productionHumidChamber',
+        'productionFirstHardening',
+        'productionSecondHardening',
+        'productionSortings',
+        'cloneStageHistory',
+        'plantletSales',
+        'plantletSorts'
+    ]);
+}
+
 export async function clearSeededDemoData(): Promise<void> {
     if (localStorage.getItem(LOCAL_CLEANUP_KEY) !== 'true') {
         await clearLocalDemoData();
@@ -314,6 +360,17 @@ export async function clearSeededDemoData(): Promise<void> {
         await clearAllCloudInventory();
     } catch (e) {
         console.warn('Cloud inventory reset deferred:', e);
+    }
+
+    if (localStorage.getItem(LOCAL_CLONES_RESET_KEY) !== 'true') {
+        await clearAllLocalClonesAndProduction();
+        localStorage.setItem(LOCAL_CLONES_RESET_KEY, 'true');
+    }
+
+    try {
+        await clearAllCloudClonesAndProduction();
+    } catch (e) {
+        console.warn('Cloud clones reset deferred:', e);
     }
 }
 
@@ -363,3 +420,55 @@ export async function deleteAllWorkersSystemWide(): Promise<void> {
         console.warn('Cloud all workers deletion note:', e);
     }
 }
+
+export async function deleteSingleCloneBatchSystemWide(batchId: string): Promise<void> {
+    await db.transaction(
+        'rw',
+        [
+            db.cloneBatches,
+            db.productionCuttings,
+            db.productionHumidChamber,
+            db.productionFirstHardening,
+            db.productionSecondHardening,
+            db.productionSortings,
+            db.cloneStageHistory,
+            db.plantletSales,
+            db.plantletSorts
+        ],
+        async () => {
+            await db.cloneBatches.delete(batchId);
+            await db.productionCuttings.where('batchId').equals(batchId).delete();
+            await db.productionHumidChamber.where('batchId').equals(batchId).delete();
+            await db.productionFirstHardening.where('batchId').equals(batchId).delete();
+            await db.productionSecondHardening.where('batchId').equals(batchId).delete();
+            await db.productionSortings.where('batchId').equals(batchId).delete();
+            await db.cloneStageHistory.where('batchId').equals(batchId).delete();
+            await db.plantletSales.where('batchId').equals(batchId).delete();
+            await db.plantletSorts.delete(batchId);
+        }
+    );
+
+    try {
+        await deleteDoc(doc(dbFirestore, 'cloneBatches', batchId));
+    } catch (e) {
+        console.warn('Cloud single clone batch deletion note:', e);
+    }
+}
+
+export async function deleteAllClonesSystemWide(): Promise<void> {
+    await clearAllLocalClonesAndProduction();
+    try {
+        await clearCloudCollection('cloneBatches');
+        await clearCloudCollection('productionCuttings');
+        await clearCloudCollection('productionHumidChamber');
+        await clearCloudCollection('productionFirstHardening');
+        await clearCloudCollection('productionSecondHardening');
+        await clearCloudCollection('productionSortings');
+        await clearCloudCollection('cloneStageHistory');
+        await clearCloudCollection('plantletSales');
+        await clearCloudCollection('plantletSorts');
+    } catch (e) {
+        console.warn('Cloud all clones deletion note:', e);
+    }
+}
+
