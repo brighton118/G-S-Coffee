@@ -236,7 +236,20 @@ class FirestoreSyncService {
                 });
             }, (err) => console.info('Firestore cloneBatches listener active:', err.message));
 
-            this.syncListeners.push(unsubWorkers, unsubSales, unsubFarmExpenses, unsubCloneBatches);
+            // Listen for Inventory Items updates
+            const unsubInventory = onSnapshot(collection(dbFirestore, 'inventoryItems'), (snap) => {
+                snap.docChanges().forEach(async (change) => {
+                    if (change.type === 'added' || change.type === 'modified') {
+                        const data = change.doc.data();
+                        await db.inventoryItems.put(data as any);
+                    } else if (change.type === 'removed') {
+                        await db.inventoryItems.delete(change.doc.id);
+                        await db.inventoryTransactions.where('inventoryId').equals(change.doc.id).delete();
+                    }
+                });
+            }, (err) => console.info('Firestore inventory listener active:', err.message));
+
+            this.syncListeners.push(unsubWorkers, unsubSales, unsubFarmExpenses, unsubCloneBatches, unsubInventory);
         } catch (err: any) {
             console.info('Realtime sync setup completed:', err?.message || err);
         }

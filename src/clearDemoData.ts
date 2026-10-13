@@ -15,8 +15,8 @@ const LOCAL_CLEANUP_KEY = 'gs_demo_local_cleared_v1';
 const CLOUD_CLEANUP_KEY = 'gs_demo_cloud_cleared_v1';
 const LOCAL_WORKER_RESET_KEY = 'gs_all_workers_cleared_v2';
 const WORKER_RESET_MIGRATION = 'systemMigrations/workers-payroll-reset-v2';
-const LOCAL_INVENTORY_RESET_KEY = 'gs_all_inventory_cleared_v2';
-const INVENTORY_RESET_MIGRATION = 'systemMigrations/inventory-reset-v2';
+const LOCAL_INVENTORY_RESET_KEY = 'gs_all_inventory_cleared_v3';
+const INVENTORY_RESET_MIGRATION = 'systemMigrations/inventory-reset-v3';
 const LOCAL_CLONES_RESET_KEY = 'gs_all_clones_cleared_v2';
 const CLONES_RESET_MIGRATION = 'systemMigrations/clones-production-reset-v2';
 
@@ -196,9 +196,10 @@ async function clearAllLocalWorkersAndPayroll(): Promise<void> {
 }
 
 async function clearAllLocalInventory(): Promise<void> {
-    await db.transaction('rw', [db.inventoryItems, db.inventoryTransactions], async () => {
+    await db.transaction('rw', [db.inventoryItems, db.inventoryTransactions, db.notifications], async () => {
         await db.inventoryItems.clear();
         await db.inventoryTransactions.clear();
+        await db.notifications.where('type').anyOf(['Inventory Low', 'Expiry Warning']).delete();
     });
 }
 
@@ -471,4 +472,35 @@ export async function deleteAllClonesSystemWide(): Promise<void> {
         console.warn('Cloud all clones deletion note:', e);
     }
 }
+
+export async function deleteSingleInventoryItemSystemWide(inventoryId: string): Promise<void> {
+    await db.transaction('rw', [db.inventoryItems, db.inventoryTransactions], async () => {
+        await db.inventoryItems.delete(inventoryId);
+        await db.inventoryTransactions.where('inventoryId').equals(inventoryId).delete();
+    });
+
+    try {
+        await deleteDoc(doc(dbFirestore, 'inventoryItems', inventoryId));
+        const transSnap = await getDocs(collection(dbFirestore, 'inventoryTransactions'));
+        const transDocs = transSnap.docs.filter(d => d.data().inventoryId === inventoryId);
+        if (transDocs.length > 0) {
+            const batch = writeBatch(dbFirestore);
+            transDocs.forEach(d => batch.delete(d.ref));
+            await batch.commit();
+        }
+    } catch (e) {
+        console.warn('Cloud single inventory item deletion note:', e);
+    }
+}
+
+export async function deleteAllInventorySystemWide(): Promise<void> {
+    await clearAllLocalInventory();
+    try {
+        await clearCloudCollection('inventoryItems');
+        await clearCloudCollection('inventoryTransactions');
+    } catch (e) {
+        console.warn('Cloud all inventory deletion note:', e);
+    }
+}
+
 

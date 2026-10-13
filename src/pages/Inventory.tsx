@@ -14,10 +14,12 @@ import {
     Wrench,
     Bug,
     Sparkles,
-    Sprout
+    Sprout,
+    Trash2
 } from 'lucide-react';
 import { generateFarmExpensesPDF, generateInventoryPDF } from '../utils/pdfGenerator';
 import { isStockLow, calculateInventoryValuation } from '../utils/calculations';
+import { deleteAllInventorySystemWide, deleteSingleInventoryItemSystemWide } from '../clearDemoData';
 
 const CATEGORIES = [
     { name: 'Fertilizers', icon: Sparkles, color: '#16a34a' },
@@ -44,6 +46,10 @@ const Inventory: React.FC = () => {
     const [showAddModal, setShowAddModal] = useState(false);
     const [showExpenseModal, setShowExpenseModal] = useState(false);
     const [showStockModal, setShowStockModal] = useState(false);
+    const [showDeleteAllModal, setShowDeleteAllModal] = useState(false);
+    const [itemToDelete, setItemToDelete] = useState<InventoryItem | null>(null);
+    const [isDeleting, setIsDeleting] = useState(false);
+    const [deleteError, setDeleteError] = useState('');
     const [selectedItemForStock, setSelectedItemForStock] = useState<InventoryItem | null>(null);
     const [stockAction, setStockAction] = useState<'IN' | 'OUT'>('IN');
     const [stockChangeAmount, setStockChangeAmount] = useState<number>(10);
@@ -58,7 +64,7 @@ const Inventory: React.FC = () => {
         notes: ''
     });
 
-    // Add form state
+    // Add form state - set clean defaults for new user data entry
     const [formData, setFormData] = useState<{
         name: string;
         category: string;
@@ -76,18 +82,47 @@ const Inventory: React.FC = () => {
         category: 'Fertilizers',
         type: '',
         unit: 'kg',
-        quantity: 50,
-        purchasePrice: 25000,
-        supplier: 'Uganda Crop Care Ltd',
-        minStockLevel: 10,
+        quantity: 0,
+        purchasePrice: 0,
+        supplier: '',
+        minStockLevel: 5,
         condition: 'New',
-        location: 'Main Store Shelf A',
+        location: '',
         notes: ''
     });
 
     const items = useLiveQuery(() => db.inventoryItems.toArray()) || [];
     const transactions = useLiveQuery(() => db.inventoryTransactions.toArray()) || [];
     const expenses = useLiveQuery(() => db.farmExpenses.toArray()) || [];
+
+    const handleConfirmDeleteAll = async () => {
+        setIsDeleting(true);
+        setDeleteError('');
+        try {
+            await deleteAllInventorySystemWide();
+            setShowDeleteAllModal(false);
+        } catch (err: any) {
+            console.error('Failed to delete all inventory items:', err);
+            setDeleteError(err?.message || 'Failed to delete all inventory items. Please try again.');
+        } finally {
+            setIsDeleting(false);
+        }
+    };
+
+    const handleConfirmDeleteSingle = async () => {
+        if (!itemToDelete) return;
+        setIsDeleting(true);
+        setDeleteError('');
+        try {
+            await deleteSingleInventoryItemSystemWide(itemToDelete.inventoryId);
+            setItemToDelete(null);
+        } catch (err: any) {
+            console.error('Failed to delete inventory item:', err);
+            setDeleteError(err?.message || 'Failed to delete inventory item. Please try again.');
+        } finally {
+            setIsDeleting(false);
+        }
+    };
 
     // Filter items
     const filteredItems = items.filter(item => {
@@ -188,12 +223,12 @@ const Inventory: React.FC = () => {
             category: 'Fertilizers',
             type: '',
             unit: 'kg',
-            quantity: 50,
-            purchasePrice: 25000,
-            supplier: 'Uganda Crop Care Ltd',
-            minStockLevel: 10,
+            quantity: 0,
+            purchasePrice: 0,
+            supplier: '',
+            minStockLevel: 5,
             condition: 'New',
-            location: 'Main Store Shelf A',
+            location: '',
             notes: ''
         });
     };
@@ -250,10 +285,41 @@ const Inventory: React.FC = () => {
                             <button
                                 className="btn btn-secondary"
                                 onClick={() => generateInventoryPDF(items, transactions)}
+                                disabled={items.length === 0}
                             >
                                 <Download size={16} /> Export Inventory PDF
                             </button>
-                            <button className="btn btn-primary" onClick={() => setShowAddModal(true)}>
+                            {items.length > 0 && (
+                                <button
+                                    className="btn btn-outline-danger"
+                                    onClick={() => {
+                                        setDeleteError('');
+                                        setShowDeleteAllModal(true);
+                                    }}
+                                    title="Delete all inventory items from the system"
+                                >
+                                    <Trash2 size={16} /> Delete All Inventory
+                                </button>
+                            )}
+                            <button
+                                className="btn btn-primary"
+                                onClick={() => {
+                                    setFormData({
+                                        name: '',
+                                        category: selectedCategory === 'All' ? 'Fertilizers' : selectedCategory,
+                                        type: '',
+                                        unit: selectedCategory === 'Pesticides' ? 'Litres' : selectedCategory === 'Farm Tools' ? 'Pieces' : 'kg',
+                                        quantity: 0,
+                                        purchasePrice: 0,
+                                        supplier: '',
+                                        minStockLevel: 5,
+                                        condition: 'New',
+                                        location: '',
+                                        notes: ''
+                                    });
+                                    setShowAddModal(true);
+                                }}
+                            >
                                 <Plus size={18} /> Add Inventory Item
                             </button>
                         </>
@@ -429,12 +495,13 @@ const Inventory: React.FC = () => {
                             <th style={{ whiteSpace: 'nowrap', textAlign: 'right', padding: '0.75rem 1rem' }}>Unit Cost</th>
                             <th style={{ whiteSpace: 'nowrap', textAlign: 'right', padding: '0.75rem 1rem' }}>Total Valuation</th>
                             <th style={{ padding: '0.75rem 1rem' }}>Supplier / Location</th>
+                            <th style={{ whiteSpace: 'nowrap', textAlign: 'right', padding: '0.75rem 1rem' }}>Actions</th>
                         </tr>
                     </thead>
                     <tbody>
                         {filteredItems.length === 0 ? (
                             <tr>
-                                <td colSpan={6} style={{ textAlign: 'center', padding: '3rem', color: 'var(--color-text-light)' }}>
+                                <td colSpan={7} style={{ textAlign: 'center', padding: '3rem', color: 'var(--color-text-light)' }}>
                                     No inventory items found. Click "Add Inventory Item" to register supplies.
                                 </td>
                             </tr>
@@ -471,6 +538,36 @@ const Inventory: React.FC = () => {
                                         <td style={{ padding: '0.75rem 1rem' }}>
                                             <div>{item.supplier || 'N/A'}</div>
                                             <div className="text-light" style={{ fontSize: '0.75rem' }}>Location: {item.location || 'Store'}</div>
+                                        </td>
+                                        <td style={{ padding: '0.75rem 1rem', textAlign: 'right', whiteSpace: 'nowrap' }}>
+                                            <div style={{ display: 'inline-flex', gap: '0.4rem', justifyContent: 'flex-end', alignItems: 'center' }}>
+                                                <button
+                                                    className="btn btn-secondary"
+                                                    style={{ padding: '0.3rem 0.6rem', fontSize: '0.8rem' }}
+                                                    onClick={() => {
+                                                        setSelectedItemForStock(item);
+                                                        setStockAction('IN');
+                                                        setStockChangeAmount(10);
+                                                        setStockReason('Stock Adjustment');
+                                                        setShowStockModal(true);
+                                                    }}
+                                                    title="Adjust stock in/out"
+                                                >
+                                                    <RefreshCw size={13} /> Stock
+                                                </button>
+                                                <button
+                                                    className="btn btn-outline-danger"
+                                                    style={{ padding: '0.3rem 0.5rem', fontSize: '0.8rem' }}
+                                                    onClick={() => {
+                                                        setDeleteError('');
+                                                        setItemToDelete(item);
+                                                    }}
+                                                    title="Delete item"
+                                                    aria-label={`Delete ${item.name}`}
+                                                >
+                                                    <Trash2 size={13} />
+                                                </button>
+                                            </div>
                                         </td>
                                     </tr>
                                 );
@@ -776,6 +873,106 @@ const Inventory: React.FC = () => {
                                 <button type="submit" className="btn btn-primary">Save Expense</button>
                             </div>
                         </form>
+                    </div>
+                </div>
+            )}
+
+            {/* Modal: Confirm Delete All Inventory */}
+            {showDeleteAllModal && (
+                <div className="modal-overlay">
+                    <div className="modal-content card" style={{ maxWidth: '480px', width: '100%' }}>
+                        <div className="modal-header" style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', marginBottom: '1rem' }}>
+                            <div style={{ background: '#fee2e2', borderRadius: '50%', padding: '0.5rem', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                                <AlertTriangle size={24} color="#dc2626" />
+                            </div>
+                            <div>
+                                <h3 style={{ margin: 0, color: '#dc2626' }}>Delete All Inventory Items</h3>
+                                <p style={{ margin: 0, fontSize: '0.85rem', color: 'var(--color-text-light)' }}>Permanent System-wide Removal</p>
+                            </div>
+                        </div>
+
+                        <p style={{ fontSize: '0.92rem', color: 'var(--color-text)', lineHeight: 1.5, marginBottom: '1.25rem' }}>
+                            Are you sure you want to delete <strong>all {items.length} inventory items</strong>? This will permanently remove all stock records, historical stock transactions, and valuation records from both local storage and cloud database.
+                        </p>
+
+                        {deleteError && (
+                            <div style={{ background: '#fef2f2', border: '1px solid #fca5a5', color: '#b91c1c', padding: '0.75rem', borderRadius: '6px', marginBottom: '1rem', fontSize: '0.875rem' }}>
+                                {deleteError}
+                            </div>
+                        )}
+
+                        <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '0.75rem' }}>
+                            <button
+                                type="button"
+                                className="btn btn-secondary"
+                                onClick={() => {
+                                    setShowDeleteAllModal(false);
+                                    setDeleteError('');
+                                }}
+                                disabled={isDeleting}
+                            >
+                                Cancel
+                            </button>
+                            <button
+                                type="button"
+                                className="btn btn-danger"
+                                onClick={handleConfirmDeleteAll}
+                                disabled={isDeleting}
+                                style={{ minWidth: '130px' }}
+                            >
+                                {isDeleting ? 'Deleting...' : 'Yes, Delete All'}
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
+
+            {/* Modal: Confirm Delete Single Inventory Item */}
+            {itemToDelete && (
+                <div className="modal-overlay">
+                    <div className="modal-content card" style={{ maxWidth: '440px', width: '100%' }}>
+                        <div className="modal-header" style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', marginBottom: '1rem' }}>
+                            <div style={{ background: '#fee2e2', borderRadius: '50%', padding: '0.5rem', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                                <Trash2 size={22} color="#dc2626" />
+                            </div>
+                            <div>
+                                <h3 style={{ margin: 0, color: '#dc2626' }}>Delete Inventory Item</h3>
+                                <p style={{ margin: 0, fontSize: '0.85rem', color: 'var(--color-text-light)' }}>{itemToDelete.inventoryId}</p>
+                            </div>
+                        </div>
+
+                        <p style={{ fontSize: '0.92rem', color: 'var(--color-text)', lineHeight: 1.5, marginBottom: '1.25rem' }}>
+                            Are you sure you want to delete <strong>{itemToDelete.name}</strong> ({itemToDelete.inventoryId})? All associated stock movement logs will also be permanently removed.
+                        </p>
+
+                        {deleteError && (
+                            <div style={{ background: '#fef2f2', border: '1px solid #fca5a5', color: '#b91c1c', padding: '0.75rem', borderRadius: '6px', marginBottom: '1rem', fontSize: '0.875rem' }}>
+                                {deleteError}
+                            </div>
+                        )}
+
+                        <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '0.75rem' }}>
+                            <button
+                                type="button"
+                                className="btn btn-secondary"
+                                onClick={() => {
+                                    setItemToDelete(null);
+                                    setDeleteError('');
+                                }}
+                                disabled={isDeleting}
+                            >
+                                Cancel
+                            </button>
+                            <button
+                                type="button"
+                                className="btn btn-danger"
+                                onClick={handleConfirmDeleteSingle}
+                                disabled={isDeleting}
+                                style={{ minWidth: '110px' }}
+                            >
+                                {isDeleting ? 'Deleting...' : 'Delete Item'}
+                            </button>
+                        </div>
                     </div>
                 </div>
             )}
