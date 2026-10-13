@@ -20,6 +20,7 @@ import { format } from 'date-fns';
 import { generateWorkersMasterPDF, generateWorkerIdCardPDF } from '../utils/pdfGenerator';
 import { formatUGX } from '../utils/calculations';
 import { deleteAllWorkersSystemWide, deleteSingleWorkerSystemWide } from '../clearDemoData';
+import { firestoreSyncService } from '../services/firestoreSync';
 import './Workers.css';
 
 const Workers: React.FC = () => {
@@ -66,13 +67,16 @@ const Workers: React.FC = () => {
 
         if (editingWorker) {
             // Update existing worker
-            await db.workers.update(editingWorker.workerId, {
+            const updated: Worker = {
+                ...editingWorker,
                 fullName: formData.fullName.trim(),
                 gender: formData.gender as 'Male' | 'Female',
                 phoneNumber: formData.phoneNumber.trim() || '+256 700 000000',
                 monthlySalary: Number(formData.monthlySalary) || 0,
                 status: formData.status as 'Active' | 'Inactive'
-            });
+            };
+            await db.workers.update(editingWorker.workerId, updated);
+            void firestoreSyncService.saveWorker(updated);
             setEditingWorker(null);
         } else {
             // Add new worker
@@ -94,6 +98,7 @@ const Workers: React.FC = () => {
             };
 
             await db.workers.add(newWorker);
+            void firestoreSyncService.saveWorker(newWorker);
             setSelectedWorkerForCard(newWorker);
         }
 

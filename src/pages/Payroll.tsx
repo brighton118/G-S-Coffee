@@ -17,6 +17,7 @@ import { format } from 'date-fns';
 import { generatePayrollMasterPDF, generatePayslipPDF } from '../utils/pdfGenerator';
 import { formatUGX } from '../utils/calculations';
 import { syncPayrollMonth } from '../services/payrollSync';
+import { firestoreSyncService } from '../services/firestoreSync';
 import Overtime from './Overtime';
 
 const PAYMENT_METHODS = ['Cash', 'Mobile Money', 'Bank Transfer', 'Other'];
@@ -132,7 +133,7 @@ const Payroll: React.FC = () => {
         }
 
         // 1. Add entry to payrollPayments
-        await db.payrollPayments.add({
+        const paymentData = {
             payrollRecordId: record.id,
             workerId: record.workerId,
             workerName: record.workerName,
@@ -144,10 +145,12 @@ const Payroll: React.FC = () => {
             recordedBy,
             notes: paymentNotes || undefined,
             createdAt: new Date().toISOString()
-        });
+        };
+        await db.payrollPayments.add(paymentData);
+        void firestoreSyncService.savePayrollPayment(paymentData);
 
         // 2. Update payrollRecord
-        await db.payrollRecords.update(record.id, {
+        const updatedRecord = {
             amountPaid: newPaid,
             balance: newBalance,
             paymentStatus: newStatus,
@@ -156,8 +159,10 @@ const Payroll: React.FC = () => {
             paymentReference: paymentReference || record.paymentReference,
             paymentNotes: paymentNotes || record.paymentNotes,
             recordedBy,
-            status: newStatus === 'Paid' ? 'Paid' : 'Approved'
-        });
+            status: newStatus === 'Paid' ? ('Paid' as const) : ('Approved' as const)
+        };
+        await db.payrollRecords.update(record.id, updatedRecord);
+        void firestoreSyncService.savePayrollRecord({ ...record, ...updatedRecord });
 
         // 3. Activity Audit Log
         await db.activityLogs.add({

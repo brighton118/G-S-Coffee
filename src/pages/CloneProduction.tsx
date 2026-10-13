@@ -21,6 +21,7 @@ import { format, addMonths } from 'date-fns';
 import { generateProductionBatchMasterPDF } from '../utils/pdfGenerator';
 import { validateSortingReconciliation } from '../utils/calculations';
 import { deleteAllClonesSystemWide, deleteSingleCloneBatchSystemWide } from '../clearDemoData';
+import { firestoreSyncService } from '../services/firestoreSync';
 import './CloneProduction.css';
 
 const ALLOWED_VARIETIES: CloneVarietyType[] = ['KR1', 'KR3', 'KR4', 'KR5', 'KR6', 'KR7', 'KR8', 'KR9', 'KR10', 'A', 'C', 'D'];
@@ -106,9 +107,10 @@ const CloneProduction: React.FC = () => {
         };
 
         await db.cloneBatches.add(newBatch);
+        void firestoreSyncService.saveCloneBatch(newBatch);
 
         // Add Stage 1 (Cutting) record
-        await db.productionCuttings.add({
+        const cuttingRecord = {
             batchId,
             variety: newBatchData.variety,
             datePrepared: dateObtained,
@@ -116,7 +118,9 @@ const CloneProduction: React.FC = () => {
             quantityTransferred: 0,
             quantityLost: 0,
             status: 'In Progress'
-        });
+        };
+        await db.productionCuttings.add(cuttingRecord);
+        void firestoreSyncService.saveProductionCutting(cuttingRecord);
 
         setShowNewBatchModal(false);
         setNewBatchData({

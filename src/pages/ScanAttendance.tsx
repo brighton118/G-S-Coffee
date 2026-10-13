@@ -6,6 +6,7 @@ import { CheckCircle2, AlertTriangle, UserCircle2 } from 'lucide-react';
 import { loadAttendanceScheduleSettings } from '../utils/attendanceSchedule';
 import { calculateWorkingHours, timeToMinutes } from '../utils/calculations';
 import { syncPayrollMonth } from '../services/payrollSync';
+import { firestoreSyncService } from '../services/firestoreSync';
 import './ScanAttendance.css';
 
 const ScanAttendance = () => {
@@ -63,6 +64,7 @@ const ScanAttendance = () => {
                     isLate
                 });
                 finalRecord = await db.attendance.where({ workerId, date: today }).first();
+                if (finalRecord) void firestoreSyncService.saveAttendance(finalRecord);
                 await syncPayrollAfterAttendance(today);
                 setTodayAttendance(finalRecord);
                 setScanState('success');
@@ -103,6 +105,7 @@ const ScanAttendance = () => {
                     } : {})
                 });
                 finalRecord = await db.attendance.get(existingRecord.id!);
+                if (finalRecord) void firestoreSyncService.saveAttendance(finalRecord);
                 await syncPayrollAfterAttendance(today);
                 setTodayAttendance(finalRecord);
                 setScanState('success');

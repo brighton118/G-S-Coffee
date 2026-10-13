@@ -18,6 +18,7 @@ import {
 import { generateSalesReceiptPDF, generateSalesSummaryPDF } from '../utils/pdfGenerator';
 import { formatUGX } from '../utils/calculations';
 import { deleteAllSalesSystemWide, deleteSingleSalesOrderSystemWide } from '../clearDemoData';
+import { firestoreSyncService } from '../services/firestoreSync';
 import './Sales.css';
 
 type SaleVariety = 'KR1' | 'KR3' | 'KR4' | 'KR5' | 'KR6' | 'KR7' | 'KR8' | 'KR9' | 'KR10' | 'A' | 'C' | 'D';
@@ -107,6 +108,7 @@ const Sales: React.FC = () => {
 
         const id = await db.salesOrders.add(newOrder);
         const createdOrder = { ...newOrder, id };
+        void firestoreSyncService.saveSale(createdOrder);
 
         // Activity log
         await db.activityLogs.add({

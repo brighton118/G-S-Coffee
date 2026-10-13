@@ -237,7 +237,7 @@ async function clearAllLocalClonesAndProduction(): Promise<void> {
 
 async function clearCloudCollection(collectionName: string): Promise<void> {
     const snapshot = await getDocs(collection(dbFirestore, collectionName));
-    const documents = snapshot.docs;
+    const documents = snapshot.docs.filter(d => !d.id.startsWith('_') && !d.data()._isSystemSchema);
     const batchLimit = 450;
 
     for (let start = 0; start < documents.length; start += batchLimit) {

@@ -4,6 +4,7 @@ import {
     getDocs, 
     onSnapshot,
     serverTimestamp,
+    setDoc,
     writeBatch
 } from 'firebase/firestore';
 import { dbFirestore } from '../firebase';
@@ -24,6 +25,116 @@ export interface SyncStatus {
 class FirestoreSyncService {
     private syncListeners: Array<() => void> = [];
     private isInitialized = false;
+
+    /**
+     * Instant real-time push to Cloud Firestore
+     */
+    public async saveWorker(worker: any): Promise<void> {
+        try {
+            if (!navigator.onLine || !worker?.workerId) return;
+            const docRef = doc(collection(dbFirestore, 'workers'), worker.workerId);
+            await setDoc(docRef, { ...worker, updatedAt: serverTimestamp() }, { merge: true });
+        } catch (e) {
+            console.warn('Live worker push note:', e);
+        }
+    }
+
+    public async saveAttendance(record: any): Promise<void> {
+        try {
+            if (!navigator.onLine || !record?.workerId || !record?.date) return;
+            const key = `ATT-${record.workerId}-${record.date}`;
+            const docRef = doc(collection(dbFirestore, 'attendance'), key);
+            await setDoc(docRef, { ...record, updatedAt: serverTimestamp() }, { merge: true });
+        } catch (e) {
+            console.warn('Live attendance push note:', e);
+        }
+    }
+
+    public async saveSale(sale: any): Promise<void> {
+        try {
+            if (!navigator.onLine) return;
+            const key = sale.invoiceNumber || sale.orderId || `SALE-${sale.id || Date.now()}`;
+            const docRef = doc(collection(dbFirestore, 'salesOrders'), key);
+            await setDoc(docRef, { ...sale, updatedAt: serverTimestamp() }, { merge: true });
+        } catch (e) {
+            console.warn('Live sale push note:', e);
+        }
+    }
+
+    public async saveInventoryItem(item: any): Promise<void> {
+        try {
+            if (!navigator.onLine || !item?.inventoryId) return;
+            const docRef = doc(collection(dbFirestore, 'inventoryItems'), item.inventoryId);
+            await setDoc(docRef, { ...item, updatedAt: serverTimestamp() }, { merge: true });
+        } catch (e) {
+            console.warn('Live inventory item push note:', e);
+        }
+    }
+
+    public async saveInventoryTransaction(tx: any): Promise<void> {
+        try {
+            if (!navigator.onLine || !tx?.inventoryId) return;
+            const key = `TX-${tx.inventoryId}-${tx.id || Date.now()}`;
+            const docRef = doc(collection(dbFirestore, 'inventoryTransactions'), key);
+            await setDoc(docRef, { ...tx, updatedAt: serverTimestamp() }, { merge: true });
+        } catch (e) {
+            console.warn('Live inventory tx push note:', e);
+        }
+    }
+
+    public async saveFarmExpense(expense: any): Promise<void> {
+        try {
+            if (!navigator.onLine) return;
+            const key = expense.expenseId || `EXP-${expense.id || Date.now()}`;
+            const docRef = doc(collection(dbFirestore, 'farmExpenses'), key);
+            await setDoc(docRef, { ...expense, updatedAt: serverTimestamp() }, { merge: true });
+        } catch (e) {
+            console.warn('Live expense push note:', e);
+        }
+    }
+
+    public async saveCloneBatch(batch: any): Promise<void> {
+        try {
+            if (!navigator.onLine || !batch?.batchId) return;
+            const docRef = doc(collection(dbFirestore, 'cloneBatches'), batch.batchId);
+            await setDoc(docRef, { ...batch, updatedAt: serverTimestamp() }, { merge: true });
+        } catch (e) {
+            console.warn('Live clone batch push note:', e);
+        }
+    }
+
+    public async saveProductionCutting(cutting: any): Promise<void> {
+        try {
+            if (!navigator.onLine || !cutting?.batchId) return;
+            const key = `CUT-${cutting.batchId}-${cutting.id || Date.now()}`;
+            const docRef = doc(collection(dbFirestore, 'productionCuttings'), key);
+            await setDoc(docRef, { ...cutting, updatedAt: serverTimestamp() }, { merge: true });
+        } catch (e) {
+            console.warn('Live cutting push note:', e);
+        }
+    }
+
+    public async savePayrollPayment(payment: any): Promise<void> {
+        try {
+            if (!navigator.onLine || !payment?.workerId) return;
+            const key = `PAY-${payment.id || payment.paymentDate + '_' + payment.workerId}`;
+            const docRef = doc(collection(dbFirestore, 'payrollPayments'), key);
+            await setDoc(docRef, { ...payment, updatedAt: serverTimestamp() }, { merge: true });
+        } catch (e) {
+            console.warn('Live payroll payment push note:', e);
+        }
+    }
+
+    public async savePayrollRecord(record: any): Promise<void> {
+        try {
+            if (!navigator.onLine || !record?.workerId) return;
+            const key = `${record.payrollMonth}_${record.workerId}`;
+            const docRef = doc(collection(dbFirestore, 'payrollRecords'), key);
+            await setDoc(docRef, { ...record, updatedAt: serverTimestamp() }, { merge: true });
+        } catch (e) {
+            console.warn('Live payroll record push note:', e);
+        }
+    }
 
     /**
      * Sync local Dexie records up to Cloud Firestore
@@ -97,6 +208,33 @@ class FirestoreSyncService {
                 operationCount++;
             }
 
+            // 7. Sync Attendance Records
+            const attendanceList = await db.attendance.toArray();
+            for (const att of attendanceList) {
+                const key = `ATT-${att.workerId}-${att.date}`;
+                const docRef = doc(collection(dbFirestore, 'attendance'), key);
+                batch.set(docRef, { ...att, updatedAt: serverTimestamp() }, { merge: true });
+                operationCount++;
+            }
+
+            // 8. Sync Inventory Transactions
+            const txList = await db.inventoryTransactions.toArray();
+            for (const tx of txList) {
+                const key = `TX-${tx.inventoryId}-${tx.id || Date.now()}`;
+                const docRef = doc(collection(dbFirestore, 'inventoryTransactions'), key);
+                batch.set(docRef, { ...tx, updatedAt: serverTimestamp() }, { merge: true });
+                operationCount++;
+            }
+
+            // 9. Sync Production Cuttings
+            const cuttings = await db.productionCuttings.toArray();
+            for (const c of cuttings) {
+                const key = `CUT-${c.batchId}-${c.id || Date.now()}`;
+                const docRef = doc(collection(dbFirestore, 'productionCuttings'), key);
+                batch.set(docRef, { ...c, updatedAt: serverTimestamp() }, { merge: true });
+                operationCount++;
+            }
+
             // Commit batch if operations exist
             if (operationCount > 0) {
                 await batch.commit();
@@ -117,54 +255,56 @@ class FirestoreSyncService {
         try {
             // Pull Workers
             const workersSnap = await getDocs(collection(dbFirestore, 'workers'));
-            if (!workersSnap.empty) {
-                const remoteWorkers = workersSnap.docs.map(d => d.data());
-                for (const w of remoteWorkers) {
-                    await db.workers.put(w as any);
-                }
+            for (const docSnap of workersSnap.docs) {
+                if (docSnap.id.startsWith('_') || docSnap.data()._isSystemSchema) continue;
+                await db.workers.put(docSnap.data() as any);
             }
 
             // Pull Inventory Items
             const invSnap = await getDocs(collection(dbFirestore, 'inventoryItems'));
-            if (!invSnap.empty) {
-                const remoteItems = invSnap.docs.map(d => d.data());
-                for (const item of remoteItems) {
-                    await db.inventoryItems.put(item as any);
-                }
+            for (const docSnap of invSnap.docs) {
+                if (docSnap.id.startsWith('_') || docSnap.data()._isSystemSchema) continue;
+                await db.inventoryItems.put(docSnap.data() as any);
             }
 
             // Pull Sales
             const salesSnap = await getDocs(collection(dbFirestore, 'salesOrders'));
-            if (!salesSnap.empty) {
-                const remoteSales = salesSnap.docs.map(d => d.data());
-                for (const s of remoteSales) {
-                    const existing = await db.salesOrders.where('invoiceNumber').equals(s.invoiceNumber || '').first();
-                    if (!existing) {
-                        await db.salesOrders.add(s as any);
-                    }
+            for (const docSnap of salesSnap.docs) {
+                if (docSnap.id.startsWith('_') || docSnap.data()._isSystemSchema) continue;
+                const s = docSnap.data();
+                const existing = await db.salesOrders.where('invoiceNumber').equals(s.invoiceNumber || '').first();
+                if (!existing) {
+                    await db.salesOrders.add(s as any);
                 }
             }
 
             // Pull Clone Batches
             const batchesSnap = await getDocs(collection(dbFirestore, 'cloneBatches'));
-            if (!batchesSnap.empty) {
-                const remoteBatches = batchesSnap.docs.map(d => d.data());
-                for (const b of remoteBatches) {
-                    await db.cloneBatches.put(b as any);
-                }
+            for (const docSnap of batchesSnap.docs) {
+                if (docSnap.id.startsWith('_') || docSnap.data()._isSystemSchema) continue;
+                await db.cloneBatches.put(docSnap.data() as any);
             }
 
             // Pull miscellaneous farm expenses
             const expensesSnap = await getDocs(collection(dbFirestore, 'farmExpenses'));
             for (const expenseDoc of expensesSnap.docs) {
+                if (expenseDoc.id.startsWith('_') || expenseDoc.data()._isSystemSchema) continue;
                 const expense = expenseDoc.data();
                 const expenseId = typeof expense.expenseId === 'string' ? expense.expenseId : expenseDoc.id;
-                if (!expenseId) {
-                    console.warn(`Skipping farm expense with invalid ID: ${expenseDoc.id}`);
-                    continue;
-                }
+                if (!expenseId) continue;
                 const existing = await db.farmExpenses.where('expenseId').equals(expenseId).first();
                 await db.farmExpenses.put({ ...expense, expenseId, id: existing?.id } as any);
+            }
+
+            // Pull Attendance
+            const attSnap = await getDocs(collection(dbFirestore, 'attendance'));
+            for (const docSnap of attSnap.docs) {
+                if (docSnap.id.startsWith('_') || docSnap.data()._isSystemSchema) continue;
+                const data = docSnap.data();
+                const existing = await db.attendance.where({ workerId: data.workerId, date: data.date }).first();
+                if (!existing) {
+                    await db.attendance.add(data as any);
+                }
             }
         } catch (error: any) {
             console.warn('Cloud download notice:', error?.message || error);
@@ -182,6 +322,7 @@ class FirestoreSyncService {
             // Listen for Workers updates in Cloud
             const unsubWorkers = onSnapshot(collection(dbFirestore, 'workers'), (snap) => {
                 snap.docChanges().forEach(async (change) => {
+                    if (change.doc.id.startsWith('_') || change.doc.data()._isSystemSchema) return;
                     if (change.type === 'added' || change.type === 'modified') {
                         const data = change.doc.data();
                         await db.workers.put(data as any);
@@ -194,6 +335,7 @@ class FirestoreSyncService {
             // Listen for Sales Orders updates
             const unsubSales = onSnapshot(collection(dbFirestore, 'salesOrders'), (snap) => {
                 snap.docChanges().forEach(async (change) => {
+                    if (change.doc.id.startsWith('_') || change.doc.data()._isSystemSchema) return;
                     if (change.type === 'added' || change.type === 'modified') {
                         const data = change.doc.data();
                         const existing = await db.salesOrders.where('invoiceNumber').equals(data.invoiceNumber || '').first();
@@ -219,13 +361,11 @@ class FirestoreSyncService {
 
             const unsubFarmExpenses = onSnapshot(collection(dbFirestore, 'farmExpenses'), (snap) => {
                 snap.docChanges().forEach(async (change) => {
+                    if (change.doc.id.startsWith('_') || change.doc.data()._isSystemSchema) return;
                     if (change.type === 'added' || change.type === 'modified') {
                         const data = change.doc.data();
                         const expenseId = typeof data.expenseId === 'string' ? data.expenseId : change.doc.id;
-                        if (!expenseId) {
-                            console.warn(`Skipping farm expense with invalid ID: ${change.doc.id}`);
-                            return;
-                        }
+                        if (!expenseId) return;
                         const existing = await db.farmExpenses.where('expenseId').equals(expenseId).first();
                         await db.farmExpenses.put({ ...data, expenseId, id: existing?.id } as any);
                     } else if (change.type === 'removed') {
@@ -238,6 +378,7 @@ class FirestoreSyncService {
             // Listen for Clone Batches updates
             const unsubCloneBatches = onSnapshot(collection(dbFirestore, 'cloneBatches'), (snap) => {
                 snap.docChanges().forEach(async (change) => {
+                    if (change.doc.id.startsWith('_') || change.doc.data()._isSystemSchema) return;
                     if (change.type === 'added' || change.type === 'modified') {
                         const data = change.doc.data();
                         await db.cloneBatches.put(data as any);
@@ -255,6 +396,7 @@ class FirestoreSyncService {
             // Listen for Inventory Items updates
             const unsubInventory = onSnapshot(collection(dbFirestore, 'inventoryItems'), (snap) => {
                 snap.docChanges().forEach(async (change) => {
+                    if (change.doc.id.startsWith('_') || change.doc.data()._isSystemSchema) return;
                     if (change.type === 'added' || change.type === 'modified') {
                         const data = change.doc.data();
                         await db.inventoryItems.put(data as any);
@@ -265,7 +407,23 @@ class FirestoreSyncService {
                 });
             }, (err) => console.info('Firestore inventory listener active:', err.message));
 
-            this.syncListeners.push(unsubWorkers, unsubSales, unsubFarmExpenses, unsubCloneBatches, unsubInventory);
+            // Listen for Attendance updates
+            const unsubAttendance = onSnapshot(collection(dbFirestore, 'attendance'), (snap) => {
+                snap.docChanges().forEach(async (change) => {
+                    if (change.doc.id.startsWith('_') || change.doc.data()._isSystemSchema) return;
+                    if (change.type === 'added' || change.type === 'modified') {
+                        const data = change.doc.data();
+                        const existing = await db.attendance.where({ workerId: data.workerId, date: data.date }).first();
+                        if (existing) {
+                            await db.attendance.update(existing.id!, data as any);
+                        } else {
+                            await db.attendance.add(data as any);
+                        }
+                    }
+                });
+            }, (err) => console.info('Firestore attendance listener active:', err.message));
+
+            this.syncListeners.push(unsubWorkers, unsubSales, unsubFarmExpenses, unsubCloneBatches, unsubInventory, unsubAttendance);
         } catch (err: any) {
             console.info('Realtime sync setup completed:', err?.message || err);
         }

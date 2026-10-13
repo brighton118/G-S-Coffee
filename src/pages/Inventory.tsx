@@ -25,6 +25,7 @@ import {
     deleteAllExpensesSystemWide,
     deleteSingleExpenseSystemWide
 } from '../clearDemoData';
+import { firestoreSyncService } from '../services/firestoreSync';
 
 const CATEGORIES = [
     { name: 'Fertilizers', icon: Sparkles, color: '#16a34a' },
@@ -195,6 +196,7 @@ const Inventory: React.FC = () => {
         };
 
         await db.farmExpenses.add(newExpense);
+        void firestoreSyncService.saveFarmExpense(newExpense);
         setShowExpenseModal(false);
         setExpenseData({
             category: 'Transport',
@@ -238,9 +240,10 @@ const Inventory: React.FC = () => {
         };
 
         await db.inventoryItems.add(newItem);
+        void firestoreSyncService.saveInventoryItem(newItem);
 
         // Initial Transaction Record
-        await db.inventoryTransactions.add({
+        const initialTx = {
             inventoryId: newId,
             itemName: newItem.name,
             quantityChange: newItem.quantity,
@@ -251,7 +254,9 @@ const Inventory: React.FC = () => {
             user: 'Store Manager',
             reason: 'Initial Stocking',
             notes: formData.notes
-        });
+        };
+        await db.inventoryTransactions.add(initialTx);
+        void firestoreSyncService.saveInventoryTransaction(initialTx);
 
         setShowAddModal(false);
         setFormData({
@@ -286,8 +291,9 @@ const Inventory: React.FC = () => {
         await db.inventoryItems.update(selectedItemForStock.inventoryId, {
             quantity: newQuantity
         });
+        void firestoreSyncService.saveInventoryItem({ ...selectedItemForStock, quantity: newQuantity });
 
-        await db.inventoryTransactions.add({
+        const adjustmentTx = {
             inventoryId: selectedItemForStock.inventoryId,
             itemName: selectedItemForStock.name,
             quantityChange: delta,
@@ -298,7 +304,9 @@ const Inventory: React.FC = () => {
             user: 'Store Manager',
             reason: stockReason,
             notes: `${isStockOut ? 'Issued for' : 'Received into'} nursery operations`
-        });
+        };
+        await db.inventoryTransactions.add(adjustmentTx);
+        void firestoreSyncService.saveInventoryTransaction(adjustmentTx);
 
         setShowStockModal(false);
         setSelectedItemForStock(null);
