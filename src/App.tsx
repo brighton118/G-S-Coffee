@@ -79,8 +79,13 @@ const App = () => {
         let isMounted = true;
 
         const syncInterval = setInterval(() => {
-            firestoreSyncService.syncLocalToCloud();
-        }, 5 * 60 * 1000);
+            void firestoreSyncService.syncNow();
+        }, 60 * 1000);
+
+        const handleFocus = () => {
+            void firestoreSyncService.syncNow();
+        };
+        window.addEventListener('focus', handleFocus);
 
         const notificationInterval = setInterval(() => {
             notificationService.runAllNotificationChecks();
@@ -96,7 +101,7 @@ const App = () => {
         const initializeData = async () => {
             try {
                 await clearSeededDemoData();
-                await firestoreSyncService.syncCloudToLocal();
+                await firestoreSyncService.syncNow();
                 const now = new Date();
                 const payrollMonth = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
                 try {
@@ -104,14 +109,13 @@ const App = () => {
                 } catch (error) {
                     console.error('Could not calculate payroll during system startup.', error);
                 }
-                await firestoreSyncService.syncLocalToCloud();
                 firestoreSyncService.startRealtimeSync();
                 await notificationService.runAllNotificationChecks();
             } catch (error) {
                 console.error('System data initialization failed:', error);
                 if (isMounted) {
                     const message = error instanceof Error ? error.message : String(error);
-                    window.alert(`System setup could not be completed. Cloud sync is paused to protect your data. Please check your connection and reload. Details: ${message}`);
+                    console.warn(`System setup note: ${message}`);
                 }
             }
         };
@@ -119,6 +123,7 @@ const App = () => {
         void initializeData();
         return () => {
             isMounted = false;
+            window.removeEventListener('focus', handleFocus);
             clearInterval(notificationInterval);
             clearInterval(payrollInterval);
             clearInterval(syncInterval);

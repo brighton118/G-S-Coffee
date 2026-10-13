@@ -13,14 +13,14 @@ import { dbFirestore } from './firebase';
 
 const LOCAL_CLEANUP_KEY = 'gs_demo_local_cleared_v1';
 const CLOUD_CLEANUP_KEY = 'gs_demo_cloud_cleared_v1';
-const LOCAL_WORKER_RESET_KEY = 'gs_all_workers_cleared_v2';
-const WORKER_RESET_MIGRATION = 'systemMigrations/workers-payroll-reset-v2';
-const LOCAL_INVENTORY_RESET_KEY = 'gs_all_inventory_cleared_v3';
-const INVENTORY_RESET_MIGRATION = 'systemMigrations/inventory-reset-v3';
-const LOCAL_CLONES_RESET_KEY = 'gs_all_clones_cleared_v2';
-const CLONES_RESET_MIGRATION = 'systemMigrations/clones-production-reset-v2';
-const LOCAL_SALES_RESET_KEY = 'gs_all_sales_expenses_cleared_v1';
-const SALES_RESET_MIGRATION = 'systemMigrations/sales-expenses-reset-v1';
+export const LOCAL_WORKER_RESET_KEY = 'gs_all_workers_cleared_v2';
+export const WORKER_RESET_MIGRATION = 'systemMigrations/workers-payroll-reset-v2';
+export const LOCAL_INVENTORY_RESET_KEY = 'gs_all_inventory_cleared_v3';
+export const INVENTORY_RESET_MIGRATION = 'systemMigrations/inventory-reset-v3';
+export const LOCAL_CLONES_RESET_KEY = 'gs_all_clones_cleared_v2';
+export const CLONES_RESET_MIGRATION = 'systemMigrations/clones-production-reset-v2';
+export const LOCAL_SALES_RESET_KEY = 'gs_all_sales_expenses_cleared_v1';
+export const SALES_RESET_MIGRATION = 'systemMigrations/sales-expenses-reset-v1';
 
 const demoWorkerIds = [
     'GSF-W-0001',
@@ -298,7 +298,7 @@ async function runCloudCollectionReset(migrationPath: string, collectionNames: s
     }
 }
 
-async function clearAllCloudWorkersAndPayroll(): Promise<void> {
+export async function clearAllCloudWorkersAndPayroll(): Promise<void> {
     await runCloudCollectionReset(WORKER_RESET_MIGRATION, [
         'workers',
         'attendance',
@@ -307,14 +307,14 @@ async function clearAllCloudWorkersAndPayroll(): Promise<void> {
     ]);
 }
 
-async function clearAllCloudInventory(): Promise<void> {
+export async function clearAllCloudInventory(): Promise<void> {
     await runCloudCollectionReset(INVENTORY_RESET_MIGRATION, [
         'inventoryItems',
         'inventoryTransactions'
     ]);
 }
 
-async function clearAllCloudClonesAndProduction(): Promise<void> {
+export async function clearAllCloudClonesAndProduction(): Promise<void> {
     await runCloudCollectionReset(CLONES_RESET_MIGRATION, [
         'cloneBatches',
         'productionCuttings',
@@ -328,7 +328,7 @@ async function clearAllCloudClonesAndProduction(): Promise<void> {
     ]);
 }
 
-async function clearAllLocalSalesAndExpenses(): Promise<void> {
+export async function clearAllLocalSalesAndExpenses(): Promise<void> {
     await db.transaction(
         'rw',
         [
@@ -352,7 +352,7 @@ async function clearAllLocalSalesAndExpenses(): Promise<void> {
     );
 }
 
-async function clearAllCloudSalesAndExpenses(): Promise<void> {
+export async function clearAllCloudSalesAndExpenses(): Promise<void> {
     await runCloudCollectionReset(SALES_RESET_MIGRATION, [
         'salesOrders',
         'farmExpenses',
@@ -365,61 +365,21 @@ async function clearAllCloudSalesAndExpenses(): Promise<void> {
 
 export async function clearSeededDemoData(): Promise<void> {
     if (localStorage.getItem(LOCAL_CLEANUP_KEY) !== 'true') {
-        await clearLocalDemoData();
+        try {
+            await clearLocalDemoData();
+        } catch (e) {
+            console.warn('Local demo data cleanup note:', e);
+        }
         localStorage.setItem(LOCAL_CLEANUP_KEY, 'true');
     }
 
     if (localStorage.getItem(CLOUD_CLEANUP_KEY) !== 'true') {
         try {
             await clearCloudDemoData();
-            localStorage.setItem(CLOUD_CLEANUP_KEY, 'true');
         } catch (e) {
             console.warn('Cloud demo data cleanup deferred:', e);
         }
-    }
-
-    if (localStorage.getItem(LOCAL_WORKER_RESET_KEY) !== 'true') {
-        await clearAllLocalWorkersAndPayroll();
-        localStorage.setItem(LOCAL_WORKER_RESET_KEY, 'true');
-    }
-
-    try {
-        await clearAllCloudWorkersAndPayroll();
-    } catch (e) {
-        console.warn('Cloud worker reset deferred:', e);
-    }
-
-    if (localStorage.getItem(LOCAL_INVENTORY_RESET_KEY) !== 'true') {
-        await clearAllLocalInventory();
-        localStorage.setItem(LOCAL_INVENTORY_RESET_KEY, 'true');
-    }
-
-    try {
-        await clearAllCloudInventory();
-    } catch (e) {
-        console.warn('Cloud inventory reset deferred:', e);
-    }
-
-    if (localStorage.getItem(LOCAL_CLONES_RESET_KEY) !== 'true') {
-        await clearAllLocalClonesAndProduction();
-        localStorage.setItem(LOCAL_CLONES_RESET_KEY, 'true');
-    }
-
-    try {
-        await clearAllCloudClonesAndProduction();
-    } catch (e) {
-        console.warn('Cloud clones reset deferred:', e);
-    }
-
-    if (localStorage.getItem(LOCAL_SALES_RESET_KEY) !== 'true') {
-        await clearAllLocalSalesAndExpenses();
-        localStorage.setItem(LOCAL_SALES_RESET_KEY, 'true');
-    }
-
-    try {
-        await clearAllCloudSalesAndExpenses();
-    } catch (e) {
-        console.warn('Cloud sales reset deferred:', e);
+        localStorage.setItem(CLOUD_CLEANUP_KEY, 'true');
     }
 }
 

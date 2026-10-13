@@ -1,9 +1,10 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { NavLink, useLocation } from 'react-router-dom';
 import { useLiveQuery } from 'dexie-react-hooks';
 import { db } from '../db';
-import { LayoutDashboard, Users, ScanLine, Sprout, ShoppingCart, BarChart3, Bell, ScrollText, Settings, X, Banknote, CalendarDays, ChevronDown, ChevronRight, LogOut } from 'lucide-react';
+import { LayoutDashboard, Users, ScanLine, Sprout, ShoppingCart, BarChart3, Bell, ScrollText, Settings, X, Banknote, CalendarDays, ChevronDown, ChevronRight, LogOut, RefreshCw } from 'lucide-react';
 import { useUserRole } from '../context/UserRoleContext';
+import { firestoreSyncService, type SyncStatus } from '../services/firestoreSync';
 import './Sidebar.css';
 
 interface SidebarProps {
@@ -16,9 +17,24 @@ interface SidebarProps {
 const Sidebar = ({ isOpen, setIsOpen, adminEmail, onSignOut }: SidebarProps) => {
     const { role } = useUserRole();
     const [isAttendanceExpanded, setIsAttendanceExpanded] = useState(false);
+    const [syncStatus, setSyncStatus] = useState<SyncStatus>({
+        isOnline: navigator.onLine,
+        isSyncing: false,
+        lastSyncedAt: null,
+        error: null
+    });
     const location = useLocation();
     const handleClose = () => setIsOpen(false);
     const isAttendanceSectionActive = location.pathname === '/attendance' || location.pathname === '/scan';
+
+    useEffect(() => {
+        const unsubscribe = firestoreSyncService.subscribeStatus(setSyncStatus);
+        return () => unsubscribe();
+    }, []);
+
+    const handleSyncNow = async () => {
+        await firestoreSyncService.syncNow();
+    };
 
     const unreadCount = useLiveQuery(async () => {
         const unread = await db.notifications.filter(n => !n.read).toArray();
@@ -96,6 +112,33 @@ const Sidebar = ({ isOpen, setIsOpen, adminEmail, onSignOut }: SidebarProps) => 
                         {role === 'admin' ? '👑 Admin (Full Access)' : role === 'manager' ? '💼 Manager (Operations)' : '👁️ Staff (View Only)'}
                     </span>
                 </div>
+                <div style={{ padding: '0.5rem 0.65rem', margin: '0.4rem 0', borderRadius: '6px', background: 'rgba(255, 255, 255, 0.06)', fontSize: '0.75rem', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                    <span style={{ display: 'inline-flex', alignItems: 'center', gap: '5px', color: syncStatus.isOnline ? '#4ade80' : '#f87171' }}>
+                        <span style={{ width: 7, height: 7, borderRadius: '50%', background: syncStatus.isOnline ? '#4ade80' : '#f87171', display: 'inline-block' }} />
+                        {syncStatus.isSyncing ? 'Syncing...' : syncStatus.isOnline ? 'Cloud Live' : 'Offline'}
+                    </span>
+                    <button
+                        type="button"
+                        onClick={handleSyncNow}
+                        disabled={syncStatus.isSyncing}
+                        style={{
+                            background: 'transparent',
+                            border: '1px solid rgba(255, 255, 255, 0.2)',
+                            color: '#e2e8f0',
+                            borderRadius: '4px',
+                            padding: '0.18rem 0.45rem',
+                            fontSize: '0.72rem',
+                            cursor: 'pointer',
+                            display: 'inline-flex',
+                            alignItems: 'center',
+                            gap: '4px'
+                        }}
+                    >
+                        <RefreshCw size={11} className={syncStatus.isSyncing ? 'spin' : ''} />
+                        Sync Data
+                    </button>
+                </div>
+
                 <button type="button" className="nav-item sidebar-sign-out" onClick={() => { handleClose(); onSignOut(); }}>
                     <LogOut size={19} /> Sign out
                 </button>
