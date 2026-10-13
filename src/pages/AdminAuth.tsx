@@ -8,7 +8,7 @@ import {
     signInWithPopup,
     signInWithRedirect
 } from 'firebase/auth';
-import { Banknote, Coffee, LockKeyhole, Mail } from 'lucide-react';
+import { Banknote, Coffee, Eye, EyeOff, LockKeyhole, Mail } from 'lucide-react';
 import { auth } from '../firebase';
 import './AdminAuth.css';
 
@@ -24,6 +24,7 @@ const AdminAuth = ({ message, onClearMessage }: AdminAuthProps) => {
     const [mode, setMode] = useState<'signIn' | 'signUp'>('signIn');
     const [email, setEmail] = useState('');
     const [password, setPassword] = useState('');
+    const [showPassword, setShowPassword] = useState(false);
     const [isSubmitting, setIsSubmitting] = useState(false);
     const [formMessage, setFormMessage] = useState('');
 
@@ -191,7 +192,7 @@ const AdminAuth = ({ message, onClearMessage }: AdminAuthProps) => {
                         <LockKeyhole size={18} aria-hidden="true" />
                         <input
                             id="admin-password"
-                            type="password"
+                            type={showPassword ? 'text' : 'password'}
                             autoComplete={mode === 'signIn' ? 'current-password' : 'new-password'}
                             minLength={6}
                             required
@@ -199,6 +200,15 @@ const AdminAuth = ({ message, onClearMessage }: AdminAuthProps) => {
                             onChange={event => setPassword(event.target.value)}
                             placeholder="At least 6 characters"
                         />
+                        <button
+                            type="button"
+                            className="admin-auth-password-toggle"
+                            onClick={() => setShowPassword(prev => !prev)}
+                            title={showPassword ? 'Hide password' : 'Show password'}
+                            aria-label={showPassword ? 'Hide password' : 'Show password'}
+                        >
+                            {showPassword ? <EyeOff size={18} aria-hidden="true" /> : <Eye size={18} aria-hidden="true" />}
+                        </button>
                     </div>
 
                     {(formMessage || message) && (
