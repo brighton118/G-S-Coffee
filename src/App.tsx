@@ -15,7 +15,7 @@ import Notifications from './pages/Notifications';
 import Settings from './pages/Settings';
 import Payroll from './pages/Payroll';
 import Attendance from './pages/Attendance';
-import { firestoreSyncService } from './services/firestoreSync';
+import { firestoreSyncService, backfillAttendanceWorkerNames } from './services/firestoreSync';
 import { clearSeededDemoData } from './clearDemoData';
 import { notificationService } from './utils/notificationService';
 import { auth } from './firebase';
@@ -102,6 +102,7 @@ const App = () => {
             try {
                 await clearSeededDemoData();
                 await firestoreSyncService.syncNow();
+                await backfillAttendanceWorkerNames();
                 const now = new Date();
                 const payrollMonth = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
                 try {

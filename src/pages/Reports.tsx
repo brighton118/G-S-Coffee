@@ -82,12 +82,28 @@ const Reports: React.FC = () => {
                 case 'workers':
                     generateWorkersMasterPDF(workersInRange, `Date joined: ${rangeLabel}`);
                     break;
-                case 'attendance':
-                    generateAttendancePDF(attendanceInRange, `Attendance Report - ${rangeLabel}`);
+                case 'attendance': {
+                    const enrichedAttendance = attendanceInRange.map(r => {
+                        const worker = workers.find(w => w.workerId === r.workerId);
+                        return {
+                            ...r,
+                            workerName: r.workerName || worker?.fullName || r.workerId
+                        };
+                    });
+                    generateAttendancePDF(enrichedAttendance, `Attendance Report - ${rangeLabel}`);
                     break;
-                case 'overtime':
-                    generateOvertimePDF(attendanceInRange, `Overtime & Shift Evaluation - ${rangeLabel}`);
+                }
+                case 'overtime': {
+                    const enrichedOT = attendanceInRange.map(r => {
+                        const worker = workers.find(w => w.workerId === r.workerId);
+                        return {
+                            ...r,
+                            workerName: r.workerName || worker?.fullName || r.workerId
+                        };
+                    });
+                    generateOvertimePDF(enrichedOT, `Overtime & Shift Evaluation - ${rangeLabel}`);
                     break;
+                }
                 case 'payroll': {
                     generatePayrollMasterPDF(payrollInRange, rangeLabel);
                     break;

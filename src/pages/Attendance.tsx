@@ -63,7 +63,17 @@ const Attendance: React.FC = () => {
                     </Link>
                     <button 
                         className="btn btn-secondary" 
-                        onClick={() => generateAttendancePDF(dayRecords.length > 0 ? dayRecords : attendanceRecords, `Attendance Timesheet - ${selectedDate}`)}
+                        onClick={() => {
+                            const rawRecords = dayRecords.length > 0 ? dayRecords : attendanceRecords;
+                            const enriched = rawRecords.map(r => {
+                                const worker = workers.find(w => w.workerId === r.workerId);
+                                return {
+                                    ...r,
+                                    workerName: r.workerName || worker?.fullName || r.workerId
+                                };
+                            });
+                            generateAttendancePDF(enriched, `Attendance Timesheet - ${selectedDate}`);
+                        }}
                         style={{ display: 'inline-flex', alignItems: 'center', gap: '0.4rem' }}
                     >
                         <Download size={16} /> Export PDF

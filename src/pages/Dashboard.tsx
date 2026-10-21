@@ -1,3 +1,4 @@
+import { useState, useMemo } from 'react';
 import { useLiveQuery } from 'dexie-react-hooks';
 import { db } from '../db';
 import { format } from 'date-fns';
@@ -12,7 +13,8 @@ import {
     ArrowRight,
     Briefcase,
     Eye,
-    ShieldCheck
+    ShieldCheck,
+    ArrowUpDown
 } from 'lucide-react';
 import { useUserRole } from '../context/UserRoleContext';
 import './Dashboard.css';
@@ -20,6 +22,7 @@ import './Dashboard.css';
 const Dashboard = () => {
     const { isAdmin, isManager, isStaff } = useUserRole();
     const todayDateStr = format(new Date(), 'yyyy-MM-dd');
+    const [attendanceSortBy, setAttendanceSortBy] = useState<'recent' | 'name' | 'id'>('recent');
 
     // Queries
     const workers = useLiveQuery(() => db.workers.toArray()) || [];
@@ -32,6 +35,46 @@ const Dashboard = () => {
     const inventory = useLiveQuery(() => db.inventoryItems.toArray()) || [];
     const sales = useLiveQuery(() => db.salesOrders.toArray()) || [];
     const notifications = useLiveQuery(() => db.notifications.where('read').equals(0).toArray()) || [];
+
+    // Worker lookup map for resolving names and contact info
+    const workerMap = useMemo(() => new Map(workers.map(w => [w.workerId, w])), [workers]);
+
+    // Processed today's attendance with resolved worker names and details
+    const processedTodayAttendance = useMemo(() => {
+        return todayAttendance.map(att => {
+            const worker = workerMap.get(att.workerId);
+            const resolvedName = att.workerName || worker?.fullName || `Worker (${att.workerId})`;
+            return {
+                ...att,
+                worker,
+                workerName: resolvedName,
+                workerNumber: att.workerId,
+                phoneNumber: worker?.phoneNumber,
+                farmCardNumber: worker?.farmCardNumber,
+                position: worker?.position,
+                department: worker?.department
+            };
+        });
+    }, [todayAttendance, workerMap]);
+
+    // Sorted today's attendance stream
+    const sortedTodayAttendance = useMemo(() => {
+        return [...processedTodayAttendance].sort((a, b) => {
+            if (attendanceSortBy === 'name') {
+                return a.workerName.localeCompare(b.workerName);
+            }
+            if (attendanceSortBy === 'id') {
+                return a.workerNumber.localeCompare(b.workerNumber);
+            }
+            // 'recent': latest clock-out or clock-in first, then highest ID
+            const timeA = a.timeOut || a.timeIn || '';
+            const timeB = b.timeOut || b.timeIn || '';
+            if (timeB !== timeA) {
+                return timeB.localeCompare(timeA);
+            }
+            return (b.id || 0) - (a.id || 0);
+        });
+    }, [processedTodayAttendance, attendanceSortBy]);
 
     // Workforce & Attendance Stats
     const totalWorkersCount = activeWorkers.length;
@@ -339,54 +382,138 @@ const Dashboard = () => {
             <div>
                 {/* Today's Attendance Overview */}
                 <div className="card">
-                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
-                        <h3 style={{ margin: 0, fontSize: '1.1rem', color: 'var(--color-primary-dark)', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                            <Clock size={20} /> Today's Live Attendance Stream
-                        </h3>
-                        <Link to="/scan" style={{ fontSize: '0.85rem', fontWeight: 600, color: 'var(--color-primary)' }}>
-                            View All
-                        </Link>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.25rem', flexWrap: 'wrap', gap: '0.75rem' }}>
+                        <div>
+                            <h3 style={{ margin: 0, fontSize: '1.15rem', color: 'var(--color-primary-dark)', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                                <Clock size={20} /> Today's Live Attendance Stream
+                            </h3>
+                            <p className="text-light" style={{ margin: '0.2rem 0 0 0', fontSize: '0.82rem' }}>
+                                Real-time clock-in roster with verified worker names, ID numbers, phone contacts, and shift timestamps.
+                            </p>
+                        </div>
+
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', flexWrap: 'wrap' }}>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', fontSize: '0.82rem', color: 'var(--color-text-light)' }}>
+                                <ArrowUpDown size={15} />
+                                <span style={{ fontWeight: 600 }}>Sort:</span>
+                                <select
+                                    value={attendanceSortBy}
+                                    onChange={(e) => setAttendanceSortBy(e.target.value as 'recent' | 'name' | 'id')}
+                                    className="form-input"
+                                    style={{ fontSize: '0.82rem', padding: '0.3rem 0.55rem', height: 'auto', minWidth: '150px' }}
+                                    aria-label="Sort attendance roster"
+                                >
+                                    <option value="recent">⏱️ Most Recent First</option>
+                                    <option value="name">🔤 Worker Name (A-Z)</option>
+                                    <option value="id">🔢 Worker ID Number</option>
+                                </select>
+                            </div>
+                            <Link to="/attendance" className="btn btn-secondary" style={{ fontSize: '0.82rem', padding: '0.35rem 0.75rem', display: 'inline-flex', alignItems: 'center', gap: '0.35rem' }}>
+                                View Full Sheet <ArrowRight size={14} />
+                            </Link>
+                        </div>
                     </div>
 
-                    <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem', maxHeight: '250px', overflowY: 'auto' }}>
-                        {todayAttendance.length === 0 ? (
-                            <div className="text-light" style={{ textAlign: 'center', padding: '2rem' }}>
-                                No attendance scans recorded yet today.
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '0.65rem', maxHeight: '380px', overflowY: 'auto', paddingRight: '0.25rem' }}>
+                        {sortedTodayAttendance.length === 0 ? (
+                            <div className="text-light" style={{ textAlign: 'center', padding: '2.5rem 1rem' }}>
+                                <Clock size={36} style={{ opacity: 0.35, marginBottom: '0.5rem' }} />
+                                <div style={{ fontWeight: 600 }}>No attendance scans recorded yet today.</div>
+                                <div style={{ fontSize: '0.82rem', marginTop: '0.35rem' }}>
+                                    When workers are clocked in via the QR scanner, their full names and ID numbers will appear here live.
+                                </div>
+                                <div style={{ marginTop: '1rem' }}>
+                                    <Link to="/scan" className="btn btn-primary" style={{ fontSize: '0.82rem', padding: '0.4rem 0.85rem', display: 'inline-flex', alignItems: 'center', gap: '0.4rem' }}>
+                                        <QrCode size={16} /> Open Attendance Scanner
+                                    </Link>
+                                </div>
                             </div>
                         ) : (
-                            todayAttendance.slice(0, 6).map((att, idx) => (
+                            sortedTodayAttendance.map((att, idx) => (
                                 <div
-                                    key={idx}
+                                    key={att.id || idx}
                                     style={{
                                         display: 'flex',
                                         justifyContent: 'space-between',
                                         alignItems: 'center',
-                                        padding: '0.6rem 0.75rem',
+                                        padding: '0.75rem 1rem',
                                         backgroundColor: '#f8fafc',
-                                        borderRadius: '6px',
-                                        border: '1px solid #f1f5f9'
+                                        borderRadius: '8px',
+                                        border: '1px solid #e2e8f0',
+                                        gap: '0.75rem',
+                                        flexWrap: 'wrap'
                                     }}
                                 >
-                                    <div>
-                                        <div style={{ fontWeight: 600, fontSize: '0.9rem' }}>
-                                            {att.workerName || att.workerId}
+                                    <div style={{ display: 'flex', flexDirection: 'column', gap: '0.3rem', minWidth: '220px' }}>
+                                        <div style={{ display: 'flex', alignItems: 'center', gap: '0.6rem', flexWrap: 'wrap' }}>
+                                            <span style={{ fontWeight: 700, fontSize: '0.98rem', color: '#0f172a' }}>
+                                                {att.workerName}
+                                            </span>
+                                            <span
+                                                style={{
+                                                    fontSize: '0.74rem',
+                                                    fontWeight: 600,
+                                                    padding: '0.12rem 0.5rem',
+                                                    borderRadius: '4px',
+                                                    backgroundColor: '#e2e8f0',
+                                                    color: '#334155',
+                                                    letterSpacing: '0.3px'
+                                                }}
+                                                title={`Worker ID: ${att.workerNumber}`}
+                                            >
+                                                ID: {att.workerNumber}
+                                            </span>
+                                            {att.farmCardNumber && att.farmCardNumber !== att.workerNumber && (
+                                                <span
+                                                    style={{
+                                                        fontSize: '0.7rem',
+                                                        color: '#64748b',
+                                                        backgroundColor: '#f1f5f9',
+                                                        padding: '0.1rem 0.4rem',
+                                                        borderRadius: '3px'
+                                                    }}
+                                                >
+                                                    Card: {att.farmCardNumber}
+                                                </span>
+                                            )}
                                         </div>
-                                        <div className="text-light" style={{ fontSize: '0.75rem' }}>
-                                            In: {att.timeIn} • Out: {att.timeOut || 'Working...'}
+                                        <div className="text-light" style={{ fontSize: '0.8rem', display: 'flex', alignItems: 'center', gap: '0.5rem', flexWrap: 'wrap' }}>
+                                            <span>
+                                                In: <strong style={{ color: att.status === 'Late' ? '#c2410c' : 'inherit' }}>{att.timeIn}</strong>
+                                            </span>
+                                            <span>•</span>
+                                            <span>
+                                                Out: <strong style={{ color: att.timeOut ? '#15803d' : '#64748b' }}>{att.timeOut || 'Working...'}</strong>
+                                            </span>
+                                            {att.position && (
+                                                <>
+                                                    <span>•</span>
+                                                    <span>{att.position}</span>
+                                                </>
+                                            )}
+                                            {att.phoneNumber && (
+                                                <>
+                                                    <span>•</span>
+                                                    <span>Tel: {att.phoneNumber}</span>
+                                                </>
+                                            )}
                                         </div>
                                     </div>
-                                    <span
-                                        style={{
-                                            padding: '0.15rem 0.5rem',
-                                            borderRadius: '10px',
-                                            fontSize: '0.75rem',
-                                            fontWeight: 600,
-                                            backgroundColor: att.status === 'Present' ? '#dcfce7' : att.status === 'Late' ? '#fef3c7' : '#fee2e2',
-                                            color: att.status === 'Present' ? '#15803d' : att.status === 'Late' ? '#b45309' : '#b91c1c'
-                                        }}
-                                    >
-                                        {att.status}
-                                    </span>
+
+                                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+                                        <span
+                                            style={{
+                                                padding: '0.25rem 0.75rem',
+                                                borderRadius: '12px',
+                                                fontSize: '0.78rem',
+                                                fontWeight: 700,
+                                                backgroundColor: att.status === 'Present' ? '#dcfce7' : att.status === 'Late' ? '#fef3c7' : '#fee2e2',
+                                                color: att.status === 'Present' ? '#15803d' : att.status === 'Late' ? '#b45309' : '#b91c1c'
+                                            }}
+                                        >
+                                            {att.status}
+                                        </span>
+                                    </div>
                                 </div>
                             ))
                         )}

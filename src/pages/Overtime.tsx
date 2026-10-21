@@ -181,7 +181,16 @@ const Overtime: React.FC<OvertimeProps> = ({ embedded = false }) => {
                         </button>
                         <button 
                             className="btn btn-secondary"
-                            onClick={() => generateOvertimePDF(attendanceRecords, `Overtime Ledger - ${selectedMonth}`)}
+                            onClick={() => {
+                                const enriched = attendanceRecords.map(r => {
+                                    const worker = workers.find(w => w.workerId === r.workerId);
+                                    return {
+                                        ...r,
+                                        workerName: r.workerName || worker?.fullName || r.workerId
+                                    };
+                                });
+                                generateOvertimePDF(enriched, `Overtime Ledger - ${selectedMonth}`);
+                            }}
                         >
                             <Download size={16} /> Export Overtime PDF
                         </button>

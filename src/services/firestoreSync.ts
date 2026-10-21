@@ -77,9 +77,16 @@ class FirestoreSyncService {
     public async saveAttendance(record: any): Promise<void> {
         try {
             if (!record?.workerId || !record?.date) return;
-            const key = `ATT-${record.workerId}-${record.date}`;
+            let recordToSave = record;
+            if (!recordToSave.workerName) {
+                const worker = await db.workers.where('workerId').equals(record.workerId).first();
+                if (worker?.fullName) {
+                    recordToSave = { ...record, workerName: worker.fullName };
+                }
+            }
+            const key = `ATT-${recordToSave.workerId}-${recordToSave.date}`;
             const docRef = doc(collection(dbFirestore, 'attendance'), key);
-            await setDoc(docRef, { ...record, updatedAt: serverTimestamp() }, { merge: true });
+            await setDoc(docRef, { ...recordToSave, updatedAt: serverTimestamp() }, { merge: true });
         } catch (e: any) {
             console.warn('[Cloud Sync] Live attendance push note:', e?.message || e);
         }
@@ -251,11 +258,15 @@ class FirestoreSyncService {
 
             // 8. Attendance Records
             const attendanceList = await db.attendance.toArray();
+            const workersList = await db.workers.toArray();
+            const workerNameMap = new Map(workersList.map(w => [w.workerId, w.fullName]));
             for (const att of attendanceList) {
+                const resolvedName = att.workerName || workerNameMap.get(att.workerId);
+                const attData = resolvedName && !att.workerName ? { ...att, workerName: resolvedName } : att;
                 const key = `ATT-${att.workerId}-${att.date}`;
                 operations.push({
                     ref: doc(collection(dbFirestore, 'attendance'), key),
-                    data: { ...att, updatedAt: serverTimestamp() }
+                    data: { ...attData, updatedAt: serverTimestamp() }
                 });
             }
 
@@ -358,11 +369,17 @@ class FirestoreSyncService {
                 if (docSnap.id.startsWith('_') || docSnap.data()._isSystemSchema) continue;
                 const data = docSnap.data();
                 if (!data.workerId || !data.date) continue;
+                let workerName = data.workerName;
+                if (!workerName) {
+                    const worker = await db.workers.where('workerId').equals(data.workerId).first();
+                    if (worker?.fullName) workerName = worker.fullName;
+                }
+                const cleanData = workerName ? { ...data, workerName } : data;
                 const existing = await db.attendance.where({ workerId: data.workerId, date: data.date }).first();
                 if (existing && existing.id !== undefined) {
-                    await db.attendance.update(existing.id, data as any);
+                    await db.attendance.update(existing.id, cleanData as any);
                 } else {
-                    const { id: _ignore, ...cleanAtt } = data;
+                    const { id: _ignore, ...cleanAtt } = cleanData;
                     await db.attendance.add(cleanAtt as any);
                 }
             }
@@ -531,12 +548,18 @@ class FirestoreSyncService {
                     if (change.type === 'added' || change.type === 'modified') {
                         const data = change.doc.data();
                         if (!data.workerId || !data.date) return;
+                        let workerName = data.workerName;
+                        if (!workerName) {
+                            const worker = await db.workers.where('workerId').equals(data.workerId).first();
+                            if (worker?.fullName) workerName = worker.fullName;
+                        }
+                        const cleanData = workerName ? { ...data, workerName } : data;
                         const existing = await db.attendance.where({ workerId: data.workerId, date: data.date }).first();
                         if (existing && existing.id !== undefined) {
-                            await db.attendance.update(existing.id, data as any);
+                            await db.attendance.update(existing.id, cleanData as any);
                         } else {
-                            const { id: _ignore, ...cleanData } = data;
-                            await db.attendance.add(cleanData as any);
+                            const { id: _ignore, ...cleanDataNoId } = cleanData;
+                            await db.attendance.add(cleanDataNoId as any);
                         }
                     }
                 });
@@ -585,3 +608,32 @@ class FirestoreSyncService {
 }
 
 export const firestoreSyncService = new FirestoreSyncService();
+
+/**
+ * Repairs any existing attendance records in IndexedDB that are missing workerName
+ * by looking up the worker's fullName using workerId.
+ */
+export async function backfillAttendanceWorkerNames(): Promise<number> {
+    try {
+        const attendanceRecords = await db.attendance.toArray();
+        const recordsWithoutName = attendanceRecords.filter(r => !r.workerName);
+        if (recordsWithoutName.length === 0) return 0;
+        const workers = await db.workers.toArray();
+        const workerMap = new Map(workers.map(w => [w.workerId, w.fullName]));
+        let updatedCount = 0;
+        for (const record of recordsWithoutName) {
+            const fullName = workerMap.get(record.workerId);
+            if (fullName && record.id !== undefined) {
+                await db.attendance.update(record.id, { workerName: fullName });
+                updatedCount++;
+            }
+        }
+        if (updatedCount > 0) {
+            console.log(`[Attendance] Backfilled worker names for ${updatedCount} existing record(s).`);
+        }
+        return updatedCount;
+    } catch (e) {
+        console.warn('Attendance workerName backfill note:', e);
+        return 0;
+    }
+}
