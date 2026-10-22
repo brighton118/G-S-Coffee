@@ -1,4 +1,10 @@
-import type { User as FirebaseUser } from 'firebase/auth';
+import {
+    createUserWithEmailAndPassword,
+    getAuth,
+    signOut,
+    type User as FirebaseUser
+} from 'firebase/auth';
+import { initializeApp, getApps } from 'firebase/app';
 import {
     collection,
     doc,
@@ -8,7 +14,7 @@ import {
     deleteDoc,
     serverTimestamp
 } from 'firebase/firestore';
-import { dbFirestore } from '../firebase';
+import { dbFirestore, firebaseConfig } from '../firebase';
 import { db } from '../db';
 import type { UserRole } from '../context/UserRoleContext';
 
@@ -363,3 +369,91 @@ export async function listAdminInvites() {
         return [];
     }
 }
+
+export async function createAccountByAdmin(
+    fullName: string,
+    emailAddress: string,
+    passwordStr: string,
+    role: UserRole
+): Promise<{ uid: string; email: string }> {
+    const email = emailAddress.trim().toLowerCase();
+    const password = passwordStr.trim();
+    const name = fullName.trim();
+
+    if (!name) throw new Error('Please enter the full name for this account.');
+    if (!email || !/^[^\s@]+@[^\s@]+$/.test(email)) throw new Error('Please enter a valid email address.');
+    if (password.length < 6) throw new Error('Password must be at least 6 characters.');
+
+    const secondaryAppName = 'SecondaryAuthProvisioner';
+    const existingApps = getApps();
+    const secondaryApp = existingApps.find(a => a.name === secondaryAppName) || initializeApp(firebaseConfig, secondaryAppName);
+    const secondaryAuth = getAuth(secondaryApp);
+
+    try {
+        const userCred = await createUserWithEmailAndPassword(secondaryAuth, email, password);
+        const newUser = userCred.user;
+
+        await setUserRoleInFirestore({
+            uid: newUser.uid,
+            email: newUser.email,
+            displayName: name
+        }, role, name);
+
+        await signOut(secondaryAuth);
+        return { uid: newUser.uid, email: newUser.email || email };
+    } catch (err: any) {
+        try { await signOut(secondaryAuth); } catch (_) {}
+        const code = err?.code || '';
+        const messages: Record<string, string> = {
+            'auth/email-already-in-use': 'An account already exists with this email address.',
+            'auth/invalid-email': 'The email address is invalid.',
+            'auth/weak-password': 'Password is too weak. Must be at least 6 characters.'
+        };
+        throw new Error(messages[code] || err?.message || 'Failed to create account.');
+    }
+}
+
+export async function toggleUserActiveByAdmin(
+    targetUid: string,
+    currentActive: boolean,
+    role: UserRole
+): Promise<void> {
+    const newActiveState = !currentActive;
+    await setDoc(doc(dbFirestore, 'users', targetUid), { active: newActiveState }, { merge: true });
+    if (role === 'admin') {
+        await setDoc(doc(dbFirestore, 'admins', targetUid), { active: newActiveState }, { merge: true });
+    } else if (role === 'manager') {
+        await setDoc(doc(dbFirestore, 'managers', targetUid), { active: newActiveState }, { merge: true });
+    } else if (role === 'staff') {
+        await setDoc(doc(dbFirestore, 'staff', targetUid), { active: newActiveState }, { merge: true });
+    }
+
+    try {
+        const local = await db.users.where('uid').equals(targetUid).first();
+        if (local?.id) {
+            await db.users.update(local.id, { active: newActiveState });
+        }
+    } catch (_) {}
+}
+
+export async function deleteUserByAdmin(
+    targetUid: string,
+    role: UserRole
+): Promise<void> {
+    try { await deleteDoc(doc(dbFirestore, 'users', targetUid)); } catch (_) {}
+    if (role === 'admin') {
+        try { await deleteDoc(doc(dbFirestore, 'admins', targetUid)); } catch (_) {}
+    } else if (role === 'manager') {
+        try { await deleteDoc(doc(dbFirestore, 'managers', targetUid)); } catch (_) {}
+    } else if (role === 'staff') {
+        try { await deleteDoc(doc(dbFirestore, 'staff', targetUid)); } catch (_) {}
+    }
+
+    try {
+        const local = await db.users.where('uid').equals(targetUid).first();
+        if (local?.id) {
+            await db.users.delete(local.id);
+        }
+    } catch (_) {}
+}
+

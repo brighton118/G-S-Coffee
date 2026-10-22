@@ -4,7 +4,7 @@ import { getFirestore } from "firebase/firestore";
 import { getAuth, browserLocalPersistence, setPersistence } from "firebase/auth";
 
 // Your web app's Firebase configuration
-const firebaseConfig = {
+export const firebaseConfig = {
     apiKey: "AIzaSyDXAYOGiPk1sHBff2karq-jkxlVG8nuRqw",
     authDomain: "gs-coffee-3d022.firebaseapp.com",
     projectId: "gs-coffee-3d022",

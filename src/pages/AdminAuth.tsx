@@ -8,9 +8,9 @@ import {
     signInWithPopup,
     signInWithRedirect
 } from 'firebase/auth';
-import { Banknote, Briefcase, Coffee, Eye, EyeOff, LockKeyhole, Mail, ShieldCheck } from 'lucide-react';
+import { Banknote, Coffee, Eye, EyeOff, LockKeyhole, Mail, ShieldCheck } from 'lucide-react';
 import { auth } from '../firebase';
-import { setUserRoleInFirestore, type UserRole } from '../services/adminAccess';
+import { setUserRoleInFirestore } from '../services/adminAccess';
 import './AdminAuth.css';
 
 interface AdminAuthProps {
@@ -23,7 +23,6 @@ googleProvider.setCustomParameters({ prompt: 'select_account' });
 
 const AdminAuth = ({ message, onClearMessage }: AdminAuthProps) => {
     const [mode, setMode] = useState<'signIn' | 'signUp'>('signIn');
-    const [selectedRole, setSelectedRole] = useState<UserRole>('admin');
     const [email, setEmail] = useState('');
     const [password, setPassword] = useState('');
     const [showPassword, setShowPassword] = useState(false);
@@ -50,10 +49,10 @@ const AdminAuth = ({ message, onClearMessage }: AdminAuthProps) => {
             const cleanPassword = password.trim();
 
             if (mode === 'signUp') {
-                localStorage.setItem('gs_pending_registration_role', selectedRole);
+                localStorage.setItem('gs_pending_registration_role', 'admin');
                 const cred = await createUserWithEmailAndPassword(auth, cleanEmail, cleanPassword);
-                await setUserRoleInFirestore(cred.user, selectedRole);
-                setFormMessage(`Account created as ${selectedRole.toUpperCase()}! Signing in...`);
+                await setUserRoleInFirestore(cred.user, 'admin');
+                setFormMessage('Administrator account created! Signing in...');
             } else {
                 await signInWithEmailAndPassword(auth, cleanEmail, cleanPassword);
             }
@@ -146,16 +145,16 @@ const AdminAuth = ({ message, onClearMessage }: AdminAuthProps) => {
                 </div>
 
                 <div className="admin-auth-intro">
-                    <span className="admin-auth-eyebrow"><Banknote size={15} /> ADMIN ACCESS</span>
-                    <h1 id="admin-auth-title">{mode === 'signIn' ? 'Welcome back' : 'Create admin account'}</h1>
+                    <span className="admin-auth-eyebrow"><Banknote size={15} /> SECURE ACCESS</span>
+                    <h1 id="admin-auth-title">{mode === 'signIn' ? 'Welcome to G&S FARM' : 'Register Administrator'}</h1>
                     <p>
                         {mode === 'signIn'
-                            ? 'Sign in to manage your farm operations and records.'
-                            : 'Create an administrator account for full access to the farm system.'}
+                            ? 'Sign in with your Admin, Manager, or Staff account to access the system.'
+                            : 'Create a master Farm Administrator account. Manager and Staff accounts are created directly by the Administrator.'}
                     </p>
                 </div>
 
-                <div className="admin-auth-tabs" role="tablist" aria-label="Administrator access">
+                <div className="admin-auth-tabs" role="tablist" aria-label="Account access">
                     <button
                         type="button"
                         role="tab"
@@ -172,65 +171,27 @@ const AdminAuth = ({ message, onClearMessage }: AdminAuthProps) => {
                         className={mode === 'signUp' ? 'is-active' : ''}
                         onClick={() => switchMode('signUp')}
                     >
-                        Sign up
+                        Admin Sign up
                     </button>
                 </div>
 
                 <form className="admin-auth-form" onSubmit={handleSubmit}>
                     {mode === 'signUp' && (
-                        <div className="admin-auth-role-section">
-                            <label className="admin-auth-role-heading">Account Access Role</label>
-                            <div className="admin-auth-role-options">
-                                <label className={`admin-auth-role-option ${selectedRole === 'admin' ? 'is-selected' : ''}`}>
-                                    <input
-                                        type="radio"
-                                        name="accountRole"
-                                        value="admin"
-                                        checked={selectedRole === 'admin'}
-                                        onChange={() => setSelectedRole('admin')}
-                                    />
-                                    <div className="role-option-content">
-                                        <div className="role-option-title">
-                                            <ShieldCheck size={17} color="var(--color-primary)" />
-                                            <strong>1. Admin</strong>
-                                        </div>
-                                        <span className="role-option-desc">Full access & view all data entered by managers</span>
-                                    </div>
-                                </label>
-
-                                <label className={`admin-auth-role-option ${selectedRole === 'manager' ? 'is-selected' : ''}`}>
-                                    <input
-                                        type="radio"
-                                        name="accountRole"
-                                        value="manager"
-                                        checked={selectedRole === 'manager'}
-                                        onChange={() => setSelectedRole('manager')}
-                                    />
-                                    <div className="role-option-content">
-                                        <div className="role-option-title">
-                                            <Briefcase size={17} color="#2563eb" />
-                                            <strong>2. Manager</strong>
-                                        </div>
-                                        <span className="role-option-desc">Enter & edit farm records (workers, clones, sales, stock)</span>
-                                    </div>
-                                </label>
-
-                                <label className={`admin-auth-role-option ${selectedRole === 'staff' ? 'is-selected' : ''}`}>
-                                    <input
-                                        type="radio"
-                                        name="accountRole"
-                                        value="staff"
-                                        checked={selectedRole === 'staff'}
-                                        onChange={() => setSelectedRole('staff')}
-                                    />
-                                    <div className="role-option-content">
-                                        <div className="role-option-title">
-                                            <Eye size={17} color="#0891b2" />
-                                            <strong>3. Staff</strong>
-                                        </div>
-                                        <span className="role-option-desc">View-only access (can view dashboard & reports, no edits)</span>
-                                    </div>
-                                </label>
+                        <div
+                            style={{
+                                padding: '0.85rem 1rem',
+                                borderRadius: '8px',
+                                backgroundColor: '#f0fdf4',
+                                border: '1px solid #bbf7d0',
+                                display: 'flex',
+                                alignItems: 'flex-start',
+                                gap: '0.75rem',
+                                marginBottom: '1.25rem'
+                            }}
+                        >
+                            <ShieldCheck size={20} color="#15803d" style={{ marginTop: '2px', flexShrink: 0 }} />
+                            <div style={{ fontSize: '0.84rem', color: '#166534', lineHeight: 1.5 }}>
+                                <strong>Administrator Account:</strong> This creates an Admin account with full system authority. Managers and Staff accounts are created directly by the Administrator inside the Admin Portal.
                             </div>
                         </div>
                     )}
@@ -284,7 +245,7 @@ const AdminAuth = ({ message, onClearMessage }: AdminAuthProps) => {
                             ? 'Please wait...'
                             : mode === 'signIn'
                             ? 'Sign in to G&S FARM'
-                            : `Create ${selectedRole === 'admin' ? 'Admin' : selectedRole === 'manager' ? 'Manager' : 'Staff'} account`}
+                            : 'Register Administrator Account'}
                     </button>
                 </form>
 
