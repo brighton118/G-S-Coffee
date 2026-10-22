@@ -20,7 +20,7 @@ import { loadAttendanceScheduleSettings } from '../utils/attendanceSchedule';
 const Attendance: React.FC = () => {
     const [selectedDate, setSelectedDate] = useState<string>(format(new Date(), 'yyyy-MM-dd'));
     const [searchTerm, setSearchTerm] = useState('');
-    const [statusFilter, setStatusFilter] = useState<'All' | 'Present' | 'Late'>('All');
+    const [statusFilter, setStatusFilter] = useState<'All' | 'Present' | 'Working Now' | 'Late' | 'Completed'>('All');
 
     const workers = useLiveQuery(() => db.workers.toArray()) || [];
     const attendanceRecords = useLiveQuery(() => db.attendance.toArray()) || [];
@@ -34,7 +34,17 @@ const Attendance: React.FC = () => {
         const matchesSearch = 
             workerName.toLowerCase().includes(searchTerm.toLowerCase()) ||
             record.workerId.toLowerCase().includes(searchTerm.toLowerCase());
-        const matchesStatus = statusFilter === 'All' || record.status === statusFilter;
+        
+        let matchesStatus = true;
+        if (statusFilter === 'Present') {
+            matchesStatus = record.status === 'Present' || record.status === 'Late';
+        } else if (statusFilter === 'Working Now') {
+            matchesStatus = !record.timeOut && (record.status === 'Present' || record.status === 'Late');
+        } else if (statusFilter === 'Late') {
+            matchesStatus = record.status === 'Late' || !!record.isLate;
+        } else if (statusFilter === 'Completed') {
+            matchesStatus = !!record.timeOut;
+        }
 
         return matchesDate && matchesSearch && matchesStatus;
     });
@@ -158,13 +168,106 @@ const Attendance: React.FC = () => {
                         className="form-input" 
                         value={statusFilter} 
                         onChange={e => setStatusFilter(e.target.value as any)}
-                        style={{ minWidth: '130px' }}
+                        style={{ minWidth: '160px' }}
+                        aria-label="Filter by attendance status"
                     >
-                        <option value="All">All Statuses</option>
-                        <option value="Present">Present</option>
-                        <option value="Late">Late</option>
+                        <option value="All">All Records</option>
+                        <option value="Present">Present (All Today)</option>
+                        <option value="Working Now">Present & Working Now</option>
+                        <option value="Late">Late Arrivals</option>
+                        <option value="Completed">Shift Completed</option>
                     </select>
                 </div>
+            </div>
+
+            {/* Quick Status Filter Pills for Fast Auditing */}
+            <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }}>
+                <button
+                    type="button"
+                    onClick={() => setStatusFilter('Working Now')}
+                    style={{
+                        border: 'none',
+                        borderRadius: '20px',
+                        padding: '0.35rem 0.85rem',
+                        fontSize: '0.8rem',
+                        fontWeight: 700,
+                        cursor: 'pointer',
+                        display: 'inline-flex',
+                        alignItems: 'center',
+                        gap: '0.4rem',
+                        backgroundColor: statusFilter === 'Working Now' ? '#15803d' : '#f0fdf4',
+                        color: statusFilter === 'Working Now' ? '#ffffff' : '#166534',
+                        borderBottom: statusFilter === 'Working Now' ? 'none' : '1px solid #bbf7d0'
+                    }}
+                >
+                    <span style={{ width: '8px', height: '8px', borderRadius: '50%', backgroundColor: statusFilter === 'Working Now' ? '#86efac' : '#16a34a' }}></span>
+                    Working Now on Site
+                </button>
+
+                <button
+                    type="button"
+                    onClick={() => setStatusFilter('Present')}
+                    style={{
+                        border: 'none',
+                        borderRadius: '20px',
+                        padding: '0.35rem 0.85rem',
+                        fontSize: '0.8rem',
+                        fontWeight: 700,
+                        cursor: 'pointer',
+                        display: 'inline-flex',
+                        alignItems: 'center',
+                        gap: '0.4rem',
+                        backgroundColor: statusFilter === 'Present' ? 'var(--color-primary)' : '#f8fafc',
+                        color: statusFilter === 'Present' ? '#ffffff' : '#334155',
+                        borderBottom: statusFilter === 'Present' ? 'none' : '1px solid #e2e8f0'
+                    }}
+                >
+                    <CheckCircle2 size={14} />
+                    All Present ({presentToday})
+                </button>
+
+                <button
+                    type="button"
+                    onClick={() => setStatusFilter('Late')}
+                    style={{
+                        border: 'none',
+                        borderRadius: '20px',
+                        padding: '0.35rem 0.85rem',
+                        fontSize: '0.8rem',
+                        fontWeight: 700,
+                        cursor: 'pointer',
+                        display: 'inline-flex',
+                        alignItems: 'center',
+                        gap: '0.4rem',
+                        backgroundColor: statusFilter === 'Late' ? '#c2410c' : '#fff7ed',
+                        color: statusFilter === 'Late' ? '#ffffff' : '#9a3412',
+                        borderBottom: statusFilter === 'Late' ? 'none' : '1px solid #fed7aa'
+                    }}
+                >
+                    <AlertTriangle size={14} />
+                    Late ({lateToday})
+                </button>
+
+                <button
+                    type="button"
+                    onClick={() => setStatusFilter('All')}
+                    style={{
+                        border: 'none',
+                        borderRadius: '20px',
+                        padding: '0.35rem 0.85rem',
+                        fontSize: '0.8rem',
+                        fontWeight: 600,
+                        cursor: 'pointer',
+                        display: 'inline-flex',
+                        alignItems: 'center',
+                        gap: '0.4rem',
+                        backgroundColor: statusFilter === 'All' ? '#334155' : '#f1f5f9',
+                        color: statusFilter === 'All' ? '#ffffff' : '#475569',
+                        borderBottom: statusFilter === 'All' ? 'none' : '1px solid #cbd5e1'
+                    }}
+                >
+                    All Filtered Records ({dayRecords.length})
+                </button>
             </div>
 
             {/* Attendance Table */}

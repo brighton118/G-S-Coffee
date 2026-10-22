@@ -14,7 +14,8 @@ import {
     Briefcase,
     Eye,
     ShieldCheck,
-    ArrowUpDown
+    ArrowUpDown,
+    CheckCircle2
 } from 'lucide-react';
 import { useUserRole } from '../context/UserRoleContext';
 import './Dashboard.css';
@@ -23,6 +24,7 @@ const Dashboard = () => {
     const { isAdmin, isManager, isStaff } = useUserRole();
     const todayDateStr = format(new Date(), 'yyyy-MM-dd');
     const [attendanceSortBy, setAttendanceSortBy] = useState<'recent' | 'name' | 'id'>('recent');
+    const [attendanceFilter, setAttendanceFilter] = useState<'all' | 'working' | 'present' | 'late' | 'completed'>('all');
 
     // Queries
     const workers = useLiveQuery(() => db.workers.toArray()) || [];
@@ -76,9 +78,31 @@ const Dashboard = () => {
         });
     }, [processedTodayAttendance, attendanceSortBy]);
 
+    // Filtered attendance stream for manager view
+    const displayTodayAttendance = useMemo(() => {
+        return sortedTodayAttendance.filter(att => {
+            if (attendanceFilter === 'working') {
+                return !att.timeOut && (att.status === 'Present' || att.status === 'Late');
+            }
+            if (attendanceFilter === 'present') {
+                return att.status === 'Present' || att.status === 'Late';
+            }
+            if (attendanceFilter === 'late') {
+                return att.status === 'Late' || att.isLate;
+            }
+            if (attendanceFilter === 'completed') {
+                return !!att.timeOut;
+            }
+            return true;
+        });
+    }, [sortedTodayAttendance, attendanceFilter]);
+
     // Workforce & Attendance Stats
     const totalWorkersCount = activeWorkers.length;
     const presentToday = todayAttendance.filter(a => a.status === 'Present' || a.status === 'Late').length;
+    const currentlyWorkingCount = todayAttendance.filter(a => !a.timeOut && (a.status === 'Present' || a.status === 'Late')).length;
+    const lateTodayCount = todayAttendance.filter(a => a.status === 'Late' || a.isLate).length;
+    const completedShiftCount = todayAttendance.filter(a => !!a.timeOut).length;
     const absentToday = totalWorkersCount > presentToday ? totalWorkersCount - presentToday : 0;
     const attendancePercentage = totalWorkersCount > 0 ? ((presentToday / totalWorkersCount) * 100).toFixed(1) : '0.0';
 
@@ -382,13 +406,13 @@ const Dashboard = () => {
             <div>
                 {/* Today's Attendance Overview */}
                 <div className="card">
-                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.25rem', flexWrap: 'wrap', gap: '0.75rem' }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem', flexWrap: 'wrap', gap: '0.75rem' }}>
                         <div>
                             <h3 style={{ margin: 0, fontSize: '1.15rem', color: 'var(--color-primary-dark)', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
                                 <Clock size={20} /> Today's Live Attendance Stream
                             </h3>
                             <p className="text-light" style={{ margin: '0.2rem 0 0 0', fontSize: '0.82rem' }}>
-                                Real-time clock-in roster with verified worker names, ID numbers, phone contacts, and shift timestamps.
+                                Verified worker attendance records with names, IDs, shift times, and real-time status.
                             </p>
                         </div>
 
@@ -414,13 +438,126 @@ const Dashboard = () => {
                         </div>
                     </div>
 
-                    <div style={{ display: 'flex', flexDirection: 'column', gap: '0.65rem', maxHeight: '380px', overflowY: 'auto', paddingRight: '0.25rem' }}>
-                        {sortedTodayAttendance.length === 0 ? (
+                    {/* Filter Tabs for Quick Manager Auditing */}
+                    <div style={{ display: 'flex', gap: '0.5rem', marginBottom: '1rem', flexWrap: 'wrap' }}>
+                        <button
+                            type="button"
+                            onClick={() => setAttendanceFilter('working')}
+                            style={{
+                                border: 'none',
+                                borderRadius: '20px',
+                                padding: '0.35rem 0.85rem',
+                                fontSize: '0.8rem',
+                                fontWeight: 700,
+                                cursor: 'pointer',
+                                display: 'inline-flex',
+                                alignItems: 'center',
+                                gap: '0.4rem',
+                                backgroundColor: attendanceFilter === 'working' ? '#15803d' : '#f0fdf4',
+                                color: attendanceFilter === 'working' ? '#ffffff' : '#166534',
+                                borderBottom: attendanceFilter === 'working' ? 'none' : '1px solid #bbf7d0'
+                            }}
+                        >
+                            <span style={{ width: '8px', height: '8px', borderRadius: '50%', backgroundColor: attendanceFilter === 'working' ? '#86efac' : '#16a34a' }}></span>
+                            Present on Farm Now ({currentlyWorkingCount})
+                        </button>
+
+                        <button
+                            type="button"
+                            onClick={() => setAttendanceFilter('present')}
+                            style={{
+                                border: 'none',
+                                borderRadius: '20px',
+                                padding: '0.35rem 0.85rem',
+                                fontSize: '0.8rem',
+                                fontWeight: 700,
+                                cursor: 'pointer',
+                                display: 'inline-flex',
+                                alignItems: 'center',
+                                gap: '0.4rem',
+                                backgroundColor: attendanceFilter === 'present' ? 'var(--color-primary)' : '#f8fafc',
+                                color: attendanceFilter === 'present' ? '#ffffff' : '#334155',
+                                borderBottom: attendanceFilter === 'present' ? 'none' : '1px solid #e2e8f0'
+                            }}
+                        >
+                            <CheckCircle2 size={14} />
+                            All Present Today ({presentToday})
+                        </button>
+
+                        <button
+                            type="button"
+                            onClick={() => setAttendanceFilter('late')}
+                            style={{
+                                border: 'none',
+                                borderRadius: '20px',
+                                padding: '0.35rem 0.85rem',
+                                fontSize: '0.8rem',
+                                fontWeight: 700,
+                                cursor: 'pointer',
+                                display: 'inline-flex',
+                                alignItems: 'center',
+                                gap: '0.4rem',
+                                backgroundColor: attendanceFilter === 'late' ? '#c2410c' : '#fff7ed',
+                                color: attendanceFilter === 'late' ? '#ffffff' : '#9a3412',
+                                borderBottom: attendanceFilter === 'late' ? 'none' : '1px solid #fed7aa'
+                            }}
+                        >
+                            <AlertTriangle size={14} />
+                            Late Arrivals ({lateTodayCount})
+                        </button>
+
+                        <button
+                            type="button"
+                            onClick={() => setAttendanceFilter('completed')}
+                            style={{
+                                border: 'none',
+                                borderRadius: '20px',
+                                padding: '0.35rem 0.85rem',
+                                fontSize: '0.8rem',
+                                fontWeight: 700,
+                                cursor: 'pointer',
+                                display: 'inline-flex',
+                                alignItems: 'center',
+                                gap: '0.4rem',
+                                backgroundColor: attendanceFilter === 'completed' ? '#2563eb' : '#eff6ff',
+                                color: attendanceFilter === 'completed' ? '#ffffff' : '#1e40af',
+                                borderBottom: attendanceFilter === 'completed' ? 'none' : '1px solid #bfdbfe'
+                            }}
+                        >
+                            Shift Completed ({completedShiftCount})
+                        </button>
+
+                        <button
+                            type="button"
+                            onClick={() => setAttendanceFilter('all')}
+                            style={{
+                                border: 'none',
+                                borderRadius: '20px',
+                                padding: '0.35rem 0.85rem',
+                                fontSize: '0.8rem',
+                                fontWeight: 600,
+                                cursor: 'pointer',
+                                display: 'inline-flex',
+                                alignItems: 'center',
+                                gap: '0.4rem',
+                                backgroundColor: attendanceFilter === 'all' ? '#334155' : '#f1f5f9',
+                                color: attendanceFilter === 'all' ? '#ffffff' : '#475569',
+                                borderBottom: attendanceFilter === 'all' ? 'none' : '1px solid #cbd5e1'
+                            }}
+                        >
+                            All Scans ({sortedTodayAttendance.length})
+                        </button>
+                    </div>
+
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '0.65rem', maxHeight: '420px', overflowY: 'auto', paddingRight: '0.25rem' }}>
+                        {displayTodayAttendance.length === 0 ? (
                             <div className="text-light" style={{ textAlign: 'center', padding: '2.5rem 1rem' }}>
                                 <Clock size={36} style={{ opacity: 0.35, marginBottom: '0.5rem' }} />
-                                <div style={{ fontWeight: 600 }}>No attendance scans recorded yet today.</div>
+                                <div style={{ fontWeight: 600 }}>
+                                    {attendanceFilter === 'working' ? 'No workers currently clocked in on site.' : 'No matching attendance records found for today.'}
+                                </div>
                                 <div style={{ fontSize: '0.82rem', marginTop: '0.35rem' }}>
-                                    When workers are clocked in via the QR scanner, their full names and ID numbers will appear here live.
+                                    When workers are clocked in via the QR scanner, their names will appear here live.
                                 </div>
                                 <div style={{ marginTop: '1rem' }}>
                                     <Link to="/scan" className="btn btn-primary" style={{ fontSize: '0.82rem', padding: '0.4rem 0.85rem', display: 'inline-flex', alignItems: 'center', gap: '0.4rem' }}>
@@ -429,93 +566,136 @@ const Dashboard = () => {
                                 </div>
                             </div>
                         ) : (
-                            sortedTodayAttendance.map((att, idx) => (
-                                <div
-                                    key={att.id || idx}
-                                    style={{
-                                        display: 'flex',
-                                        justifyContent: 'space-between',
-                                        alignItems: 'center',
-                                        padding: '0.75rem 1rem',
-                                        backgroundColor: '#f8fafc',
-                                        borderRadius: '8px',
-                                        border: '1px solid #e2e8f0',
-                                        gap: '0.75rem',
-                                        flexWrap: 'wrap'
-                                    }}
-                                >
-                                    <div style={{ display: 'flex', flexDirection: 'column', gap: '0.3rem', minWidth: '220px' }}>
-                                        <div style={{ display: 'flex', alignItems: 'center', gap: '0.6rem', flexWrap: 'wrap' }}>
-                                            <span style={{ fontWeight: 700, fontSize: '0.98rem', color: '#0f172a' }}>
-                                                {att.workerName}
-                                            </span>
-                                            <span
+                            displayTodayAttendance.map((att, idx) => {
+                                const isCurrentlyWorking = !att.timeOut && (att.status === 'Present' || att.status === 'Late');
+                                const initials = att.workerName.split(' ').map((n: string) => n[0]).slice(0, 2).join('').toUpperCase();
+
+                                return (
+                                    <div
+                                        key={att.id || idx}
+                                        style={{
+                                            display: 'flex',
+                                            justifyContent: 'space-between',
+                                            alignItems: 'center',
+                                            padding: '0.85rem 1rem',
+                                            backgroundColor: isCurrentlyWorking ? '#f0fdf4' : '#f8fafc',
+                                            borderRadius: '8px',
+                                            border: `1px solid ${isCurrentlyWorking ? '#bbf7d0' : '#e2e8f0'}`,
+                                            gap: '0.75rem',
+                                            flexWrap: 'wrap'
+                                        }}
+                                    >
+                                        <div style={{ display: 'flex', alignItems: 'center', gap: '0.85rem', minWidth: '220px' }}>
+                                            <div
                                                 style={{
-                                                    fontSize: '0.74rem',
-                                                    fontWeight: 600,
-                                                    padding: '0.12rem 0.5rem',
-                                                    borderRadius: '4px',
-                                                    backgroundColor: '#e2e8f0',
-                                                    color: '#334155',
-                                                    letterSpacing: '0.3px'
+                                                    width: '38px',
+                                                    height: '38px',
+                                                    borderRadius: '50%',
+                                                    backgroundColor: isCurrentlyWorking ? '#dcfce7' : '#e2e8f0',
+                                                    color: isCurrentlyWorking ? '#15803d' : '#475569',
+                                                    display: 'flex',
+                                                    alignItems: 'center',
+                                                    justifyContent: 'center',
+                                                    fontWeight: 700,
+                                                    fontSize: '0.85rem',
+                                                    position: 'relative',
+                                                    flexShrink: 0
                                                 }}
-                                                title={`Worker ID: ${att.workerNumber}`}
                                             >
-                                                ID: {att.workerNumber}
-                                            </span>
-                                            {att.farmCardNumber && att.farmCardNumber !== att.workerNumber && (
+                                                {initials || 'WK'}
+                                                {isCurrentlyWorking && (
+                                                    <span
+                                                        style={{
+                                                            position: 'absolute',
+                                                            bottom: '0',
+                                                            right: '0',
+                                                            width: '10px',
+                                                            height: '10px',
+                                                            backgroundColor: '#22c55e',
+                                                            borderRadius: '50%',
+                                                            border: '2px solid white'
+                                                        }}
+                                                        title="Currently Present on Farm"
+                                                    />
+                                                )}
+                                            </div>
+
+                                            <div style={{ display: 'flex', flexDirection: 'column', gap: '0.25rem' }}>
+                                                <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', flexWrap: 'wrap' }}>
+                                                    <span style={{ fontWeight: 700, fontSize: '1rem', color: '#0f172a' }}>
+                                                        {att.workerName}
+                                                    </span>
+                                                    <span
+                                                        style={{
+                                                            fontSize: '0.74rem',
+                                                            fontWeight: 600,
+                                                            padding: '0.12rem 0.5rem',
+                                                            borderRadius: '4px',
+                                                            backgroundColor: '#e2e8f0',
+                                                            color: '#334155'
+                                                        }}
+                                                    >
+                                                        {att.workerNumber}
+                                                    </span>
+                                                    {att.position && (
+                                                        <span style={{ fontSize: '0.75rem', color: '#64748b' }}>
+                                                            • {att.position}
+                                                        </span>
+                                                    )}
+                                                </div>
+                                                <div className="text-light" style={{ fontSize: '0.8rem', display: 'flex', alignItems: 'center', gap: '0.5rem', flexWrap: 'wrap' }}>
+                                                    <span>
+                                                        In: <strong style={{ color: att.status === 'Late' ? '#c2410c' : '#15803d' }}>{att.timeIn}</strong>
+                                                    </span>
+                                                    <span>•</span>
+                                                    <span>
+                                                        Out: <strong style={{ color: att.timeOut ? '#2563eb' : '#15803d' }}>
+                                                            {att.timeOut || 'Working on site'}
+                                                        </strong>
+                                                    </span>
+                                                    {att.phoneNumber && (
+                                                        <>
+                                                            <span>•</span>
+                                                            <span>Tel: {att.phoneNumber}</span>
+                                                        </>
+                                                    )}
+                                                </div>
+                                            </div>
+                                        </div>
+
+                                        <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+                                            {isCurrentlyWorking ? (
                                                 <span
                                                     style={{
-                                                        fontSize: '0.7rem',
-                                                        color: '#64748b',
-                                                        backgroundColor: '#f1f5f9',
-                                                        padding: '0.1rem 0.4rem',
-                                                        borderRadius: '3px'
+                                                        padding: '0.25rem 0.75rem',
+                                                        borderRadius: '12px',
+                                                        fontSize: '0.78rem',
+                                                        fontWeight: 700,
+                                                        backgroundColor: '#dcfce7',
+                                                        color: '#15803d',
+                                                        border: '1px solid #86efac'
                                                     }}
                                                 >
-                                                    Card: {att.farmCardNumber}
+                                                    ● PRESENT & WORKING
+                                                </span>
+                                            ) : (
+                                                <span
+                                                    style={{
+                                                        padding: '0.25rem 0.75rem',
+                                                        borderRadius: '12px',
+                                                        fontSize: '0.78rem',
+                                                        fontWeight: 700,
+                                                        backgroundColor: att.status === 'Late' ? '#fef3c7' : '#f1f5f9',
+                                                        color: att.status === 'Late' ? '#b45309' : '#475569'
+                                                    }}
+                                                >
+                                                    {att.timeOut ? `Clocked Out (${att.status})` : att.status}
                                                 </span>
                                             )}
                                         </div>
-                                        <div className="text-light" style={{ fontSize: '0.8rem', display: 'flex', alignItems: 'center', gap: '0.5rem', flexWrap: 'wrap' }}>
-                                            <span>
-                                                In: <strong style={{ color: att.status === 'Late' ? '#c2410c' : 'inherit' }}>{att.timeIn}</strong>
-                                            </span>
-                                            <span>•</span>
-                                            <span>
-                                                Out: <strong style={{ color: att.timeOut ? '#15803d' : '#64748b' }}>{att.timeOut || 'Working...'}</strong>
-                                            </span>
-                                            {att.position && (
-                                                <>
-                                                    <span>•</span>
-                                                    <span>{att.position}</span>
-                                                </>
-                                            )}
-                                            {att.phoneNumber && (
-                                                <>
-                                                    <span>•</span>
-                                                    <span>Tel: {att.phoneNumber}</span>
-                                                </>
-                                            )}
-                                        </div>
                                     </div>
-
-                                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
-                                        <span
-                                            style={{
-                                                padding: '0.25rem 0.75rem',
-                                                borderRadius: '12px',
-                                                fontSize: '0.78rem',
-                                                fontWeight: 700,
-                                                backgroundColor: att.status === 'Present' ? '#dcfce7' : att.status === 'Late' ? '#fef3c7' : '#fee2e2',
-                                                color: att.status === 'Present' ? '#15803d' : att.status === 'Late' ? '#b45309' : '#b91c1c'
-                                            }}
-                                        >
-                                            {att.status}
-                                        </span>
-                                    </div>
-                                </div>
-                            ))
+                                );
+                            })
                         )}
                     </div>
                 </div>
