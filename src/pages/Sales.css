@@ -1,0 +1,101 @@
+.sales-order-cards {
+    flex-direction: column;
+    width: 100%;
+    min-width: 0;
+    gap: 0.5rem;
+}
+
+.sales-order-card {
+    display: flex;
+    flex-direction: column;
+    gap: 0.35rem;
+    padding: 0.65rem !important;
+}
+
+.sales-order-heading {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    gap: 0.5rem;
+}
+
+.sales-order-heading > div {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: baseline;
+    gap: 0.35rem;
+    min-width: 0;
+}
+
+.sales-invoice {
+    color: var(--color-primary);
+    font-size: 0.82rem;
+    overflow-wrap: anywhere;
+}
+
+.sales-order-date {
+    font-size: 0.75rem;
+}
+
+.sales-customer {
+    display: flex;
+    flex-direction: column;
+    gap: 0.1rem;
+    font-size: 0.85rem;
+    overflow-wrap: anywhere;
+}
+
+.sales-customer .text-light {
+    font-size: 0.78rem;
+}
+
+.sales-order-summary {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 0.35rem;
+    padding: 0.4rem;
+    border-radius: 6px;
+    background: var(--color-background);
+    font-size: 0.75rem;
+}
+
+.sales-order-summary > div {
+    display: flex;
+    flex-direction: column;
+    gap: 0.15rem;
+    min-width: 0;
+}
+
+.sales-order-summary strong {
+    white-space: nowrap;
+    font-size: 0.75rem;
+}
+
+.sales-cash-paid {
+    color: #16a34a;
+}
+
+.sales-receipt-button {
+    align-self: flex-start;
+    min-height: 40px;
+    padding: 0.4rem 0.65rem;
+    font-size: 0.8rem;
+}
+
+.sales-empty-state {
+    padding: 1rem !important;
+    color: var(--color-text-light);
+    text-align: center;
+}
+
+@media (max-width: 380px) {
+    .sales-order-summary {
+        font-size: 0.7rem;
+        gap: 0.25rem;
+        padding: 0.35rem;
+    }
+
+    .sales-order-summary strong {
+        font-size: 0.7rem;
+    }
+}

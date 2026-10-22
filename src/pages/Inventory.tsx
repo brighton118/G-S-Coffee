@@ -1,0 +1,1179 @@
+import React, { useState } from 'react';
+import { useLiveQuery } from 'dexie-react-hooks';
+import { db, FarmExpense, InventoryItem } from '../db';
+import { 
+    Plus, 
+    Search, 
+    Download, 
+    AlertTriangle, 
+    DollarSign, 
+    RefreshCw,
+    X,
+    ArrowDownRight,
+    ArrowUpRight,
+    Wrench,
+    Bug,
+    Sparkles,
+    Sprout,
+    Trash2
+} from 'lucide-react';
+import { generateFarmExpensesPDF, generateInventoryPDF } from '../utils/pdfGenerator';
+import { isStockLow, calculateInventoryValuation } from '../utils/calculations';
+import { 
+    deleteAllInventorySystemWide, 
+    deleteSingleInventoryItemSystemWide,
+    deleteAllExpensesSystemWide,
+    deleteSingleExpenseSystemWide
+} from '../clearDemoData';
+import { firestoreSyncService } from '../services/firestoreSync';
+import { useUserRole } from '../context/UserRoleContext';
+
+const CATEGORIES = [
+    { name: 'Fertilizers', icon: Sparkles, color: '#16a34a' },
+    { name: 'Pesticides', icon: Bug, color: '#ea580c' },
+    { name: 'Farm Tools', icon: Wrench, color: '#2563eb' },
+    { name: 'Nursery Supplies', icon: Sprout, color: '#0d9488' }
+];
+
+const PREDEFINED_NURSERY_SUPPLIES = [
+    'Black soil',
+    'Sand',
+    'Metal rods',
+    'UV polythene paper',
+    'Shade nets',
+    'Potting bags'
+];
+
+const EXPENSE_CATEGORIES = ['Transport', 'Fuel', 'Repairs', 'Communication', 'Other Farm Expense'];
+
+const Inventory: React.FC = () => {
+    const { isAdmin, isStaff, canEdit } = useUserRole();
+    const [activeSection, setActiveSection] = useState<'inventory' | 'expenses'>('inventory');
+    const [selectedCategory, setSelectedCategory] = useState<string>('All');
+    const [searchTerm, setSearchTerm] = useState('');
+    const [showAddModal, setShowAddModal] = useState(false);
+    const [showExpenseModal, setShowExpenseModal] = useState(false);
+    const [showStockModal, setShowStockModal] = useState(false);
+    const [showDeleteAllModal, setShowDeleteAllModal] = useState(false);
+    const [showDeleteAllExpensesModal, setShowDeleteAllExpensesModal] = useState(false);
+    const [itemToDelete, setItemToDelete] = useState<InventoryItem | null>(null);
+    const [expenseToDelete, setExpenseToDelete] = useState<FarmExpense | null>(null);
+    const [isDeleting, setIsDeleting] = useState(false);
+    const [deleteError, setDeleteError] = useState('');
+    const [selectedItemForStock, setSelectedItemForStock] = useState<InventoryItem | null>(null);
+    const [stockAction, setStockAction] = useState<'IN' | 'OUT'>('IN');
+    const [stockChangeAmount, setStockChangeAmount] = useState<number>(10);
+    const [stockReason, setStockReason] = useState<string>('Routine Stock Purchase');
+    const [expenseData, setExpenseData] = useState({
+        category: 'Transport',
+        description: '',
+        amount: 0,
+        date: new Date().toISOString().slice(0, 10),
+        paidTo: '',
+        recordedBy: '',
+        notes: ''
+    });
+
+    // Add form state - set clean defaults for new user data entry
+    const [formData, setFormData] = useState<{
+        name: string;
+        category: string;
+        type: string;
+        unit: string;
+        quantity: number;
+        purchasePrice: number;
+        supplier: string;
+        minStockLevel: number;
+        condition: string;
+        location: string;
+        notes: string;
+    }>({
+        name: '',
+        category: 'Fertilizers',
+        type: '',
+        unit: 'kg',
+        quantity: 0,
+        purchasePrice: 0,
+        supplier: '',
+        minStockLevel: 5,
+        condition: 'New',
+        location: '',
+        notes: ''
+    });
+
+    const items = useLiveQuery(() => db.inventoryItems.toArray()) || [];
+    const transactions = useLiveQuery(() => db.inventoryTransactions.toArray()) || [];
+    const expenses = useLiveQuery(() => db.farmExpenses.toArray()) || [];
+
+    const handleConfirmDeleteAll = async () => {
+        setIsDeleting(true);
+        setDeleteError('');
+        try {
+            await deleteAllInventorySystemWide();
+            setShowDeleteAllModal(false);
+        } catch (err: any) {
+            console.error('Failed to delete all inventory items:', err);
+            setDeleteError(err?.message || 'Failed to delete all inventory items. Please try again.');
+        } finally {
+            setIsDeleting(false);
+        }
+    };
+
+    const handleConfirmDeleteSingle = async () => {
+        if (!itemToDelete) return;
+        setIsDeleting(true);
+        setDeleteError('');
+        try {
+            await deleteSingleInventoryItemSystemWide(itemToDelete.inventoryId);
+            setItemToDelete(null);
+        } catch (err: any) {
+            console.error('Failed to delete inventory item:', err);
+            setDeleteError(err?.message || 'Failed to delete inventory item. Please try again.');
+        } finally {
+            setIsDeleting(false);
+        }
+    };
+
+    const handleConfirmDeleteAllExpenses = async () => {
+        setIsDeleting(true);
+        setDeleteError('');
+        try {
+            await deleteAllExpensesSystemWide();
+            setShowDeleteAllExpensesModal(false);
+        } catch (err: any) {
+            console.error('Failed to delete all farm expenses:', err);
+            setDeleteError(err?.message || 'Failed to delete expenses. Please try again.');
+        } finally {
+            setIsDeleting(false);
+        }
+    };
+
+    const handleConfirmDeleteSingleExpense = async () => {
+        if (!expenseToDelete) return;
+        setIsDeleting(true);
+        setDeleteError('');
+        try {
+            await deleteSingleExpenseSystemWide(expenseToDelete.expenseId, expenseToDelete.id);
+            setExpenseToDelete(null);
+        } catch (err: any) {
+            console.error('Failed to delete farm expense:', err);
+            setDeleteError(err?.message || 'Failed to delete expense. Please try again.');
+        } finally {
+            setIsDeleting(false);
+        }
+    };
+
+    // Filter items
+    const filteredItems = items.filter(item => {
+        const matchesCategory = selectedCategory === 'All' || item.category === selectedCategory;
+        const matchesSearch = 
+            item.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+            item.inventoryId.toLowerCase().includes(searchTerm.toLowerCase()) ||
+            (item.supplier && item.supplier.toLowerCase().includes(searchTerm.toLowerCase()));
+        return matchesCategory && matchesSearch;
+    });
+
+    // Valuation and Stats
+    const totalValuation = calculateInventoryValuation(items);
+    const lowStockCount = items.filter(i => isStockLow(i.quantity, i.minStockLevel) && i.status === 'Active').length;
+    const totalActiveItems = items.filter(i => i.status === 'Active').length;
+    const totalMiscExpenses = expenses.reduce((sum, expense) => sum + expense.amount, 0);
+
+    const handleCreateExpense = async (e: React.FormEvent) => {
+        e.preventDefault();
+        if (!expenseData.description.trim() || !Number.isFinite(expenseData.amount) || expenseData.amount <= 0) {
+            alert('Enter an expense description and an amount greater than zero.');
+            return;
+        }
+
+        const newExpense: FarmExpense = {
+            expenseId: `GSF-EXP-${crypto.randomUUID()}`,
+            category: expenseData.category,
+            description: expenseData.description.trim(),
+            amount: Number(expenseData.amount),
+            date: expenseData.date,
+            paidTo: expenseData.paidTo.trim() || undefined,
+            recordedBy: expenseData.recordedBy.trim() || 'Farm Manager',
+            notes: expenseData.notes.trim() || undefined
+        };
+
+        await db.farmExpenses.add(newExpense);
+        void firestoreSyncService.saveFarmExpense(newExpense);
+        setShowExpenseModal(false);
+        setExpenseData({
+            category: 'Transport',
+            description: '',
+            amount: 0,
+            date: new Date().toISOString().slice(0, 10),
+            paidTo: '',
+            recordedBy: '',
+            notes: ''
+        });
+    };
+
+    const handleCreateItem = async (e: React.FormEvent) => {
+        e.preventDefault();
+        if (!formData.name.trim()) {
+            alert('Please specify an item name.');
+            return;
+        }
+
+        const count = await db.inventoryItems.count();
+        const categoryCode = formData.category.substring(0, 3).toUpperCase();
+        const newId = `GSF-INV-${categoryCode}-${(count + 1).toString().padStart(4, '0')}`;
+        const today = new Date().toISOString();
+
+        const newItem: InventoryItem = {
+            inventoryId: newId,
+            name: formData.name.trim(),
+            category: formData.category,
+            type: formData.type || undefined,
+            unit: formData.unit,
+            quantity: Number(formData.quantity) || 0,
+            minStockLevel: Number(formData.minStockLevel) || 5,
+            supplier: formData.supplier || 'Direct Farm Purchase',
+            purchasePrice: Number(formData.purchasePrice) || 0,
+            purchaseDate: today.split('T')[0],
+            dateReceived: today.split('T')[0],
+            condition: formData.category === 'Farm Tools' ? (formData.condition as any) : undefined,
+            location: formData.location || 'Central Store',
+            status: 'Active',
+            notes: formData.notes
+        };
+
+        await db.inventoryItems.add(newItem);
+        void firestoreSyncService.saveInventoryItem(newItem);
+
+        // Initial Transaction Record
+        const initialTx = {
+            inventoryId: newId,
+            itemName: newItem.name,
+            quantityChange: newItem.quantity,
+            type: 'Purchase',
+            unitPrice: newItem.purchasePrice,
+            totalCost: newItem.quantity * newItem.purchasePrice,
+            date: today,
+            user: 'Store Manager',
+            reason: 'Initial Stocking',
+            notes: formData.notes
+        };
+        await db.inventoryTransactions.add(initialTx);
+        void firestoreSyncService.saveInventoryTransaction(initialTx);
+
+        setShowAddModal(false);
+        setFormData({
+            name: '',
+            category: 'Fertilizers',
+            type: '',
+            unit: 'kg',
+            quantity: 0,
+            purchasePrice: 0,
+            supplier: '',
+            minStockLevel: 5,
+            condition: 'New',
+            location: '',
+            notes: ''
+        });
+    };
+
+    const handleStockAdjustment = async (e: React.FormEvent) => {
+        e.preventDefault();
+        if (!selectedItemForStock || stockChangeAmount <= 0) return;
+
+        const isStockOut = stockAction === 'OUT';
+        if (isStockOut && selectedItemForStock.quantity < stockChangeAmount) {
+            alert(`Cannot issue ${stockChangeAmount} ${selectedItemForStock.unit}. Current stock is only ${selectedItemForStock.quantity} ${selectedItemForStock.unit}.`);
+            return;
+        }
+
+        const delta = isStockOut ? -stockChangeAmount : stockChangeAmount;
+        const newQuantity = selectedItemForStock.quantity + delta;
+        const today = new Date().toISOString();
+
+        await db.inventoryItems.update(selectedItemForStock.inventoryId, {
+            quantity: newQuantity
+        });
+        void firestoreSyncService.saveInventoryItem({ ...selectedItemForStock, quantity: newQuantity });
+
+        const adjustmentTx = {
+            inventoryId: selectedItemForStock.inventoryId,
+            itemName: selectedItemForStock.name,
+            quantityChange: delta,
+            type: isStockOut ? 'Stock usage' : 'Stock addition',
+            unitPrice: selectedItemForStock.purchasePrice,
+            totalCost: Math.abs(delta) * selectedItemForStock.purchasePrice,
+            date: today,
+            user: 'Store Manager',
+            reason: stockReason,
+            notes: `${isStockOut ? 'Issued for' : 'Received into'} nursery operations`
+        };
+        await db.inventoryTransactions.add(adjustmentTx);
+        void firestoreSyncService.saveInventoryTransaction(adjustmentTx);
+
+        setShowStockModal(false);
+        setSelectedItemForStock(null);
+        setStockChangeAmount(10);
+    };
+
+    return (
+        <div className="page-wrapper" style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
+            {/* Header */}
+            <div className="header-action" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '1rem' }}>
+                <div>
+                    <h1 style={{ margin: 0 }}>Farm & Nursery Inventory</h1>
+                    <p className="text-light" style={{ margin: '0.25rem 0 0 0' }}>
+                        Manage farm stock and record transport and other miscellaneous operating expenses.
+                    </p>
+                </div>
+                <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }}>
+                    {activeSection === 'inventory' ? (
+                        <>
+                            <button
+                                className="btn btn-secondary"
+                                onClick={() => generateInventoryPDF(items, transactions)}
+                                disabled={items.length === 0}
+                            >
+                                <Download size={16} /> Export Inventory PDF
+                            </button>
+                            {isAdmin && items.length > 0 && (
+                                <button
+                                    className="btn btn-outline-danger"
+                                    onClick={() => {
+                                        setDeleteError('');
+                                        setShowDeleteAllModal(true);
+                                    }}
+                                    title="Delete all inventory items from the system"
+                                >
+                                    <Trash2 size={16} /> Delete All Inventory
+                                </button>
+                            )}
+                            {canEdit ? (
+                                <button
+                                    className="btn btn-primary"
+                                    onClick={() => {
+                                        setFormData({
+                                            name: '',
+                                            category: selectedCategory === 'All' ? 'Fertilizers' : selectedCategory,
+                                            type: '',
+                                            unit: selectedCategory === 'Pesticides' ? 'Litres' : selectedCategory === 'Farm Tools' ? 'Pieces' : 'kg',
+                                            quantity: 0,
+                                            purchasePrice: 0,
+                                            supplier: '',
+                                            minStockLevel: 5,
+                                            condition: 'New',
+                                            location: '',
+                                            notes: ''
+                                        });
+                                        setShowAddModal(true);
+                                    }}
+                                >
+                                    <Plus size={18} /> Add Inventory Item
+                                </button>
+                            ) : (
+                                <span className="badge badge-info" style={{ alignSelf: 'center', padding: '0.45rem 0.85rem', fontWeight: 600 }}>
+                                    Staff View-Only
+                                </span>
+                            )}
+                        </>
+                    ) : (
+                        <>
+                            {isAdmin && expenses.length > 0 && (
+                                <button
+                                    type="button"
+                                    className="btn btn-outline-danger"
+                                    onClick={() => {
+                                        setDeleteError('');
+                                        setShowDeleteAllExpensesModal(true);
+                                    }}
+                                >
+                                    <Trash2 size={16} /> Delete All Expenses
+                                </button>
+                            )}
+                            <button className="btn btn-secondary" onClick={() => generateFarmExpensesPDF(expenses)}>
+                                <Download size={16} /> Export Expenses PDF
+                            </button>
+                            {canEdit ? (
+                                <button className="btn btn-primary" onClick={() => setShowExpenseModal(true)}>
+                                    <Plus size={18} /> Record Farm Expense
+                                </button>
+                            ) : (
+                                <span className="badge badge-info" style={{ alignSelf: 'center', padding: '0.45rem 0.85rem', fontWeight: 600 }}>
+                                    Staff View-Only
+                                </span>
+                            )}
+                        </>
+                    )}
+                </div>
+            </div>
+
+            <div role="tablist" aria-label="Inventory sections" style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }}>
+                <button
+                    type="button"
+                    role="tab"
+                    aria-selected={activeSection === 'inventory'}
+                    className={`btn ${activeSection === 'inventory' ? 'btn-primary' : 'btn-secondary'}`}
+                    onClick={() => setActiveSection('inventory')}
+                >
+                    Inventory & Stock
+                </button>
+                <button
+                    type="button"
+                    role="tab"
+                    aria-selected={activeSection === 'expenses'}
+                    className={`btn ${activeSection === 'expenses' ? 'btn-primary' : 'btn-secondary'}`}
+                    onClick={() => setActiveSection('expenses')}
+                >
+                    Miscellaneous Expenses ({expenses.length})
+                </button>
+            </div>
+
+            {activeSection === 'expenses' ? (
+                <>
+                    <div className="stats-grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: '1rem' }}>
+                        <div className="stat-card card">
+                            <div className="stat-header"><span className="stat-title">RECORDED FARM EXPENSES</span><DollarSign className="stat-icon text-primary" size={20} /></div>
+                            <div className="stat-value">{expenses.length}</div>
+                            <div className="stat-change text-light">Transport and miscellaneous costs</div>
+                        </div>
+                        <div className="stat-card card">
+                            <div className="stat-header"><span className="stat-title">TOTAL EXPENSES</span><DollarSign className="stat-icon text-danger" size={20} /></div>
+                            <div className="stat-value">UGX {totalMiscExpenses.toLocaleString()}</div>
+                            <div className="stat-change text-light">All recorded miscellaneous expenses</div>
+                        </div>
+                    </div>
+                    <div className="card table-responsive">
+                        <table className="data-table" style={{ width: '100%', borderCollapse: 'collapse' }}>
+                            <thead>
+                                <tr>
+                                    <th>Date</th>
+                                    <th>Category</th>
+                                    <th>Description</th>
+                                    <th>Paid To</th>
+                                    <th>Recorded By</th>
+                                    <th style={{ textAlign: 'right' }}>Amount (UGX)</th>
+                                    <th style={{ textAlign: 'center', width: '70px' }}>Action</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {expenses.length === 0 ? (
+                                    <tr><td colSpan={7} style={{ textAlign: 'center', padding: '2rem', color: 'var(--color-text-light)' }}>No farm expenses recorded yet.</td></tr>
+                                ) : [...expenses].sort((a, b) => b.date.localeCompare(a.date) || (b.id || 0) - (a.id || 0)).map(expense => (
+                                    <tr key={expense.id}>
+                                        <td>{expense.date}</td>
+                                        <td>{expense.category}</td>
+                                        <td>{expense.description}{expense.notes && <div className="text-light" style={{ fontSize: '0.8rem' }}>{expense.notes}</div>}</td>
+                                        <td>{expense.paidTo || '-'}</td>
+                                        <td>{expense.recordedBy}</td>
+                                        <td style={{ textAlign: 'right' }}><strong>UGX {expense.amount.toLocaleString()}</strong></td>
+                                        <td style={{ textAlign: 'center' }}>
+                                            {isAdmin ? (
+                                                <button
+                                                    className="btn btn-outline-danger"
+                                                    style={{ padding: '0.3rem 0.5rem', fontSize: '0.8rem' }}
+                                                    onClick={() => {
+                                                        setDeleteError('');
+                                                        setExpenseToDelete(expense);
+                                                    }}
+                                                    title="Delete Expense"
+                                                    aria-label={`Delete expense ${expense.description}`}
+                                                >
+                                                    <Trash2 size={13} />
+                                                </button>
+                                            ) : (
+                                                <span className="text-light" style={{ fontSize: '0.75rem' }}>-</span>
+                                            )}
+                                        </td>
+                                    </tr>
+                                ))}
+                            </tbody>
+                            {expenses.length > 0 && (
+                                <tfoot>
+                                    <tr><th colSpan={5} style={{ textAlign: 'right' }}>Total</th><th style={{ textAlign: 'right' }}>UGX {totalMiscExpenses.toLocaleString()}</th><th></th></tr>
+                                </tfoot>
+                            )}
+                        </table>
+                    </div>
+                </>
+            ) : (
+            <>
+            {/* KPI Cards */}
+            <div className="stats-grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: '1rem' }}>
+                <div className="stat-card card">
+                    <div className="stat-header">
+                        <span className="stat-title">Inventory Valuation</span>
+                        <DollarSign className="stat-icon text-success" size={20} />
+                    </div>
+                    <div className="stat-value" style={{ color: 'var(--color-primary)' }}>
+                        UGX {totalValuation.toLocaleString()}
+                    </div>
+                    <div className="stat-change text-light">{totalActiveItems} Active SKUs</div>
+                </div>
+
+                <div className="stat-card card">
+                    <div className="stat-header">
+                        <span className="stat-title">Low Stock Alerts</span>
+                        <AlertTriangle className="stat-icon text-warning" size={20} />
+                    </div>
+                    <div className="stat-value" style={{ color: lowStockCount > 0 ? '#ea580c' : 'var(--color-text)' }}>
+                        {lowStockCount}
+                    </div>
+                    <div className="stat-change text-light">Items at or below reorder level</div>
+                </div>
+
+                <div className="stat-card card">
+                    <div className="stat-header">
+                        <span className="stat-title">Stock Movements</span>
+                        <RefreshCw className="stat-icon text-primary" size={20} />
+                    </div>
+                    <div className="stat-value">
+                        {transactions.length}
+                    </div>
+                    <div className="stat-change text-light">Audited stock transactions</div>
+                </div>
+            </div>
+
+            {/* Category Tabs */}
+            <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap', borderBottom: '1px solid var(--color-border)', paddingBottom: '0.5rem' }}>
+                <button 
+                    className={`btn ${selectedCategory === 'All' ? 'btn-primary' : 'btn-secondary'}`}
+                    onClick={() => setSelectedCategory('All')}
+                    style={{ padding: '0.4rem 0.85rem' }}
+                >
+                    All Categories ({items.length})
+                </button>
+                {CATEGORIES.map(cat => {
+                    const count = items.filter(i => i.category === cat.name).length;
+                    const IconComponent = cat.icon;
+                    return (
+                        <button 
+                            key={cat.name}
+                            className={`btn ${selectedCategory === cat.name ? 'btn-primary' : 'btn-secondary'}`}
+                            onClick={() => setSelectedCategory(cat.name)}
+                            style={{ display: 'inline-flex', alignItems: 'center', gap: '0.4rem', padding: '0.4rem 0.85rem' }}
+                        >
+                            <IconComponent size={16} />
+                            {cat.name} ({count})
+                        </button>
+                    );
+                })}
+            </div>
+
+            {/* Filters */}
+            <div className="card" style={{ padding: '0.75rem 1rem', display: 'flex', gap: '1rem', alignItems: 'center' }}>
+                <div style={{ position: 'relative', width: '100%', maxWidth: '400px' }}>
+                    <Search size={18} style={{ position: 'absolute', left: '10px', top: '50%', transform: 'translateY(-50%)', color: 'var(--color-text-light)' }} />
+                    <input 
+                        type="text" 
+                        className="form-input" 
+                        style={{ paddingLeft: '2.25rem', width: '100%' }}
+                        placeholder="Search by name, SKU, or supplier..."
+                        value={searchTerm}
+                        onChange={e => setSearchTerm(e.target.value)}
+                    />
+                </div>
+            </div>
+
+            {/* Items Table */}
+            <div className="card table-responsive">
+                <table className="data-table" style={{ width: '100%', borderCollapse: 'collapse' }}>
+                    <thead>
+                        <tr>
+                            <th style={{ whiteSpace: 'nowrap', padding: '0.75rem 1rem' }}>Item</th>
+                            <th style={{ whiteSpace: 'nowrap', padding: '0.75rem 1rem' }}>Category</th>
+                            <th style={{ whiteSpace: 'nowrap', padding: '0.75rem 1rem' }}>Stock Level</th>
+                            <th style={{ whiteSpace: 'nowrap', textAlign: 'right', padding: '0.75rem 1rem' }}>Unit Cost</th>
+                            <th style={{ whiteSpace: 'nowrap', textAlign: 'right', padding: '0.75rem 1rem' }}>Total Valuation</th>
+                            <th style={{ padding: '0.75rem 1rem' }}>Supplier / Location</th>
+                            <th style={{ whiteSpace: 'nowrap', textAlign: 'right', padding: '0.75rem 1rem' }}>Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {filteredItems.length === 0 ? (
+                            <tr>
+                                <td colSpan={7} style={{ textAlign: 'center', padding: '3rem', color: 'var(--color-text-light)' }}>
+                                    No inventory items found. Click "Add Inventory Item" to register supplies.
+                                </td>
+                            </tr>
+                        ) : (
+                            filteredItems.map(item => {
+                                const isLow = isStockLow(item.quantity, item.minStockLevel);
+
+                                return (
+                                    <tr key={item.inventoryId} style={{ opacity: item.status === 'Archived' ? 0.6 : 1 }}>
+                                        <td style={{ padding: '0.75rem 1rem' }}>
+                                            <div><strong>{item.name}</strong></div>
+                                            <div className="text-light" style={{ fontSize: '0.8rem' }}>{item.inventoryId} {item.type && `• ${item.type}`}</div>
+                                        </td>
+                                        <td style={{ padding: '0.75rem 1rem', whiteSpace: 'nowrap' }}>
+                                            <span className="badge badge-primary">{item.category}</span>
+                                        </td>
+                                        <td style={{ padding: '0.75rem 1rem', whiteSpace: 'nowrap' }}>
+                                            <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
+                                                <strong style={{ fontSize: '1rem', color: isLow ? '#ea580c' : 'var(--color-text)' }}>
+                                                    {item.quantity.toLocaleString()} {item.unit}
+                                                </strong>
+                                                {isLow && item.status === 'Active' && (
+                                                    <span className="badge badge-warning" style={{ fontSize: '0.7rem' }}>Low</span>
+                                                )}
+                                            </div>
+                                            <div className="text-light" style={{ fontSize: '0.75rem' }}>Min: {item.minStockLevel} {item.unit}</div>
+                                        </td>
+                                        <td style={{ padding: '0.75rem 1rem', textAlign: 'right', whiteSpace: 'nowrap' }}>
+                                            UGX {item.purchasePrice.toLocaleString()}
+                                        </td>
+                                        <td style={{ padding: '0.75rem 1rem', textAlign: 'right', whiteSpace: 'nowrap' }}>
+                                            <strong>UGX {(item.quantity * item.purchasePrice).toLocaleString()}</strong>
+                                        </td>
+                                        <td style={{ padding: '0.75rem 1rem' }}>
+                                            <div>{item.supplier || 'N/A'}</div>
+                                            <div className="text-light" style={{ fontSize: '0.75rem' }}>Location: {item.location || 'Store'}</div>
+                                        </td>
+                                        <td style={{ padding: '0.75rem 1rem', textAlign: 'right', whiteSpace: 'nowrap' }}>
+                                            <div style={{ display: 'inline-flex', gap: '0.4rem', justifyContent: 'flex-end', alignItems: 'center' }}>
+                                                {canEdit && (
+                                                    <button
+                                                        className="btn btn-secondary"
+                                                        style={{ padding: '0.3rem 0.6rem', fontSize: '0.8rem' }}
+                                                        onClick={() => {
+                                                            setSelectedItemForStock(item);
+                                                            setStockAction('IN');
+                                                            setStockChangeAmount(10);
+                                                            setStockReason('Stock Adjustment');
+                                                            setShowStockModal(true);
+                                                        }}
+                                                        title="Adjust stock in/out"
+                                                    >
+                                                        <RefreshCw size={13} /> Stock
+                                                    </button>
+                                                )}
+                                                {isAdmin && (
+                                                    <button
+                                                        className="btn btn-outline-danger"
+                                                        style={{ padding: '0.3rem 0.5rem', fontSize: '0.8rem' }}
+                                                        onClick={() => {
+                                                            setDeleteError('');
+                                                            setItemToDelete(item);
+                                                        }}
+                                                        title="Delete item"
+                                                        aria-label={`Delete ${item.name}`}
+                                                    >
+                                                        <Trash2 size={13} />
+                                                    </button>
+                                                )}
+                                                {isStaff && (
+                                                    <span className="text-light" style={{ fontSize: '0.75rem' }}>View-Only</span>
+                                                )}
+                                            </div>
+                                        </td>
+                                    </tr>
+                                );
+                            })
+                        )}
+                    </tbody>
+                </table>
+            </div>
+
+            {/* Add Item Modal */}
+            {showAddModal && (
+                <div className="modal-overlay">
+                    <div className="modal-content card" style={{ maxWidth: '600px', width: '100%' }}>
+                        <div className="modal-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.25rem' }}>
+                            <h2 style={{ margin: 0 }}>Register New Inventory Item</h2>
+                            <button className="btn btn-secondary" style={{ padding: '0.25rem', border: 'none' }} onClick={() => setShowAddModal(false)}>
+                                <X size={18} />
+                            </button>
+                        </div>
+
+                        <form onSubmit={handleCreateItem} style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+                            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
+                                <div className="form-group">
+                                    <label className="form-label">Category *</label>
+                                    <select 
+                                        className="form-input"
+                                        value={formData.category}
+                                        onChange={e => {
+                                            const cat = e.target.value;
+                                            setFormData({ 
+                                                ...formData, 
+                                                category: cat,
+                                                unit: cat === 'Fertilizers' || cat === 'Nursery Supplies' ? 'kg' : cat === 'Pesticides' ? 'Litres' : 'Pieces'
+                                            });
+                                        }}
+                                    >
+                                        <option value="Fertilizers">Fertilizers</option>
+                                        <option value="Pesticides">Pesticides</option>
+                                        <option value="Farm Tools">Farm Tools</option>
+                                        <option value="Nursery Supplies">Nursery Supplies</option>
+                                    </select>
+                                </div>
+
+                                <div className="form-group">
+                                    <label className="form-label">Item Name *</label>
+                                    {formData.category === 'Nursery Supplies' ? (
+                                        <div>
+                                            <input 
+                                                type="text" 
+                                                required 
+                                                list="nursery-supplies-suggestions"
+                                                className="form-input" 
+                                                placeholder="e.g. Black soil, Sand..."
+                                                value={formData.name}
+                                                onChange={e => setFormData({ ...formData, name: e.target.value })}
+                                            />
+                                            <datalist id="nursery-supplies-suggestions">
+                                                {PREDEFINED_NURSERY_SUPPLIES.map(s => (
+                                                    <option key={s} value={s} />
+                                                ))}
+                                            </datalist>
+                                        </div>
+                                    ) : (
+                                        <input 
+                                            type="text" 
+                                            required 
+                                            className="form-input" 
+                                            placeholder="e.g. NPK 17:17:17, Pruning Shears..."
+                                            value={formData.name}
+                                            onChange={e => setFormData({ ...formData, name: e.target.value })}
+                                        />
+                                    )}
+                                </div>
+                            </div>
+
+                            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '1rem' }}>
+                                <div className="form-group">
+                                    <label className="form-label">Unit of Measure *</label>
+                                    <input 
+                                        type="text" 
+                                        required 
+                                        className="form-input" 
+                                        placeholder="kg, Litres, Bags, Pieces"
+                                        value={formData.unit}
+                                        onChange={e => setFormData({ ...formData, unit: e.target.value })}
+                                    />
+                                </div>
+                                <div className="form-group">
+                                    <label className="form-label">Initial Quantity *</label>
+                                    <input 
+                                        type="number" 
+                                        required 
+                                        min="0"
+                                        className="form-input" 
+                                        value={formData.quantity || ''}
+                                        onChange={e => setFormData({ ...formData, quantity: Number(e.target.value) })}
+                                    />
+                                </div>
+                                <div className="form-group">
+                                    <label className="form-label">Min Stock Threshold *</label>
+                                    <input 
+                                        type="number" 
+                                        required 
+                                        min="0"
+                                        className="form-input" 
+                                        value={formData.minStockLevel || ''}
+                                        onChange={e => setFormData({ ...formData, minStockLevel: Number(e.target.value) })}
+                                    />
+                                </div>
+                            </div>
+
+                            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
+                                <div className="form-group">
+                                    <label className="form-label">Purchase Unit Price (UGX) *</label>
+                                    <input 
+                                        type="number" 
+                                        required 
+                                        min="0"
+                                        className="form-input" 
+                                        value={formData.purchasePrice || ''}
+                                        onChange={e => setFormData({ ...formData, purchasePrice: Number(e.target.value) })}
+                                    />
+                                </div>
+                                <div className="form-group">
+                                    <label className="form-label">Supplier Name</label>
+                                    <input 
+                                        type="text" 
+                                        className="form-input" 
+                                        placeholder="e.g. Uganda Crop Care Ltd"
+                                        value={formData.supplier}
+                                        onChange={e => setFormData({ ...formData, supplier: e.target.value })}
+                                    />
+                                </div>
+                            </div>
+
+                            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
+                                {formData.category === 'Farm Tools' && (
+                                    <div className="form-group">
+                                        <label className="form-label">Tool Condition</label>
+                                        <select 
+                                            className="form-input"
+                                            value={formData.condition}
+                                            onChange={e => setFormData({ ...formData, condition: e.target.value })}
+                                        >
+                                            <option value="New">New</option>
+                                            <option value="Good">Good</option>
+                                            <option value="Fair">Fair</option>
+                                            <option value="Needs Repair">Needs Repair</option>
+                                        </select>
+                                    </div>
+                                )}
+                                <div className="form-group">
+                                    <label className="form-label">Storage Location</label>
+                                    <input 
+                                        type="text" 
+                                        className="form-input" 
+                                        placeholder="e.g. Store Section 2"
+                                        value={formData.location}
+                                        onChange={e => setFormData({ ...formData, location: e.target.value })}
+                                    />
+                                </div>
+                            </div>
+
+                            <div style={{ display: 'flex', gap: '1rem', marginTop: '0.5rem' }}>
+                                <button type="button" className="btn btn-secondary" style={{ flex: 1 }} onClick={() => setShowAddModal(false)}>
+                                    Cancel
+                                </button>
+                                <button type="submit" className="btn btn-primary" style={{ flex: 1 }}>
+                                    Save Inventory Item
+                                </button>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+            )}
+
+            {/* Stock In / Out Modal */}
+            {showStockModal && selectedItemForStock && (
+                <div className="modal-overlay">
+                    <div className="modal-content card" style={{ maxWidth: '480px', width: '100%' }}>
+                        <div className="modal-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.25rem' }}>
+                            <h2 style={{ margin: 0 }}>Record Stock Movement</h2>
+                            <button className="btn btn-secondary" style={{ padding: '0.25rem', border: 'none' }} onClick={() => setShowStockModal(false)}>
+                                <X size={18} />
+                            </button>
+                        </div>
+
+                        <form onSubmit={handleStockAdjustment} style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+                            <div style={{ background: 'var(--color-background)', padding: '0.75rem 1rem', borderRadius: '4px' }}>
+                                <div><strong>{selectedItemForStock.name}</strong></div>
+                                <div className="text-light" style={{ fontSize: '0.85rem' }}>
+                                    Current Stock: <strong>{selectedItemForStock.quantity} {selectedItemForStock.unit}</strong> • Valuation: UGX {(selectedItemForStock.quantity * selectedItemForStock.purchasePrice).toLocaleString()}
+                                </div>
+                            </div>
+
+                            <div className="form-group">
+                                <label className="form-label">Movement Type *</label>
+                                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.75rem' }}>
+                                    <button 
+                                        type="button" 
+                                        className={`btn ${stockAction === 'IN' ? 'btn-primary' : 'btn-secondary'}`}
+                                        style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', gap: '0.4rem' }}
+                                        onClick={() => setStockAction('IN')}
+                                    >
+                                        <ArrowDownRight size={18} /> Stock In (Receive)
+                                    </button>
+                                    <button 
+                                        type="button" 
+                                        className={`btn ${stockAction === 'OUT' ? 'btn-danger' : 'btn-secondary'}`}
+                                        style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', gap: '0.4rem' }}
+                                        onClick={() => setStockAction('OUT')}
+                                    >
+                                        <ArrowUpRight size={18} /> Stock Out (Issue)
+                                    </button>
+                                </div>
+                            </div>
+
+                            <div className="form-group">
+                                <label className="form-label">Quantity ({selectedItemForStock.unit}) *</label>
+                                <input 
+                                    type="number" 
+                                    required 
+                                    min="1"
+                                    className="form-input" 
+                                    value={stockChangeAmount || ''}
+                                    onChange={e => setStockChangeAmount(Number(e.target.value))}
+                                />
+                            </div>
+
+                            <div className="form-group">
+                                <label className="form-label">Reason / Destination *</label>
+                                <input 
+                                    type="text" 
+                                    required 
+                                    className="form-input" 
+                                    placeholder={stockAction === 'IN' ? 'e.g. New Supplier Batch, Return' : 'e.g. Nursery Bed 4 Application, Spraying'}
+                                    value={stockReason}
+                                    onChange={e => setStockReason(e.target.value)}
+                                />
+                            </div>
+
+                            <div style={{ display: 'flex', gap: '1rem', marginTop: '0.5rem' }}>
+                                <button type="button" className="btn btn-secondary" style={{ flex: 1 }} onClick={() => setShowStockModal(false)}>
+                                    Cancel
+                                </button>
+                                <button type="submit" className="btn btn-primary" style={{ flex: 1 }}>
+                                    Commit Movement
+                                </button>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+            )}
+            </>
+            )}
+
+            {showExpenseModal && (
+                <div className="modal-overlay">
+                    <div className="modal-content card" style={{ maxWidth: '560px', width: '100%' }}>
+                        <div className="modal-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.25rem' }}>
+                            <h2 style={{ margin: 0 }}>Record Miscellaneous Farm Expense</h2>
+                            <button type="button" className="btn btn-secondary" style={{ padding: '0.25rem', border: 'none' }} onClick={() => setShowExpenseModal(false)} aria-label="Close">
+                                <X size={18} />
+                            </button>
+                        </div>
+                        <form onSubmit={handleCreateExpense} style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+                            <div className="form-group">
+                                <label className="form-label">Expense Category *</label>
+                                <select className="form-input" required value={expenseData.category} onChange={e => setExpenseData({ ...expenseData, category: e.target.value })}>
+                                    {EXPENSE_CATEGORIES.map(category => <option key={category} value={category}>{category}</option>)}
+                                </select>
+                            </div>
+                            <div className="form-group">
+                                <label className="form-label">Description *</label>
+                                <input className="form-input" required value={expenseData.description} onChange={e => setExpenseData({ ...expenseData, description: e.target.value })} placeholder="e.g. Produce delivery transport" />
+                            </div>
+                            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
+                                <div className="form-group">
+                                    <label className="form-label">Amount (UGX) *</label>
+                                    <input type="number" className="form-input" required min="1" step="1" value={expenseData.amount || ''} onChange={e => setExpenseData({ ...expenseData, amount: Number(e.target.value) })} />
+                                </div>
+                                <div className="form-group">
+                                    <label className="form-label">Date *</label>
+                                    <input type="date" className="form-input" required value={expenseData.date} onChange={e => setExpenseData({ ...expenseData, date: e.target.value })} />
+                                </div>
+                            </div>
+                            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
+                                <div className="form-group">
+                                    <label className="form-label">Paid To</label>
+                                    <input className="form-input" value={expenseData.paidTo} onChange={e => setExpenseData({ ...expenseData, paidTo: e.target.value })} placeholder="Recipient or vendor" />
+                                </div>
+                                <div className="form-group">
+                                    <label className="form-label">Recorded By</label>
+                                    <input className="form-input" value={expenseData.recordedBy} onChange={e => setExpenseData({ ...expenseData, recordedBy: e.target.value })} placeholder="Farm Manager" />
+                                </div>
+                            </div>
+                            <div className="form-group">
+                                <label className="form-label">Notes</label>
+                                <textarea className="form-input" rows={2} value={expenseData.notes} onChange={e => setExpenseData({ ...expenseData, notes: e.target.value })} />
+                            </div>
+                            <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '0.75rem' }}>
+                                <button type="button" className="btn btn-secondary" onClick={() => setShowExpenseModal(false)}>Cancel</button>
+                                <button type="submit" className="btn btn-primary">Save Expense</button>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+            )}
+
+            {/* Modal: Confirm Delete All Inventory */}
+            {showDeleteAllModal && (
+                <div className="modal-overlay">
+                    <div className="modal-content card" style={{ maxWidth: '480px', width: '100%' }}>
+                        <div className="modal-header" style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', marginBottom: '1rem' }}>
+                            <div style={{ background: '#fee2e2', borderRadius: '50%', padding: '0.5rem', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                                <AlertTriangle size={24} color="#dc2626" />
+                            </div>
+                            <div>
+                                <h3 style={{ margin: 0, color: '#dc2626' }}>Delete All Inventory Items</h3>
+                                <p style={{ margin: 0, fontSize: '0.85rem', color: 'var(--color-text-light)' }}>Permanent System-wide Removal</p>
+                            </div>
+                        </div>
+
+                        <p style={{ fontSize: '0.92rem', color: 'var(--color-text)', lineHeight: 1.5, marginBottom: '1.25rem' }}>
+                            Are you sure you want to delete <strong>all {items.length} inventory items</strong>? This will permanently remove all stock records, historical stock transactions, and valuation records from both local storage and cloud database.
+                        </p>
+
+                        {deleteError && (
+                            <div style={{ background: '#fef2f2', border: '1px solid #fca5a5', color: '#b91c1c', padding: '0.75rem', borderRadius: '6px', marginBottom: '1rem', fontSize: '0.875rem' }}>
+                                {deleteError}
+                            </div>
+                        )}
+
+                        <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '0.75rem' }}>
+                            <button
+                                type="button"
+                                className="btn btn-secondary"
+                                onClick={() => {
+                                    setShowDeleteAllModal(false);
+                                    setDeleteError('');
+                                }}
+                                disabled={isDeleting}
+                            >
+                                Cancel
+                            </button>
+                            <button
+                                type="button"
+                                className="btn btn-danger"
+                                onClick={handleConfirmDeleteAll}
+                                disabled={isDeleting}
+                                style={{ minWidth: '130px' }}
+                            >
+                                {isDeleting ? 'Deleting...' : 'Yes, Delete All'}
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
+
+            {/* Modal: Confirm Delete Single Inventory Item */}
+            {itemToDelete && (
+                <div className="modal-overlay">
+                    <div className="modal-content card" style={{ maxWidth: '440px', width: '100%' }}>
+                        <div className="modal-header" style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', marginBottom: '1rem' }}>
+                            <div style={{ background: '#fee2e2', borderRadius: '50%', padding: '0.5rem', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                                <Trash2 size={22} color="#dc2626" />
+                            </div>
+                            <div>
+                                <h3 style={{ margin: 0, color: '#dc2626' }}>Delete Inventory Item</h3>
+                                <p style={{ margin: 0, fontSize: '0.85rem', color: 'var(--color-text-light)' }}>{itemToDelete.inventoryId}</p>
+                            </div>
+                        </div>
+
+                        <p style={{ fontSize: '0.92rem', color: 'var(--color-text)', lineHeight: 1.5, marginBottom: '1.25rem' }}>
+                            Are you sure you want to delete <strong>{itemToDelete.name}</strong> ({itemToDelete.inventoryId})? All associated stock movement logs will also be permanently removed.
+                        </p>
+
+                        {deleteError && (
+                            <div style={{ background: '#fef2f2', border: '1px solid #fca5a5', color: '#b91c1c', padding: '0.75rem', borderRadius: '6px', marginBottom: '1rem', fontSize: '0.875rem' }}>
+                                {deleteError}
+                            </div>
+                        )}
+
+                        <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '0.75rem' }}>
+                            <button
+                                type="button"
+                                className="btn btn-secondary"
+                                onClick={() => {
+                                    setItemToDelete(null);
+                                    setDeleteError('');
+                                }}
+                                disabled={isDeleting}
+                            >
+                                Cancel
+                            </button>
+                            <button
+                                type="button"
+                                className="btn btn-danger"
+                                onClick={handleConfirmDeleteSingle}
+                                disabled={isDeleting}
+                                style={{ minWidth: '110px' }}
+                            >
+                                {isDeleting ? 'Deleting...' : 'Delete Item'}
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
+
+            {/* Modal: Confirm Delete All Farm Expenses */}
+            {showDeleteAllExpensesModal && (
+                <div className="modal-overlay">
+                    <div className="modal-content card" style={{ maxWidth: '480px', width: '100%' }}>
+                        <div className="modal-header" style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', marginBottom: '1rem' }}>
+                            <div style={{ background: '#fee2e2', borderRadius: '50%', padding: '0.5rem', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                                <AlertTriangle size={24} color="#dc2626" />
+                            </div>
+                            <div>
+                                <h3 style={{ margin: 0, color: '#dc2626' }}>Delete All Farm Expenses</h3>
+                                <p style={{ margin: 0, fontSize: '0.85rem', color: 'var(--color-text-light)' }}>Permanent System-wide Removal</p>
+                            </div>
+                        </div>
+
+                        <p style={{ fontSize: '0.92rem', color: 'var(--color-text)', lineHeight: 1.5, marginBottom: '1.25rem' }}>
+                            Are you sure you want to delete <strong>all {expenses.length} miscellaneous farm expenses</strong>? This will permanently remove all expense records from both local storage and the cloud database.
+                        </p>
+
+                        {deleteError && (
+                            <div style={{ background: '#fef2f2', border: '1px solid #fca5a5', color: '#b91c1c', padding: '0.75rem', borderRadius: '6px', marginBottom: '1rem', fontSize: '0.875rem' }}>
+                                {deleteError}
+                            </div>
+                        )}
+
+                        <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '0.75rem' }}>
+                            <button
+                                type="button"
+                                className="btn btn-secondary"
+                                onClick={() => {
+                                    setShowDeleteAllExpensesModal(false);
+                                    setDeleteError('');
+                                }}
+                                disabled={isDeleting}
+                            >
+                                Cancel
+                            </button>
+                            <button
+                                type="button"
+                                className="btn btn-danger"
+                                onClick={handleConfirmDeleteAllExpenses}
+                                disabled={isDeleting}
+                                style={{ minWidth: '130px' }}
+                            >
+                                {isDeleting ? 'Deleting...' : 'Yes, Delete All'}
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
+
+            {/* Modal: Confirm Delete Single Expense */}
+            {expenseToDelete && (
+                <div className="modal-overlay">
+                    <div className="modal-content card" style={{ maxWidth: '440px', width: '100%' }}>
+                        <div className="modal-header" style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', marginBottom: '1rem' }}>
+                            <div style={{ background: '#fee2e2', borderRadius: '50%', padding: '0.5rem', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                                <Trash2 size={22} color="#dc2626" />
+                            </div>
+                            <div>
+                                <h3 style={{ margin: 0, color: '#dc2626' }}>Delete Farm Expense</h3>
+                                <p style={{ margin: 0, fontSize: '0.85rem', color: 'var(--color-text-light)' }}>{expenseToDelete.expenseId}</p>
+                            </div>
+                        </div>
+
+                        <p style={{ fontSize: '0.92rem', color: 'var(--color-text)', lineHeight: 1.5, marginBottom: '1.25rem' }}>
+                            Are you sure you want to delete the expense for <strong>{expenseToDelete.description}</strong> (UGX {expenseToDelete.amount.toLocaleString()})? This record will be permanently deleted from the database.
+                        </p>
+
+                        {deleteError && (
+                            <div style={{ background: '#fef2f2', border: '1px solid #fca5a5', color: '#b91c1c', padding: '0.75rem', borderRadius: '6px', marginBottom: '1rem', fontSize: '0.875rem' }}>
+                                {deleteError}
+                            </div>
+                        )}
+
+                        <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '0.75rem' }}>
+                            <button
+                                type="button"
+                                className="btn btn-secondary"
+                                onClick={() => {
+                                    setExpenseToDelete(null);
+                                    setDeleteError('');
+                                }}
+                                disabled={isDeleting}
+                            >
+                                Cancel
+                            </button>
+                            <button
+                                type="button"
+                                className="btn btn-danger"
+                                onClick={handleConfirmDeleteSingleExpense}
+                                disabled={isDeleting}
+                                style={{ minWidth: '110px' }}
+                            >
+                                {isDeleting ? 'Deleting...' : 'Delete Expense'}
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
+        </div>
+    );
+};
+
+export default Inventory;

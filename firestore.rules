@@ -1,0 +1,33 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    function signedIn() {
+      return request.auth != null;
+    }
+
+    // System bootstrap (first admin setup)
+    match /system/bootstrap {
+      allow read, write: if signedIn();
+    }
+
+    // System migrations & maintenance flags
+    match /systemMigrations/{migrationId} {
+      allow read, write: if signedIn();
+    }
+
+    // Administrator accounts
+    match /admins/{uid} {
+      allow read, write: if signedIn();
+    }
+
+    // Admin invitations
+    match /adminInvites/{email} {
+      allow read, write: if signedIn();
+    }
+
+    // All operational farm collections (workers, inventory, sales, payroll, batches, settings, logs, etc.)
+    match /{document=**} {
+      allow read, write: if signedIn();
+    }
+  }
+}
