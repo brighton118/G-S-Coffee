@@ -8,7 +8,7 @@ import {
     signInWithPopup,
     signInWithRedirect
 } from 'firebase/auth';
-import { Banknote, Coffee, Eye, EyeOff, LockKeyhole, Mail, ShieldCheck } from 'lucide-react';
+import { Banknote, Coffee, Eye, EyeOff, LockKeyhole, Mail } from 'lucide-react';
 import { auth } from '../firebase';
 import { setUserRoleInFirestore } from '../services/adminAccess';
 import './AdminAuth.css';
@@ -145,12 +145,12 @@ const AdminAuth = ({ message, onClearMessage }: AdminAuthProps) => {
                 </div>
 
                 <div className="admin-auth-intro">
-                    <span className="admin-auth-eyebrow"><Banknote size={15} /> SECURE ACCESS</span>
-                    <h1 id="admin-auth-title">{mode === 'signIn' ? 'Welcome to G&S FARM' : 'Register Administrator'}</h1>
+                    <span className="admin-auth-eyebrow"><Banknote size={15} /> G&S FARM</span>
+                    <h1 id="admin-auth-title">{mode === 'signIn' ? 'Welcome back' : 'Create an account'}</h1>
                     <p>
                         {mode === 'signIn'
-                            ? 'Sign in with your Admin, Manager, or Staff account to access the system.'
-                            : 'Create a master Farm Administrator account. Manager and Staff accounts are created directly by the Administrator.'}
+                            ? 'Sign in to access your farm operations and records.'
+                            : 'Enter your email and password to register.'}
                     </p>
                 </div>
 
@@ -171,32 +171,12 @@ const AdminAuth = ({ message, onClearMessage }: AdminAuthProps) => {
                         className={mode === 'signUp' ? 'is-active' : ''}
                         onClick={() => switchMode('signUp')}
                     >
-                        Admin Sign up
+                        Sign up
                     </button>
                 </div>
 
                 <form className="admin-auth-form" onSubmit={handleSubmit}>
-                    {mode === 'signUp' && (
-                        <div
-                            style={{
-                                padding: '0.85rem 1rem',
-                                borderRadius: '8px',
-                                backgroundColor: '#f0fdf4',
-                                border: '1px solid #bbf7d0',
-                                display: 'flex',
-                                alignItems: 'flex-start',
-                                gap: '0.75rem',
-                                marginBottom: '1.25rem'
-                            }}
-                        >
-                            <ShieldCheck size={20} color="#15803d" style={{ marginTop: '2px', flexShrink: 0 }} />
-                            <div style={{ fontSize: '0.84rem', color: '#166534', lineHeight: 1.5 }}>
-                                <strong>Administrator Account:</strong> This creates an Admin account with full system authority. Managers and Staff accounts are created directly by the Administrator inside the Admin Portal.
-                            </div>
-                        </div>
-                    )}
-
-                    <label htmlFor="admin-email">{mode === 'signIn' ? 'Email address' : 'Account email'}</label>
+                    <label htmlFor="admin-email">Email address</label>
                     <div className="admin-auth-input-wrap">
                         <Mail size={18} aria-hidden="true" />
                         <input
@@ -244,8 +224,8 @@ const AdminAuth = ({ message, onClearMessage }: AdminAuthProps) => {
                         {isSubmitting
                             ? 'Please wait...'
                             : mode === 'signIn'
-                            ? 'Sign in to G&S FARM'
-                            : 'Register Administrator Account'}
+                            ? 'Sign in'
+                            : 'Create Account'}
                     </button>
                 </form>
 
