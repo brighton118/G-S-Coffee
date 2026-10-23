@@ -13,11 +13,11 @@ export interface UserRoleContextType {
 }
 
 export const UserRoleContext = createContext<UserRoleContextType>({
-    role: 'admin',
-    isAdmin: true,
+    role: 'staff',
+    isAdmin: false,
     isManager: false,
-    isStaff: false,
-    canEdit: true,
+    isStaff: true,
+    canEdit: false,
     userEmail: '',
     userName: ''
 });

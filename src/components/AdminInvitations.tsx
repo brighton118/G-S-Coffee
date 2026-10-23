@@ -18,6 +18,7 @@ import {
     AlertCircle 
 } from 'lucide-react';
 import { auth } from '../firebase';
+import { useUserRole } from '../context/UserRoleContext';
 import { 
     createAccountByAdmin, 
     listAllFarmUsers, 
@@ -29,6 +30,11 @@ import {
 } from '../services/adminAccess';
 
 const AdminInvitations: React.FC = () => {
+    const { isAdmin } = useUserRole();
+
+    // Hard guard: this panel is strictly admin-only
+    if (!isAdmin) return null;
+
     // Form state for creating accounts
     const [newName, setNewName] = useState('');
     const [newEmail, setNewEmail] = useState('');
