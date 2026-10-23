@@ -167,6 +167,45 @@ const Dashboard = () => {
                 </div>
             </div>
 
+            {/* Operational Quick Actions - Appears First */}
+            <section className="card">
+                <h3 style={{ margin: '0 0 1rem 0', fontSize: '1.1rem', color: 'var(--color-primary-dark)', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                    <TrendingUp size={20} /> Operational Quick Actions
+                </h3>
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(140px, 1fr))', gap: '0.75rem' }}>
+                    <Link to="/scan" className="btn btn-secondary" style={{ padding: '0.75rem', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '0.4rem', textAlign: 'center' }}>
+                        <QrCode size={20} color="var(--color-primary)" />
+                        <span style={{ fontSize: '0.85rem', fontWeight: 600 }}>Scan QR Attendance</span>
+                    </Link>
+                    <Link to="/clones" className="btn btn-secondary" style={{ padding: '0.75rem', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '0.4rem', textAlign: 'center' }}>
+                        <Sprout size={20} color="#15803d" />
+                        <span style={{ fontSize: '0.85rem', fontWeight: 600 }}>Clone Batch Registry</span>
+                    </Link>
+                    <Link to="/sales" className="btn btn-secondary" style={{ padding: '0.75rem', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '0.4rem', textAlign: 'center' }}>
+                        <span style={{ fontSize: '1.25rem' }}>💰</span>
+                        <span style={{ fontSize: '0.85rem', fontWeight: 600 }}>Record Sales Order</span>
+                    </Link>
+                    <Link to="/inventory" className="btn btn-secondary" style={{ padding: '0.75rem', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '0.4rem', textAlign: 'center' }}>
+                        <Package size={20} color="#b45309" />
+                        <span style={{ fontSize: '0.85rem', fontWeight: 600 }}>Inventory Stock-In</span>
+                    </Link>
+                    <Link to="/payroll" className="btn btn-secondary" style={{ padding: '0.75rem', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '0.4rem', textAlign: 'center' }}>
+                        <span style={{ fontSize: '1.25rem' }}>💵</span>
+                        <span style={{ fontSize: '0.85rem', fontWeight: 600 }}>Monthly Payroll</span>
+                    </Link>
+                    <Link to="/reports" className="btn btn-secondary" style={{ padding: '0.75rem', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '0.4rem', textAlign: 'center' }}>
+                        <span style={{ fontSize: '1.25rem' }}>📊</span>
+                        <span style={{ fontSize: '0.85rem', fontWeight: 600 }}>Export PDF Reports</span>
+                    </Link>
+                    {isAdmin && (
+                        <a href="#team-accounts" className="btn btn-secondary" style={{ padding: '0.75rem', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '0.4rem', textAlign: 'center', background: '#fefce8', borderColor: '#fde047' }}>
+                            <UserPlus size={20} color="#854d0e" />
+                            <span style={{ fontSize: '0.85rem', fontWeight: 600, color: '#854d0e' }}>Team Accounts</span>
+                        </a>
+                    )}
+                </div>
+            </section>
+
             {/* Role Access Information Banner */}
             {isAdmin && (
                 <>
@@ -225,33 +264,6 @@ const Dashboard = () => {
                     </span>
                 </div>
             )}
-
-            {/* Operational Quick Actions */}
-            <section className="card">
-                <h3 style={{ margin: '0 0 1rem 0', fontSize: '1.1rem', color: 'var(--color-primary-dark)', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                    <TrendingUp size={20} /> Operational Quick Actions
-                </h3>
-                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(140px, 1fr))', gap: '0.75rem' }}>
-                    <Link to="/scan" className="btn btn-secondary" style={{ padding: '0.75rem', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '0.4rem', textAlign: 'center' }}>
-                        <span style={{ fontSize: '0.85rem', fontWeight: 600 }}>Scan QR Attendance</span>
-                    </Link>
-                    <Link to="/clones" className="btn btn-secondary" style={{ padding: '0.75rem', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '0.4rem', textAlign: 'center' }}>
-                        <span style={{ fontSize: '0.85rem', fontWeight: 600 }}>Clone Batch Registry</span>
-                    </Link>
-                    <Link to="/sales" className="btn btn-secondary" style={{ padding: '0.75rem', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '0.4rem', textAlign: 'center' }}>
-                        <span style={{ fontSize: '0.85rem', fontWeight: 600 }}>Record Sales Order</span>
-                    </Link>
-                    <Link to="/inventory" className="btn btn-secondary" style={{ padding: '0.75rem', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '0.4rem', textAlign: 'center' }}>
-                        <span style={{ fontSize: '0.85rem', fontWeight: 600 }}>Inventory Stock-In</span>
-                    </Link>
-                    <Link to="/payroll" className="btn btn-secondary" style={{ padding: '0.75rem', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '0.4rem', textAlign: 'center' }}>
-                        <span style={{ fontSize: '0.85rem', fontWeight: 600 }}>Monthly Payroll</span>
-                    </Link>
-                    <Link to="/reports" className="btn btn-secondary" style={{ padding: '0.75rem', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '0.4rem', textAlign: 'center' }}>
-                        <span style={{ fontSize: '0.85rem', fontWeight: 600 }}>Export PDF Reports</span>
-                    </Link>
-                </div>
-            </section>
 
             {/* Alert Banner if any overdue humid chambers or low stock */}
             {(overdueChamberBatches.length > 0 || lowStockItems.length > 0 || notifications.length > 0) && (
