@@ -25,7 +25,7 @@ import { UserRoleContext, type UserRole } from './context/UserRoleContext';
 
 const App = () => {
     const [adminUser, setAdminUser] = useState<FirebaseUser | null>(null);
-    const [userRole, setUserRole] = useState<UserRole>(() => (localStorage.getItem('gs_user_role') as UserRole) || 'admin');
+    const [userRole, setUserRole] = useState<UserRole>('staff');
     const [authStatus, setAuthStatus] = useState<'loading' | 'signedOut' | 'checking' | 'authorized'>('loading');
     const [authMessage, setAuthMessage] = useState('');
 
@@ -36,6 +36,8 @@ const App = () => {
             const currentCheck = ++authCheck;
             if (!user) {
                 setAdminUser(null);
+                setUserRole('staff');
+                localStorage.removeItem('gs_user_role');
                 setAuthStatus('signedOut');
                 return;
             }
@@ -44,6 +46,7 @@ const App = () => {
                 const role = await getUserRole(user);
                 if (isMounted) {
                     setUserRole(role);
+                    localStorage.setItem('gs_user_role', role);
                 }
             } catch (roleErr) {
                 console.warn('Could not read user role:', roleErr);
