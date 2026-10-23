@@ -11,8 +11,13 @@ import {
     RefreshCw,
     Clock,
     Package,
-    Sprout
+    Sprout,
+    Key,
+    Eye,
+    EyeOff
 } from 'lucide-react';
+import { updatePassword } from 'firebase/auth';
+import { auth } from '../firebase';
 import { notificationService } from '../utils/notificationService';
 import { firestoreSyncService } from '../services/firestoreSync';
 import AdminInvitations from '../components/AdminInvitations';
@@ -41,6 +46,13 @@ const Settings: React.FC = () => {
 
     const [saveNotice, setSaveNotice] = useState<string | null>(null);
     const [isSyncing, setIsSyncing] = useState<boolean>(false);
+
+    // Password change state
+    const [newAdminPass, setNewAdminPass] = useState('');
+    const [confirmAdminPass, setConfirmAdminPass] = useState('');
+    const [showNewPass, setShowNewPass] = useState(false);
+    const [isUpdatingPass, setIsUpdatingPass] = useState(false);
+    const [passwordNotice, setPasswordNotice] = useState<{ text: string; type: 'success' | 'error' } | null>(null);
 
     useEffect(() => {
         const saved = localStorage.getItem('gs_farm_settings');
@@ -103,6 +115,44 @@ const Settings: React.FC = () => {
             localStorage.clear();
             sessionStorage.clear();
             window.location.reload();
+        }
+    };
+
+    const handleUpdatePassword = async (e: React.FormEvent) => {
+        e.preventDefault();
+        setPasswordNotice(null);
+
+        if (!newAdminPass || newAdminPass.length < 6) {
+            setPasswordNotice({ text: 'Password must be at least 6 characters long.', type: 'error' });
+            return;
+        }
+
+        if (newAdminPass !== confirmAdminPass) {
+            setPasswordNotice({ text: 'Passwords do not match. Please verify.', type: 'error' });
+            return;
+        }
+
+        const currentUser = auth.currentUser;
+        if (!currentUser) {
+            setPasswordNotice({ text: 'You must be signed in to change your password.', type: 'error' });
+            return;
+        }
+
+        setIsUpdatingPass(true);
+        try {
+            await updatePassword(currentUser, newAdminPass.trim());
+            setPasswordNotice({ text: 'Password updated successfully! Keep your new password secure.', type: 'success' });
+            setNewAdminPass('');
+            setConfirmAdminPass('');
+        } catch (err: any) {
+            console.error('Password change error:', err);
+            if (err?.code === 'auth/requires-recent-login') {
+                setPasswordNotice({ text: 'For security, please sign out and sign in again before changing your password.', type: 'error' });
+            } else {
+                setPasswordNotice({ text: err?.message || 'Could not update password. Please try again.', type: 'error' });
+            }
+        } finally {
+            setIsUpdatingPass(false);
         }
     };
 
@@ -244,6 +294,69 @@ const Settings: React.FC = () => {
 
                     {/* Security and Cloud Sync */}
                     {isAdmin && <AdminInvitations />}
+
+                    {/* Change Account Password */}
+                    <div className="card" style={{ borderLeft: '4px solid #f59e0b', display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+                        <h3 style={{ borderBottom: '1px solid var(--color-border)', paddingBottom: '0.75rem', margin: 0, color: 'var(--color-primary-dark)', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                            <Key size={20} color="#d97706" />
+                            Change Account Password
+                        </h3>
+                        <p style={{ color: 'var(--color-text-light)', margin: 0, fontSize: '0.85rem' }}>
+                            Signed in as <strong>{auth.currentUser?.email || 'gsfarm@gmail.com'}</strong>. You can update your password at any time.
+                        </p>
+
+                        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '0.85rem' }}>
+                            <div className="form-group" style={{ margin: 0 }}>
+                                <label className="form-label" style={{ fontSize: '0.8rem', marginBottom: '0.25rem' }}>New Password</label>
+                                <input
+                                    type={showNewPass ? 'text' : 'password'}
+                                    minLength={6}
+                                    className="form-input"
+                                    placeholder="At least 6 characters"
+                                    value={newAdminPass}
+                                    onChange={e => setNewAdminPass(e.target.value)}
+                                    style={{ width: '100%' }}
+                                />
+                            </div>
+                            <div className="form-group" style={{ margin: 0 }}>
+                                <label className="form-label" style={{ fontSize: '0.8rem', marginBottom: '0.25rem' }}>Confirm Password</label>
+                                <input
+                                    type={showNewPass ? 'text' : 'password'}
+                                    minLength={6}
+                                    className="form-input"
+                                    placeholder="Re-enter new password"
+                                    value={confirmAdminPass}
+                                    onChange={e => setConfirmAdminPass(e.target.value)}
+                                    style={{ width: '100%' }}
+                                />
+                            </div>
+                        </div>
+
+                        {passwordNotice && (
+                            <div style={{ padding: '0.6rem 0.85rem', borderRadius: '6px', fontSize: '0.85rem', background: passwordNotice.type === 'success' ? '#f0fdf4' : '#fef2f2', color: passwordNotice.type === 'success' ? '#15803d' : '#b91c1c', border: `1px solid ${passwordNotice.type === 'success' ? '#86efac' : '#fca5a5'}` }}>
+                                {passwordNotice.text}
+                            </div>
+                        )}
+
+                        <div style={{ display: 'flex', gap: '0.75rem', alignItems: 'center', flexWrap: 'wrap' }}>
+                            <button
+                                type="button"
+                                className="btn btn-secondary"
+                                disabled={isUpdatingPass || !newAdminPass}
+                                onClick={handleUpdatePassword}
+                                style={{ display: 'inline-flex', alignItems: 'center', gap: '0.4rem', fontSize: '0.85rem', padding: '0.5rem 1rem' }}
+                            >
+                                <Key size={14} /> {isUpdatingPass ? 'Updating...' : 'Update Password'}
+                            </button>
+                            <button
+                                type="button"
+                                onClick={() => setShowNewPass(!showNewPass)}
+                                style={{ background: 'none', border: 'none', color: 'var(--color-text-light)', fontSize: '0.8rem', cursor: 'pointer', display: 'inline-flex', alignItems: 'center', gap: '0.25rem' }}
+                            >
+                                {showNewPass ? <EyeOff size={14} /> : <Eye size={14} />} {showNewPass ? 'Hide Password' : 'Show Password'}
+                            </button>
+                        </div>
+                    </div>
 
                     <div className="card" style={{ borderLeft: '4px solid var(--color-primary)', display: 'flex', flexDirection: 'column', gap: '1rem' }}>
                         <h3 style={{ borderBottom: '1px solid var(--color-border)', paddingBottom: '0.75rem', margin: 0, color: 'var(--color-primary-dark)' }}>

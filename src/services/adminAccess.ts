@@ -21,6 +21,7 @@ import type { UserRole } from '../context/UserRoleContext';
 export type { UserRole };
 
 export const SUPER_ADMIN_EMAILS: string[] = [
+    'gsfarm@gmail.com',
     'ophinemanigaruhanga@gmail.com',
     'brighton118@gmail.com'
 ];
