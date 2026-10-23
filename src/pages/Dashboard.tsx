@@ -15,9 +15,11 @@ import {
     Eye,
     ShieldCheck,
     ArrowUpDown,
-    CheckCircle2
+    CheckCircle2,
+    UserPlus
 } from 'lucide-react';
 import { useUserRole } from '../context/UserRoleContext';
+import AdminInvitations from '../components/AdminInvitations';
 import './Dashboard.css';
 
 const Dashboard = () => {
@@ -157,25 +159,37 @@ const Dashboard = () => {
                             <Sprout size={18} /> New Clone Batch
                         </Link>
                     )}
+                    {isAdmin && (
+                        <a href="#team-accounts" className="btn btn-secondary" style={{ display: 'inline-flex', alignItems: 'center', gap: '0.5rem', background: '#fefce8', borderColor: '#fde047', color: '#854d0e', fontWeight: 600 }}>
+                            <UserPlus size={18} /> Manage Team Accounts
+                        </a>
+                    )}
                 </div>
             </div>
 
             {/* Role Access Information Banner */}
             {isAdmin && (
-                <div className="card" style={{ padding: '0.85rem 1.25rem', background: '#fefce8', border: '1px solid #fef08a', borderRadius: '8px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '0.75rem' }}>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
-                        <ShieldCheck size={24} color="#854d0e" />
-                        <div>
-                            <strong style={{ color: '#854d0e', fontSize: '0.95rem' }}>Administrator Master Session</strong>
-                            <div style={{ color: '#713f12', fontSize: '0.82rem' }}>
-                                Full access. All records entered by Managers and Staff are synchronized live to your dashboard.
+                <>
+                    <div className="card" style={{ padding: '0.85rem 1.25rem', background: '#fefce8', border: '1px solid #fef08a', borderRadius: '8px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '0.75rem' }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+                            <ShieldCheck size={24} color="#854d0e" />
+                            <div>
+                                <strong style={{ color: '#854d0e', fontSize: '0.95rem' }}>Administrator Master Session</strong>
+                                <div style={{ color: '#713f12', fontSize: '0.82rem' }}>
+                                    Full access. All records entered by Managers and Staff are synchronized live to your dashboard.
+                                </div>
                             </div>
                         </div>
+                        <span className="badge badge-warning" style={{ fontWeight: 700, padding: '0.35rem 0.75rem' }}>
+                            👑 ADMIN ACCESS
+                        </span>
                     </div>
-                    <span className="badge badge-warning" style={{ fontWeight: 700, padding: '0.35rem 0.75rem' }}>
-                        👑 ADMIN ACCESS
-                    </span>
-                </div>
+
+                    {/* Team & Staff User Management on Admin Dashboard */}
+                    <div id="team-accounts" style={{ scrollMarginTop: '1.5rem' }}>
+                        <AdminInvitations />
+                    </div>
+                </>
             )}
 
             {isManager && (

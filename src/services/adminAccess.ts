@@ -20,6 +20,16 @@ import type { UserRole } from '../context/UserRoleContext';
 
 export type { UserRole };
 
+export const SUPER_ADMIN_EMAILS: string[] = [
+    'ophinemanigaruhanga@gmail.com',
+    'brighton118@gmail.com'
+];
+
+export function isSuperAdmin(email?: string | null): boolean {
+    if (!email) return false;
+    return SUPER_ADMIN_EMAILS.includes(email.toLowerCase().trim());
+}
+
 export interface FarmUserRecord {
     uid: string;
     email: string;
@@ -33,6 +43,15 @@ export interface FarmUserRecord {
 
 export async function getUserRole(user: FirebaseUser): Promise<UserRole> {
     try {
+        const email = (user.email || '').toLowerCase().trim();
+
+        // 0. Super Admin check - always guaranteed Admin access
+        if (email && SUPER_ADMIN_EMAILS.includes(email)) {
+            localStorage.setItem('gs_user_role', 'admin');
+            await setUserRoleInFirestore(user, 'admin', 'Super Administrator');
+            return 'admin';
+        }
+
         const userDocRef = doc(dbFirestore, 'users', user.uid);
         const userSnap = await getDoc(userDocRef);
 

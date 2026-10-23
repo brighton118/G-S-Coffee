@@ -1,6 +1,5 @@
 import { FormEvent, useEffect, useState } from 'react';
 import {
-    createUserWithEmailAndPassword,
     getRedirectResult,
     GoogleAuthProvider,
     sendPasswordResetEmail,
@@ -10,7 +9,6 @@ import {
 } from 'firebase/auth';
 import { Banknote, Coffee, Eye, EyeOff, LockKeyhole, Mail } from 'lucide-react';
 import { auth } from '../firebase';
-import { setUserRoleInFirestore } from '../services/adminAccess';
 import './AdminAuth.css';
 
 interface AdminAuthProps {
@@ -22,7 +20,6 @@ const googleProvider = new GoogleAuthProvider();
 googleProvider.setCustomParameters({ prompt: 'select_account' });
 
 const AdminAuth = ({ message, onClearMessage }: AdminAuthProps) => {
-    const [mode, setMode] = useState<'signIn' | 'signUp'>('signIn');
     const [email, setEmail] = useState('');
     const [password, setPassword] = useState('');
     const [showPassword, setShowPassword] = useState(false);
@@ -48,28 +45,21 @@ const AdminAuth = ({ message, onClearMessage }: AdminAuthProps) => {
             const cleanEmail = email.trim().toLowerCase();
             const cleanPassword = password.trim();
 
-            if (mode === 'signUp') {
-                localStorage.setItem('gs_pending_registration_role', 'admin');
-                const cred = await createUserWithEmailAndPassword(auth, cleanEmail, cleanPassword);
-                await setUserRoleInFirestore(cred.user, 'admin');
-                setFormMessage('Administrator account created! Signing in...');
-            } else {
-                await signInWithEmailAndPassword(auth, cleanEmail, cleanPassword);
-            }
+            await signInWithEmailAndPassword(auth, cleanEmail, cleanPassword);
         } catch (error: any) {
             console.error('Firebase Auth Error:', error);
             const code = error?.code || '';
             const messages: Record<string, string> = {
-                'auth/email-already-in-use': 'An account already exists for this email. Sign in instead.',
-                'auth/operation-not-allowed': 'Email/password sign-in is not enabled for this Firebase project.',
-                'auth/invalid-credential': 'Email or password is incorrect.',
+                'auth/user-not-found': 'No account found for this email address. Please contact your Super Administrator.',
+                'auth/wrong-password': 'Email or password is incorrect.',
+                'auth/invalid-credential': 'Email or password is incorrect. Please verify your credentials.',
                 'auth/invalid-email': 'Enter a valid email address.',
-                'auth/weak-password': 'Use a password with at least 6 characters.',
+                'auth/user-disabled': 'This account has been deactivated. Please contact your administrator.',
                 'auth/too-many-requests': 'Too many attempts. Wait a few minutes and try again.',
-                'auth/network-request-failed': 'Connection blocked or offline. Disable ad-blockers or try "Continue with Google".',
-                'auth/internal-error': 'Authentication server error. Try "Continue with Google" for instant sign-in.'
+                'auth/network-request-failed': 'Connection blocked or offline. Please check your internet connection.',
+                'auth/internal-error': 'Authentication server error. Please try again in a few moments.'
             };
-            setFormMessage(messages[code] || error?.message || 'Authentication failed. Please try again.');
+            setFormMessage(messages[code] || error?.message || 'Authentication failed. Please check your credentials.');
         } finally {
             setIsSubmitting(false);
         }
@@ -127,12 +117,6 @@ const AdminAuth = ({ message, onClearMessage }: AdminAuthProps) => {
         }
     };
 
-    const switchMode = (nextMode: 'signIn' | 'signUp') => {
-        setMode(nextMode);
-        setFormMessage('');
-        onClearMessage();
-    };
-
     return (
         <main className="admin-auth-page">
             <section className="admin-auth-panel" aria-labelledby="admin-auth-title">
@@ -145,34 +129,11 @@ const AdminAuth = ({ message, onClearMessage }: AdminAuthProps) => {
                 </div>
 
                 <div className="admin-auth-intro">
-                    <span className="admin-auth-eyebrow"><Banknote size={15} /> G&S FARM</span>
-                    <h1 id="admin-auth-title">{mode === 'signIn' ? 'Welcome back' : 'Create an account'}</h1>
+                    <span className="admin-auth-eyebrow"><Banknote size={15} /> G&S FARM ACCESS</span>
+                    <h1 id="admin-auth-title">Sign in to your account</h1>
                     <p>
-                        {mode === 'signIn'
-                            ? 'Sign in to access your farm operations and records.'
-                            : 'Enter your email and password to register.'}
+                        Sign in to access farm operations, workforce, inventory, and records.
                     </p>
-                </div>
-
-                <div className="admin-auth-tabs" role="tablist" aria-label="Account access">
-                    <button
-                        type="button"
-                        role="tab"
-                        aria-selected={mode === 'signIn'}
-                        className={mode === 'signIn' ? 'is-active' : ''}
-                        onClick={() => switchMode('signIn')}
-                    >
-                        Sign in
-                    </button>
-                    <button
-                        type="button"
-                        role="tab"
-                        aria-selected={mode === 'signUp'}
-                        className={mode === 'signUp' ? 'is-active' : ''}
-                        onClick={() => switchMode('signUp')}
-                    >
-                        Sign up
-                    </button>
                 </div>
 
                 <form className="admin-auth-form" onSubmit={handleSubmit}>
@@ -196,12 +157,12 @@ const AdminAuth = ({ message, onClearMessage }: AdminAuthProps) => {
                         <input
                             id="admin-password"
                             type={showPassword ? 'text' : 'password'}
-                            autoComplete={mode === 'signIn' ? 'current-password' : 'new-password'}
+                            autoComplete="current-password"
                             minLength={6}
                             required
                             value={password}
                             onChange={event => setPassword(event.target.value)}
-                            placeholder="At least 6 characters"
+                            placeholder="Enter your password"
                         />
                         <button
                             type="button"
@@ -221,15 +182,11 @@ const AdminAuth = ({ message, onClearMessage }: AdminAuthProps) => {
                     )}
 
                     <button className="btn btn-primary admin-auth-submit" type="submit" disabled={isSubmitting}>
-                        {isSubmitting
-                            ? 'Please wait...'
-                            : mode === 'signIn'
-                            ? 'Sign in'
-                            : 'Create Account'}
+                        {isSubmitting ? 'Signing in...' : 'Sign in'}
                     </button>
                 </form>
 
-                <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', margin: '1rem 0' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', margin: '1.25rem 0 1rem' }}>
                     <div style={{ flex: 1, height: '1px', background: 'var(--color-border)' }} />
                     <span style={{ fontSize: '0.8rem', color: 'var(--color-text-light)' }}>OR</span>
                     <div style={{ flex: 1, height: '1px', background: 'var(--color-border)' }} />
@@ -251,14 +208,14 @@ const AdminAuth = ({ message, onClearMessage }: AdminAuthProps) => {
                     Continue with Google
                 </button>
 
-                {mode === 'signIn' && (
+                <div style={{ textAlign: 'center', marginTop: '1rem' }}>
                     <button type="button" className="admin-auth-reset" onClick={handlePasswordReset}>
                         Forgot password?
                     </button>
-                )}
+                </div>
 
                 <p className="admin-auth-footnote">
-                    Administrator access only. Workers do not need accounts to be added to the system.
+                    Authorized personnel only. Managers and Staff accounts are created directly by the Super Administrator.
                 </p>
             </section>
             <aside className="admin-auth-aside" aria-hidden="true">
