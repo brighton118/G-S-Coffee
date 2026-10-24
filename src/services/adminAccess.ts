@@ -1,10 +1,11 @@
 import {
     createUserWithEmailAndPassword,
     getAuth,
+    sendPasswordResetEmail,
     signOut,
     type User as FirebaseUser
 } from 'firebase/auth';
-import { initializeApp, getApps } from 'firebase/app';
+import { initializeApp, deleteApp } from 'firebase/app';
 import {
     collection,
     doc,
@@ -22,7 +23,6 @@ export type { UserRole };
 
 export const SUPER_ADMIN_EMAILS: string[] = [
     'gsfarm@gmail.com',
-    'ophinemanigaruhanga@gmail.com',
     'brighton118@gmail.com'
 ];
 
@@ -456,13 +456,12 @@ export async function createAccountByAdmin(
     if (!email || !/^[^\s@]+@[^\s@]+$/.test(email)) throw new Error('Please enter a valid email address.');
     if (password.length < 6) throw new Error('Password must be at least 6 characters.');
 
-    const secondaryAppName = 'SecondaryAuthProvisioner';
-    const existingApps = getApps();
-    const secondaryApp = existingApps.find(a => a.name === secondaryAppName) || initializeApp(firebaseConfig, secondaryAppName);
-    const secondaryAuth = getAuth(secondaryApp);
+    const tempAppName = `Provisioner_${Date.now()}_${Math.random().toString(36).substring(2, 8)}`;
+    const tempApp = initializeApp(firebaseConfig, tempAppName);
+    const tempAuth = getAuth(tempApp);
 
     try {
-        const userCred = await createUserWithEmailAndPassword(secondaryAuth, email, password);
+        const userCred = await createUserWithEmailAndPassword(tempAuth, email, password);
         const newUser = userCred.user;
 
         await setUserRoleInFirestore({
@@ -471,10 +470,14 @@ export async function createAccountByAdmin(
             displayName: name
         }, role, name);
 
-        await signOut(secondaryAuth);
+        try { await signOut(tempAuth); } catch (_) {}
+        try { await deleteApp(tempApp); } catch (_) {}
+
         return { uid: newUser.uid, email: newUser.email || email };
     } catch (err: any) {
-        try { await signOut(secondaryAuth); } catch (_) {}
+        try { await signOut(tempAuth); } catch (_) {}
+        try { await deleteApp(tempApp); } catch (_) {}
+
         const code = err?.code || '';
         const messages: Record<string, string> = {
             'auth/email-already-in-use': 'An account already exists with this email address.',
@@ -483,6 +486,12 @@ export async function createAccountByAdmin(
         };
         throw new Error(messages[code] || err?.message || 'Failed to create account.');
     }
+}
+
+export async function sendPasswordResetByAdmin(targetEmail: string): Promise<void> {
+    await assertAdminPermission();
+    const email = targetEmail.trim().toLowerCase();
+    await sendPasswordResetEmail(auth, email);
 }
 
 export async function toggleUserActiveByAdmin(

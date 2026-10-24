@@ -53,6 +53,7 @@ const AdminAuth = ({ message, onClearMessage }: AdminAuthProps) => {
                 'auth/user-not-found': 'No account found for this email address. Please contact your Super Administrator.',
                 'auth/wrong-password': 'Email or password is incorrect.',
                 'auth/invalid-credential': 'Email or password is incorrect. Please verify your credentials.',
+                'auth/invalid-login-credentials': 'Email or password is incorrect. Please verify your credentials.',
                 'auth/invalid-email': 'Enter a valid email address.',
                 'auth/user-disabled': 'This account has been deactivated. Please contact your administrator.',
                 'auth/too-many-requests': 'Too many attempts. Wait a few minutes and try again.',

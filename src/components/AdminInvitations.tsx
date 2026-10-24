@@ -24,7 +24,8 @@ import {
     listAllFarmUsers, 
     updateUserRoleByAdmin, 
     toggleUserActiveByAdmin, 
-    deleteUserByAdmin, 
+    deleteUserByAdmin,
+    sendPasswordResetByAdmin, 
     type FarmUserRecord, 
     type UserRole 
 } from '../services/adminAccess';
@@ -145,6 +146,15 @@ const AdminInvitations: React.FC = () => {
             await refreshData();
         } catch (err: any) {
             setErrorMsg(`Could not delete user: ${err?.message || err}`);
+        }
+    };
+
+    const handleSendResetEmail = async (user: FarmUserRecord) => {
+        try {
+            await sendPasswordResetByAdmin(user.email);
+            setMessage(`Password reset email sent to ${user.email}.`);
+        } catch (err: any) {
+            setErrorMsg(`Could not send password reset email: ${err?.message || err}`);
         }
     };
 
@@ -414,6 +424,15 @@ const AdminInvitations: React.FC = () => {
 
                                         {!isCurrentUser && (
                                             <>
+                                                <button
+                                                    type="button"
+                                                    onClick={() => handleSendResetEmail(u)}
+                                                    className="btn btn-secondary"
+                                                    style={{ fontSize: '0.75rem', padding: '0.3rem 0.6rem', color: '#0369a1' }}
+                                                    title="Send password reset email to user"
+                                                >
+                                                    Send Reset Link
+                                                </button>
                                                 <button
                                                     type="button"
                                                     onClick={() => handleToggleActive(u)}
