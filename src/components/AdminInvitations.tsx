@@ -30,10 +30,10 @@ import {
 } from '../services/adminAccess';
 
 const AdminInvitations: React.FC = () => {
-    const { isAdmin } = useUserRole();
+    const { isAdmin, role } = useUserRole();
 
-    // Hard guard: this panel is strictly admin-only
-    if (!isAdmin) return null;
+    // Hard guard: this panel is strictly for administrators only
+    if (!isAdmin || role !== 'admin') return null;
 
     // Form state for creating accounts
     const [newName, setNewName] = useState('');

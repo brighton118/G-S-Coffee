@@ -14,7 +14,7 @@ import {
     deleteDoc,
     serverTimestamp
 } from 'firebase/firestore';
-import { dbFirestore, firebaseConfig } from '../firebase';
+import { auth, dbFirestore, firebaseConfig } from '../firebase';
 import { db } from '../db';
 import type { UserRole } from '../context/UserRoleContext';
 
@@ -29,6 +29,21 @@ export const SUPER_ADMIN_EMAILS: string[] = [
 export function isSuperAdmin(email?: string | null): boolean {
     if (!email) return false;
     return SUPER_ADMIN_EMAILS.includes(email.toLowerCase().trim());
+}
+
+export async function assertAdminPermission(): Promise<void> {
+    const current = auth.currentUser;
+    if (!current) {
+        throw new Error('Authentication required.');
+    }
+    const currentEmail = (current.email || '').toLowerCase().trim();
+    if (isSuperAdmin(currentEmail)) {
+        return;
+    }
+    const role = await getUserRole(current);
+    if (role !== 'admin') {
+        throw new Error('Permission denied: Only Administrators can create or manage user accounts.');
+    }
 }
 
 export interface FarmUserRecord {
@@ -48,66 +63,91 @@ export async function getUserRole(user: FirebaseUser): Promise<UserRole> {
 
         // 0. Super Admin check - always guaranteed Admin access
         if (email && SUPER_ADMIN_EMAILS.includes(email)) {
+            localStorage.setItem(`gs_user_role_${user.uid}`, 'admin');
             localStorage.setItem('gs_user_role', 'admin');
             await setUserRoleInFirestore(user, 'admin', 'Super Administrator');
             return 'admin';
         }
 
+        // 1. Check managers table first (if manager account was created, role is strictly manager)
+        const managerRef = doc(dbFirestore, 'managers', user.uid);
+        const managerSnap = await getDoc(managerRef);
+        if (managerSnap.exists() && managerSnap.data()?.active !== false) {
+            localStorage.setItem(`gs_user_role_${user.uid}`, 'manager');
+            localStorage.setItem('gs_user_role', 'manager');
+            return 'manager';
+        }
+
+        // 2. Check staff table
+        const staffRef = doc(dbFirestore, 'staff', user.uid);
+        const staffSnap = await getDoc(staffRef);
+        if (staffSnap.exists() && staffSnap.data()?.active !== false) {
+            localStorage.setItem(`gs_user_role_${user.uid}`, 'staff');
+            localStorage.setItem('gs_user_role', 'staff');
+            return 'staff';
+        }
+
+        // 3. Check central users collection
         const userDocRef = doc(dbFirestore, 'users', user.uid);
         const userSnap = await getDoc(userDocRef);
 
         if (userSnap.exists()) {
             const data = userSnap.data();
-            if (data?.role === 'admin' || data?.role === 'manager' || data?.role === 'staff') {
-                localStorage.setItem('gs_user_role', data.role);
-                return data.role as UserRole;
+            if (data?.role === 'manager') {
+                localStorage.setItem(`gs_user_role_${user.uid}`, 'manager');
+                localStorage.setItem('gs_user_role', 'manager');
+                return 'manager';
+            }
+            if (data?.role === 'staff') {
+                localStorage.setItem(`gs_user_role_${user.uid}`, 'staff');
+                localStorage.setItem('gs_user_role', 'staff');
+                return 'staff';
+            }
+            if (data?.role === 'admin') {
+                // Non-superadmin with admin flag must be actively in admins collection
+                const adminRef = doc(dbFirestore, 'admins', user.uid);
+                const adminSnap = await getDoc(adminRef);
+                if (adminSnap.exists() && adminSnap.data()?.active !== false) {
+                    localStorage.setItem(`gs_user_role_${user.uid}`, 'admin');
+                    localStorage.setItem('gs_user_role', 'admin');
+                    return 'admin';
+                }
+                // If not in admins collection and not superadmin, downgrade to manager or staff
+                localStorage.setItem(`gs_user_role_${user.uid}`, 'staff');
+                localStorage.setItem('gs_user_role', 'staff');
+                return 'staff';
             }
         }
 
-        // Check admins table
+        // 4. Check admins table
         const adminRef = doc(dbFirestore, 'admins', user.uid);
         const adminSnap = await getDoc(adminRef);
         if (adminSnap.exists() && adminSnap.data()?.active !== false) {
+            localStorage.setItem(`gs_user_role_${user.uid}`, 'admin');
             localStorage.setItem('gs_user_role', 'admin');
             return 'admin';
         }
 
-        // Check managers table
-        const managerRef = doc(dbFirestore, 'managers', user.uid);
-        const managerSnap = await getDoc(managerRef);
-        if (managerSnap.exists() && managerSnap.data()?.active !== false) {
-            localStorage.setItem('gs_user_role', 'manager');
-            return 'manager';
-        }
-
-        // Check staff table
-        const staffRef = doc(dbFirestore, 'staff', user.uid);
-        const staffSnap = await getDoc(staffRef);
-        if (staffSnap.exists() && staffSnap.data()?.active !== false) {
-            localStorage.setItem('gs_user_role', 'staff');
-            return 'staff';
-        }
-
-        // Check if there is a pending registration role chosen
-        const pendingRole = localStorage.getItem('gs_pending_registration_role') as UserRole;
-        if (pendingRole === 'admin' || pendingRole === 'manager' || pendingRole === 'staff') {
-            await setUserRoleInFirestore(user, pendingRole);
-            localStorage.removeItem('gs_pending_registration_role');
-            return pendingRole;
-        }
-
-        // Check cached local role fallback
-        const cached = localStorage.getItem('gs_user_role') as UserRole;
-        if (cached === 'admin' || cached === 'manager' || cached === 'staff') {
+        // 5. Check user-specific cached local role fallback
+        const cached = localStorage.getItem(`gs_user_role_${user.uid}`) as UserRole;
+        if (cached === 'manager' || cached === 'staff') {
             return cached;
         }
+        if (cached === 'admin' && isSuperAdmin(email)) {
+            return 'admin';
+        }
 
-        // Default to admin for first user or bootstrap
-        return 'admin';
+        // Safety fallback: NEVER default non-superadmins to admin!
+        localStorage.setItem(`gs_user_role_${user.uid}`, 'staff');
+        localStorage.setItem('gs_user_role', 'staff');
+        return 'staff';
     } catch (e) {
-        console.warn('Error reading user role from Firestore, using cache/fallback:', e);
-        const cached = localStorage.getItem('gs_user_role') as UserRole;
-        return cached || 'admin';
+        console.warn('Error reading user role from Firestore, using safe fallback:', e);
+        const cached = localStorage.getItem(`gs_user_role_${user.uid}`) as UserRole;
+        if (cached && (cached !== 'admin' || isSuperAdmin(user.email))) {
+            return cached;
+        }
+        return 'staff';
     }
 }
 
@@ -139,7 +179,11 @@ export async function setUserRoleInFirestore(
             createdAt: serverTimestamp()
         }, { merge: true });
 
-        localStorage.setItem('gs_user_role', role);
+        // Only update local storage if the user being updated is the current logged in user!
+        if (auth.currentUser && auth.currentUser.uid === user.uid) {
+            localStorage.setItem(`gs_user_role_${user.uid}`, role);
+            localStorage.setItem('gs_user_role', role);
+        }
 
         // 2. Synchronize specific role collections: admins, managers, and staff
         if (role === 'admin') {
@@ -218,7 +262,10 @@ export async function setUserRoleInFirestore(
 
     } catch (e) {
         console.warn('Error saving user role to Firestore:', e);
-        localStorage.setItem('gs_user_role', role);
+        if (auth.currentUser && auth.currentUser.uid === user.uid) {
+            localStorage.setItem(`gs_user_role_${user.uid}`, role);
+            localStorage.setItem('gs_user_role', role);
+        }
     }
 }
 
@@ -264,9 +311,11 @@ export async function ensureAdminAccess(user: FirebaseUser): Promise<void> {
             }
         }
 
-        // 3. Read or set user role across all database tables
+        // 3. Read user role across all database tables without blindly overwriting manager role
         const role = await getUserRole(user);
-        await setUserRoleInFirestore(user, role);
+        if (isSuperAdmin(email) || !userSnap.exists()) {
+            await setUserRoleInFirestore(user, role);
+        }
 
     } catch (error: any) {
         if (error?.message && error.message.includes('deactivated')) {
@@ -358,10 +407,12 @@ export async function updateUserRoleByAdmin(
     targetName: string,
     newRole: UserRole
 ): Promise<void> {
+    await assertAdminPermission();
     await setUserRoleInFirestore({ uid: targetUid, email: targetEmail, displayName: targetName }, newRole, targetName);
 }
 
 export async function createAdminInvite(emailAddress: string, createdBy: string, role: UserRole = 'admin'): Promise<void> {
+    await assertAdminPermission();
     const email = emailAddress.trim().toLowerCase();
     if (!email || !/^[^\s@]+@[^\s@]+$/.test(email)) {
         throw new Error('Enter a valid email address.');
@@ -396,6 +447,7 @@ export async function createAccountByAdmin(
     passwordStr: string,
     role: UserRole
 ): Promise<{ uid: string; email: string }> {
+    await assertAdminPermission();
     const email = emailAddress.trim().toLowerCase();
     const password = passwordStr.trim();
     const name = fullName.trim();
@@ -438,6 +490,7 @@ export async function toggleUserActiveByAdmin(
     currentActive: boolean,
     role: UserRole
 ): Promise<void> {
+    await assertAdminPermission();
     const newActiveState = !currentActive;
     await setDoc(doc(dbFirestore, 'users', targetUid), { active: newActiveState }, { merge: true });
     if (role === 'admin') {
@@ -460,6 +513,7 @@ export async function deleteUserByAdmin(
     targetUid: string,
     role: UserRole
 ): Promise<void> {
+    await assertAdminPermission();
     try { await deleteDoc(doc(dbFirestore, 'users', targetUid)); } catch (_) {}
     if (role === 'admin') {
         try { await deleteDoc(doc(dbFirestore, 'admins', targetUid)); } catch (_) {}

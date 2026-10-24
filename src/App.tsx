@@ -46,6 +46,7 @@ const App = () => {
                 const role = await getUserRole(user);
                 if (isMounted) {
                     setUserRole(role);
+                    localStorage.setItem(`gs_user_role_${user.uid}`, role);
                     localStorage.setItem('gs_user_role', role);
                 }
             } catch (roleErr) {
