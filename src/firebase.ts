@@ -3,10 +3,20 @@ import { getAnalytics } from "firebase/analytics";
 import { getFirestore } from "firebase/firestore";
 import { getAuth, browserLocalPersistence, setPersistence } from "firebase/auth";
 
+const getAuthDomain = () => {
+    if (typeof window !== 'undefined' && window.location.hostname) {
+        const host = window.location.hostname;
+        if (host.endsWith('gsfarm.farm') || host.endsWith('web.app') || host.endsWith('firebaseapp.com')) {
+            return host;
+        }
+    }
+    return "gs-coffee-3d022.firebaseapp.com";
+};
+
 // Your web app's Firebase configuration
 export const firebaseConfig = {
     apiKey: "AIzaSyDXAYOGiPk1sHBff2karq-jkxlVG8nuRqw",
-    authDomain: "gs-coffee-3d022.firebaseapp.com",
+    authDomain: getAuthDomain(),
     projectId: "gs-coffee-3d022",
     storageBucket: "gs-coffee-3d022.firebasestorage.app",
     messagingSenderId: "397024052080",
