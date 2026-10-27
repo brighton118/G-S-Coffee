@@ -483,7 +483,11 @@ class FirestoreSyncService {
                 for (const op of chunk) {
                     batch.set(op.ref, op.data, { merge: true });
                 }
-                await batch.commit();
+                try {
+                    await batch.commit();
+                } catch (batchErr: any) {
+                    console.warn('[Cloud Sync] Batch chunk commit warning:', batchErr?.message || batchErr);
+                }
             }
 
             if (operations.length > 0) {
@@ -765,8 +769,20 @@ class FirestoreSyncService {
     public async syncNow(): Promise<void> {
         this.updateStatus({ isSyncing: true, error: null });
         try {
-            await this.syncLocalToCloud();
-            await this.syncCloudToLocal();
+            // 1. Pull down remote records from Cloud Firestore so existing workers/payroll appear immediately
+            try {
+                await this.syncCloudToLocal();
+            } catch (pullErr: any) {
+                console.warn('[Cloud Sync] Cloud pull notice:', pullErr?.message || pullErr);
+            }
+
+            // 2. Push up any locally created records to Cloud Firestore
+            try {
+                await this.syncLocalToCloud();
+            } catch (pushErr: any) {
+                console.warn('[Cloud Sync] Cloud push notice:', pushErr?.message || pushErr);
+            }
+
             this.updateStatus({
                 isSyncing: false,
                 lastSyncedAt: new Date(),

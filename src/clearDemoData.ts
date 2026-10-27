@@ -100,7 +100,7 @@ const isDemoPayrollRecord = (record: {
         record.balance === 571000 && record.paymentStatus === 'Pending')
 );
 
-async function clearLocalDemoData(): Promise<void> {
+export async function clearLocalDemoData(): Promise<void> {
     await db.transaction(
         'rw',
         [
@@ -163,7 +163,7 @@ async function clearLocalDemoData(): Promise<void> {
     );
 }
 
-async function clearCloudDemoData(): Promise<void> {
+export async function clearCloudDemoData(): Promise<void> {
     const batch = writeBatch(dbFirestore);
     const cloudDocuments: Array<[string, string[]]> = [
         ['workers', demoWorkerIds],
@@ -364,23 +364,10 @@ export async function clearAllCloudSalesAndExpenses(): Promise<void> {
 }
 
 export async function clearSeededDemoData(): Promise<void> {
-    if (localStorage.getItem(LOCAL_CLEANUP_KEY) !== 'true') {
-        try {
-            await clearLocalDemoData();
-        } catch (e) {
-            console.warn('Local demo data cleanup note:', e);
-        }
-        localStorage.setItem(LOCAL_CLEANUP_KEY, 'true');
-    }
-
-    if (localStorage.getItem(CLOUD_CLEANUP_KEY) !== 'true') {
-        try {
-            await clearCloudDemoData();
-        } catch (e) {
-            console.warn('Cloud demo data cleanup deferred:', e);
-        }
-        localStorage.setItem(CLOUD_CLEANUP_KEY, 'true');
-    }
+    // Demo cleanup completed in initial releases. Preserved as safe no-op to ensure production
+    // workers (e.g. GSF-W-0001+), batches, and payroll entered by managers are never deleted.
+    localStorage.setItem(LOCAL_CLEANUP_KEY, 'true');
+    localStorage.setItem(CLOUD_CLEANUP_KEY, 'true');
 }
 
 export async function deleteSingleWorkerSystemWide(workerId: string): Promise<void> {

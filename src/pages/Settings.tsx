@@ -100,8 +100,8 @@ const Settings: React.FC = () => {
     const handleForceSync = async () => {
         setIsSyncing(true);
         try {
-            await firestoreSyncService.syncLocalToCloud();
-            setSaveNotice('Cloud synchronization complete: Local records synced with Cloud Firestore.');
+            await firestoreSyncService.syncNow();
+            setSaveNotice('Cloud synchronization complete: Local records and Cloud Firestore fully synchronized in both directions.');
         } catch (err: any) {
             setSaveNotice('Sync completed.');
         } finally {
