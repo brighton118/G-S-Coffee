@@ -249,17 +249,17 @@
     top: 50%;
     left: 50%;
     transform: translate(-50%, -50%);
-    width: 440px;
-    max-width: 80%;
-    height: 440px;
-    max-height: 80%;
+    width: 480px;
+    max-width: 85%;
+    height: 480px;
+    max-height: 85%;
     background-image: url('/assets/gs_farm_logo_transparent.png');
     background-repeat: no-repeat;
     background-position: center;
     background-size: contain;
-    opacity: 0.08;
+    opacity: 0.24;
     pointer-events: none;
-    filter: brightness(2);
+    filter: brightness(2.5) contrast(1.1);
 }
 
 .admin-auth-aside-content {

@@ -40,32 +40,58 @@ body {
   min-height: 100vh;
 }
 
-/* Global Subtle Project Watermark */
+/* Global Clear Project Watermark */
 body::before {
   content: '';
   position: fixed;
   top: 50%;
   left: calc(50% + 120px); /* Center optically relative to main content on desktop */
   transform: translate(-50%, -50%);
-  width: 540px;
-  max-width: 75vw;
-  height: 540px;
-  max-height: 75vh;
+  width: 580px;
+  max-width: 80vw;
+  height: 580px;
+  max-height: 80vh;
   background-image: url('/assets/gs_farm_logo_transparent.png');
   background-repeat: no-repeat;
   background-position: center;
   background-size: contain;
-  opacity: 0.048;
+  opacity: 0.18;
   pointer-events: none;
   z-index: 0;
+}
+
+/* Watermark overlay across all cards & content */
+body::after {
+  content: '';
+  position: fixed;
+  top: 50%;
+  left: calc(50% + 120px);
+  transform: translate(-50%, -50%);
+  width: 560px;
+  max-width: 80vw;
+  height: 560px;
+  max-height: 80vh;
+  background-image: url('/assets/gs_farm_logo_transparent.png');
+  background-repeat: no-repeat;
+  background-position: center;
+  background-size: contain;
+  opacity: 0.095;
+  pointer-events: none;
+  z-index: 9999;
 }
 
 @media (max-width: 768px) {
   body::before {
     left: 50%;
+    width: 340px;
+    height: 340px;
+    opacity: 0.16;
+  }
+  body::after {
+    left: 50%;
     width: 320px;
     height: 320px;
-    opacity: 0.04;
+    opacity: 0.09;
   }
 }
 
