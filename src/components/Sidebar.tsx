@@ -28,6 +28,16 @@ const Sidebar = ({ isOpen, setIsOpen, adminEmail, onSignOut }: SidebarProps) => 
     const isAttendanceSectionActive = location.pathname === '/attendance' || location.pathname === '/scan';
 
     useEffect(() => {
+        const handleKeyDown = (e: KeyboardEvent) => {
+            if (e.key === 'Escape' && isOpen) {
+                setIsOpen(false);
+            }
+        };
+        window.addEventListener('keydown', handleKeyDown);
+        return () => window.removeEventListener('keydown', handleKeyDown);
+    }, [isOpen, setIsOpen]);
+
+    useEffect(() => {
         const unsubscribe = firestoreSyncService.subscribeStatus(setSyncStatus);
         return () => unsubscribe();
     }, []);
@@ -51,8 +61,8 @@ const Sidebar = ({ isOpen, setIsOpen, adminEmail, onSignOut }: SidebarProps) => 
                         style={{ height: '36px', width: 'auto', objectFit: 'contain' }} 
                     />
                 </div>
-                <button className="mobile-close-btn" onClick={handleClose}>
-                    <X size={24} />
+                <button className="sidebar-close-btn" onClick={handleClose} title="Close menu" aria-label="Close menu">
+                    <X size={22} />
                 </button>
             </div>
             <nav className="sidebar-nav">

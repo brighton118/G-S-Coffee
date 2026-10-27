@@ -45,7 +45,7 @@ body::before {
   content: '';
   position: fixed;
   top: 50%;
-  left: calc(50% + 120px); /* Center optically relative to main content on desktop */
+  left: 50%;
   transform: translate(-50%, -50%);
   width: 580px;
   max-width: 80vw;
@@ -65,7 +65,7 @@ body::after {
   content: '';
   position: fixed;
   top: 50%;
-  left: calc(50% + 120px);
+  left: 50%;
   transform: translate(-50%, -50%);
   width: 560px;
   max-width: 80vw;
@@ -82,13 +82,11 @@ body::after {
 
 @media (max-width: 768px) {
   body::before {
-    left: 50%;
     width: 340px;
     height: 340px;
     opacity: 0.16;
   }
   body::after {
-    left: 50%;
     width: 320px;
     height: 320px;
     opacity: 0.09;
@@ -111,14 +109,7 @@ a {
   display: flex;
   min-height: 100vh;
   min-height: 100dvh;
-}
-
-.sidebar {
-  width: 250px;
-  background-color: var(--color-surface);
-  border-right: 1px solid var(--color-border);
-  display: flex;
-  flex-direction: column;
+  width: 100%;
 }
 
 .main-content {
