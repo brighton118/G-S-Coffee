@@ -36,6 +36,37 @@ body {
   color: var(--color-text);
   line-height: 1.5;
   -webkit-font-smoothing: antialiased;
+  position: relative;
+  min-height: 100vh;
+}
+
+/* Global Subtle Project Watermark */
+body::before {
+  content: '';
+  position: fixed;
+  top: 50%;
+  left: calc(50% + 120px); /* Center optically relative to main content on desktop */
+  transform: translate(-50%, -50%);
+  width: 540px;
+  max-width: 75vw;
+  height: 540px;
+  max-height: 75vh;
+  background-image: url('/assets/gs_farm_logo_transparent.png');
+  background-repeat: no-repeat;
+  background-position: center;
+  background-size: contain;
+  opacity: 0.048;
+  pointer-events: none;
+  z-index: 0;
+}
+
+@media (max-width: 768px) {
+  body::before {
+    left: 50%;
+    width: 320px;
+    height: 320px;
+    opacity: 0.04;
+  }
 }
 
 h1, h2, h3, h4, h5, h6 {

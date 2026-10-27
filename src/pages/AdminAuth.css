@@ -239,6 +239,27 @@
         radial-gradient(ellipse at 75% 20%, #91a957 0, transparent 38%),
         linear-gradient(135deg, #537b39, #243e1e 72%);
     color: white;
+    position: relative;
+    overflow: hidden;
+}
+
+.admin-auth-aside::before {
+    content: '';
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    width: 440px;
+    max-width: 80%;
+    height: 440px;
+    max-height: 80%;
+    background-image: url('/assets/gs_farm_logo_transparent.png');
+    background-repeat: no-repeat;
+    background-position: center;
+    background-size: contain;
+    opacity: 0.08;
+    pointer-events: none;
+    filter: brightness(2);
 }
 
 .admin-auth-aside-content {

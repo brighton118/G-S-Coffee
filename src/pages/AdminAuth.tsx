@@ -7,7 +7,7 @@ import {
     signInWithPopup,
     signInWithRedirect
 } from 'firebase/auth';
-import { Banknote, Coffee, Eye, EyeOff, LockKeyhole, Mail } from 'lucide-react';
+import { Banknote, Eye, EyeOff, LockKeyhole, Mail } from 'lucide-react';
 import { auth } from '../firebase';
 import './AdminAuth.css';
 
@@ -121,16 +121,16 @@ const AdminAuth = ({ message, onClearMessage }: AdminAuthProps) => {
     return (
         <main className="admin-auth-page">
             <section className="admin-auth-panel" aria-labelledby="admin-auth-title">
-                <div className="admin-auth-brand">
-                    <div className="admin-auth-brand-icon"><Coffee size={27} /></div>
+                <div className="admin-auth-brand" style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                    <img src="/assets/gs_farm_logo_transparent.png" alt="G&S FARMS" style={{ height: '48px', width: 'auto', objectFit: 'contain' }} />
                     <div>
-                        <strong>G&S FARM</strong>
+                        <strong>G&S FARMS</strong>
                         <span>Farm operations workspace</span>
                     </div>
                 </div>
 
                 <div className="admin-auth-intro">
-                    <span className="admin-auth-eyebrow"><Banknote size={15} /> G&S FARM ACCESS</span>
+                    <span className="admin-auth-eyebrow"><Banknote size={15} /> G&S FARMS ACCESS</span>
                     <h1 id="admin-auth-title">Sign in to your account</h1>
                     <p>
                         Sign in to access farm operations, workforce, inventory, and records.

@@ -35,7 +35,7 @@ import './Dashboard.css';
 const Settings: React.FC = () => {
     const { isAdmin, isSuperAdmin } = useUserRole();
     const [settings, setSettings] = useState({
-        farmName: 'G&S FARM',
+        farmName: 'G&S FARMS',
         farmLocation: 'Mubende District, Uganda',
         contactEmail: 'admin@gscoffee-farm.com',
         contactPhone: '+256 700 123456',
@@ -279,9 +279,12 @@ const Settings: React.FC = () => {
 
                     {/* General Preferences */}
                     <div className="card" style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
-                        <h3 style={{ borderBottom: '1px solid var(--color-border)', paddingBottom: '0.75rem', margin: 0, color: 'var(--color-primary-dark)' }}>
-                            General Farm Info
-                        </h3>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: '1px solid var(--color-border)', paddingBottom: '0.75rem' }}>
+                            <h3 style={{ margin: 0, color: 'var(--color-primary-dark)' }}>
+                                General Farm Info
+                            </h3>
+                            <img src="/assets/gs_farm_logo_transparent.png" alt="G&S FARMS" style={{ height: '30px', width: 'auto', objectFit: 'contain' }} />
+                        </div>
                         <div className="form-group">
                             <label className="form-label">Farm Organization Name</label>
                             <input type="text" className="form-input" value={settings.farmName} onChange={e => setSettings({ ...settings, farmName: e.target.value })} />

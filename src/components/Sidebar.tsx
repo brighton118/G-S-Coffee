@@ -43,8 +43,14 @@ const Sidebar = ({ isOpen, setIsOpen, adminEmail, onSignOut }: SidebarProps) => 
 
     return (
         <aside className={`sidebar ${isOpen ? 'open' : ''}`}>
-            <div className="sidebar-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                <h2>G&S FARM</h2>
+            <div className="sidebar-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '0.9rem 1rem 0.9rem 1.15rem' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                    <img 
+                        src="/assets/gs_farm_logo_transparent.png" 
+                        alt="G&S FARMS" 
+                        style={{ height: '36px', width: 'auto', objectFit: 'contain' }} 
+                    />
+                </div>
                 <button className="mobile-close-btn" onClick={handleClose}>
                     <X size={24} />
                 </button>
@@ -106,7 +112,12 @@ const Sidebar = ({ isOpen, setIsOpen, adminEmail, onSignOut }: SidebarProps) => 
                 </NavLink>
             </nav>
             <div className="sidebar-account">
-                <div className="sidebar-account-email" title={adminEmail}>{adminEmail}</div>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '0.4rem' }}>
+                    <div style={{ width: '28px', height: '28px', borderRadius: '50%', background: '#ffffff', display: 'flex', alignItems: 'center', justifyContent: 'center', overflow: 'hidden', flexShrink: 0, boxShadow: '0 1px 3px rgba(0,0,0,0.2)' }}>
+                        <img src="/favicon.png" alt="Profile" style={{ width: '22px', height: '22px', objectFit: 'contain' }} />
+                    </div>
+                    <div className="sidebar-account-email" style={{ marginBottom: 0 }} title={adminEmail}>{adminEmail}</div>
+                </div>
                 <div className="sidebar-role-badge-wrap">
                     <span className={`sidebar-role-badge role-${role}`}>
                         {role === 'admin' ? '👑 Admin (Full Access)' : role === 'manager' ? '💼 Manager (Operations)' : '👁️ Staff (View Only)'}
