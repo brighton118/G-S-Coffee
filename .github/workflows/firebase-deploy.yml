@@ -26,16 +26,22 @@ jobs:
 
       - name: Deploy to Firebase Hosting
         env:
-          SERVICE_ACCOUNT_JSON: ${{ secrets.FIREBASE_SERVICE_ACCOUNT_GS_COFFEE_3D022 }}
+          FIREBASE_SERVICE_ACCOUNT: ${{ secrets.FIREBASE_SERVICE_ACCOUNT_GS_COFFEE_3D022 }}
         run: |
-          if [ -z "$SERVICE_ACCOUNT_JSON" ]; then
-            echo "::error::GitHub secret 'FIREBASE_SERVICE_ACCOUNT_GS_COFFEE_3D022' is missing or empty!"
-            echo "Please go to https://github.com/brighton118/G-S-Coffee/settings/secrets/actions"
-            echo "Add a new repository secret with Name: FIREBASE_SERVICE_ACCOUNT_GS_COFFEE_3D022"
-            echo "and paste the Firebase Service Account JSON key as the Secret value."
-            exit 1
-          fi
-
-          echo "$SERVICE_ACCOUNT_JSON" > "$RUNNER_TEMP/service-account.json"
+          node -e '
+            const sa = process.env.FIREBASE_SERVICE_ACCOUNT;
+            if (!sa || !sa.trim()) {
+              console.error("::error::The secret FIREBASE_SERVICE_ACCOUNT_GS_COFFEE_3D022 is empty in GitHub repository settings.");
+              process.exit(1);
+            }
+            try {
+              JSON.parse(sa);
+              require("fs").writeFileSync(process.env.RUNNER_TEMP + "/service-account.json", sa);
+              console.log("Service account JSON successfully parsed and written.");
+            } catch (err) {
+              console.error("::error::The secret FIREBASE_SERVICE_ACCOUNT_GS_COFFEE_3D022 is not valid JSON. Error: " + err.message);
+              process.exit(1);
+            }
+          '
           export GOOGLE_APPLICATION_CREDENTIALS="$RUNNER_TEMP/service-account.json"
           npx firebase-tools deploy --only hosting --non-interactive --project gs-coffee-3d022
