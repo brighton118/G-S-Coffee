@@ -5,11 +5,6 @@ name: Deploy to Firebase Hosting
     branches:
       - main
 
-permissions:
-  contents: read
-  checks: write
-  pull-requests: write
-
 jobs:
   build_and_deploy:
     runs-on: ubuntu-latest
@@ -30,9 +25,10 @@ jobs:
         run: npm run build
 
       - name: Deploy to Firebase Hosting
-        uses: FirebaseExtended/action-hosting-deploy@v0
-        with:
-          repoToken: '${{ secrets.GITHUB_TOKEN }}'
-          firebaseServiceAccount: '${{ secrets.FIREBASE_SERVICE_ACCOUNT_GS_COFFEE_3D022 }}'
-          channelId: live
-          projectId: gs-coffee-3d022
+        env:
+          FIREBASE_SERVICE_ACCOUNT: ${{ secrets.FIREBASE_SERVICE_ACCOUNT_GS_COFFEE_3D022 }}
+        run: |
+          echo "$FIREBASE_SERVICE_ACCOUNT" > "$RUNNER_TEMP/sa.json"
+          export GOOGLE_APPLICATION_CREDENTIALS="$RUNNER_TEMP/sa.json"
+          npm install -g firebase-tools
+          firebase deploy --only hosting --project gs-coffee-3d022
