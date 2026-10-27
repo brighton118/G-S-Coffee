@@ -25,9 +25,17 @@ jobs:
         run: npm run build
 
       - name: Deploy to Firebase Hosting
-        uses: FirebaseExtended/action-hosting-deploy@v0
-        with:
-          repoToken: '${{ secrets.GITHUB_TOKEN }}'
-          firebaseServiceAccount: '${{ secrets.FIREBASE_SERVICE_ACCOUNT_GS_COFFEE_3D022 }}'
-          channelId: live
-          projectId: gs-coffee-3d022
+        env:
+          SERVICE_ACCOUNT_JSON: ${{ secrets.FIREBASE_SERVICE_ACCOUNT_GS_COFFEE_3D022 || secrets.FIREBASE_SERVICE_ACCOUNT }}
+        run: |
+          if [ -z "$SERVICE_ACCOUNT_JSON" ]; then
+            echo "::error::GitHub secret 'FIREBASE_SERVICE_ACCOUNT_GS_COFFEE_3D022' is missing or empty!"
+            echo "Please go to https://github.com/brighton118/G-S-Coffee/settings/secrets/actions"
+            echo "Add a new repository secret with Name: FIREBASE_SERVICE_ACCOUNT_GS_COFFEE_3D022"
+            echo "and paste the Firebase Service Account JSON key as the Secret value."
+            exit 1
+          fi
+
+          echo "$SERVICE_ACCOUNT_JSON" > "$RUNNER_TEMP/service-account.json"
+          export GOOGLE_APPLICATION_CREDENTIALS="$RUNNER_TEMP/service-account.json"
+          npx firebase-tools deploy --only hosting --non-interactive --project gs-coffee-3d022
