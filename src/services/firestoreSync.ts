@@ -560,7 +560,10 @@ class FirestoreSyncService {
                     if (worker?.fullName) workerName = worker.fullName;
                 }
                 const cleanData = workerName ? { ...data, workerName } : data;
-                const existing = await db.attendance.where({ workerId: data.workerId, date: data.date }).first();
+                const existing = await db.attendance
+                    .where('workerId').equals(data.workerId)
+                    .filter(a => a.date === data.date)
+                    .first();
                 if (existing && existing.id !== undefined) {
                     await db.attendance.update(existing.id, cleanData as any);
                 } else {
@@ -575,7 +578,10 @@ class FirestoreSyncService {
                 if (docSnap.id.startsWith('_') || docSnap.data()._isSystemSchema) continue;
                 const data = docSnap.data();
                 if (!data.payrollMonth || !data.workerId) continue;
-                const existing = await db.payrollRecords.where({ payrollMonth: data.payrollMonth, workerId: data.workerId }).first();
+                const existing = await db.payrollRecords
+                    .where('payrollMonth').equals(data.payrollMonth)
+                    .filter(r => r.workerId === data.workerId)
+                    .first();
                 if (existing && existing.id !== undefined) {
                     await db.payrollRecords.update(existing.id, data as any);
                 } else {
@@ -589,8 +595,17 @@ class FirestoreSyncService {
             for (const docSnap of payPaySnap.docs) {
                 if (docSnap.id.startsWith('_') || docSnap.data()._isSystemSchema) continue;
                 const data = docSnap.data();
-                const { id: _ignore, ...cleanPay } = data;
-                await db.payrollPayments.put({ ...cleanPay, id: data.id } as any);
+                if (!data.workerId || !data.amount) continue;
+                const existing = await db.payrollPayments
+                    .where('workerId').equals(data.workerId)
+                    .filter(p => p.payrollMonth === data.payrollMonth && p.paymentDate === data.paymentDate && p.amount === data.amount)
+                    .first();
+                if (existing && existing.id !== undefined) {
+                    await db.payrollPayments.update(existing.id, data as any);
+                } else {
+                    const { id: _ignore, ...cleanPay } = data;
+                    await db.payrollPayments.add(cleanPay as any);
+                }
             }
 
             // 9. Pull Production Cuttings
@@ -869,7 +884,10 @@ class FirestoreSyncService {
                             if (worker?.fullName) workerName = worker.fullName;
                         }
                         const cleanData = workerName ? { ...data, workerName } : data;
-                        const existing = await db.attendance.where({ workerId: data.workerId, date: data.date }).first();
+                        const existing = await db.attendance
+                            .where('workerId').equals(data.workerId)
+                            .filter(a => a.date === data.date)
+                            .first();
                         if (existing && existing.id !== undefined) {
                             await db.attendance.update(existing.id, cleanData as any);
                         } else {
@@ -887,7 +905,10 @@ class FirestoreSyncService {
                     if (change.type === 'added' || change.type === 'modified') {
                         const data = change.doc.data();
                         if (!data.payrollMonth || !data.workerId) return;
-                        const existing = await db.payrollRecords.where({ payrollMonth: data.payrollMonth, workerId: data.workerId }).first();
+                        const existing = await db.payrollRecords
+                            .where('payrollMonth').equals(data.payrollMonth)
+                            .filter(r => r.workerId === data.workerId)
+                            .first();
                         if (existing && existing.id !== undefined) {
                             await db.payrollRecords.update(existing.id, data as any);
                         } else {
@@ -897,6 +918,32 @@ class FirestoreSyncService {
                     }
                 });
             }, (err) => console.info('Firestore payroll listener active:', err.message));
+
+            // 7b. Real-time Payroll Payments
+            const unsubPayrollPayments = onSnapshot(collection(dbFirestore, 'payrollPayments'), (snap) => {
+                snap.docChanges().forEach(async (change) => {
+                    if (change.doc.id.startsWith('_') || change.doc.data()._isSystemSchema) return;
+                    if (change.type === 'added' || change.type === 'modified') {
+                        const data = change.doc.data();
+                        if (!data.workerId || !data.amount) return;
+                        const existing = await db.payrollPayments
+                            .where('workerId').equals(data.workerId)
+                            .filter(p => p.payrollMonth === data.payrollMonth && p.paymentDate === data.paymentDate && p.amount === data.amount)
+                            .first();
+                        if (existing && existing.id !== undefined) {
+                            await db.payrollPayments.update(existing.id, data as any);
+                        } else {
+                            const { id: _ignore, ...cleanPay } = data;
+                            await db.payrollPayments.add(cleanPay as any);
+                        }
+                        if (data.payrollMonth) {
+                            import('./payrollSync').then(({ syncPayrollMonth }) => {
+                                void syncPayrollMonth(data.payrollMonth);
+                            }).catch(() => {});
+                        }
+                    }
+                });
+            }, (err) => console.info('Firestore payrollPayments listener active:', err.message));
 
             // 8. Real-time Production Humid Chamber
             const unsubHumidChamber = onSnapshot(collection(dbFirestore, 'productionHumidChamber'), (snap) => {
@@ -1047,6 +1094,7 @@ class FirestoreSyncService {
                 unsubInventory, 
                 unsubAttendance,
                 unsubPayroll,
+                unsubPayrollPayments,
                 unsubHumidChamber,
                 unsubFirstHardening,
                 unsubSecondHardening,

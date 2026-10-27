@@ -16,8 +16,10 @@ import {
     ShieldCheck,
     ArrowUpDown,
     CheckCircle2,
-    UserPlus
+    UserPlus,
+    Banknote
 } from 'lucide-react';
+import { formatUGX } from '../utils/calculations';
 import { useUserRole } from '../context/UserRoleContext';
 import AdminInvitations from '../components/AdminInvitations';
 import './Dashboard.css';
@@ -39,6 +41,8 @@ const Dashboard = () => {
     const inventory = useLiveQuery(() => db.inventoryItems.toArray()) || [];
     const sales = useLiveQuery(() => db.salesOrders.toArray()) || [];
     const notifications = useLiveQuery(() => db.notifications.where('read').equals(0).toArray()) || [];
+    const payrollRecords = useLiveQuery(() => db.payrollRecords.toArray()) || [];
+    const payrollPayments = useLiveQuery(() => db.payrollPayments.toArray()) || [];
 
     // Worker lookup map for resolving names and contact info
     const workerMap = useMemo(() => new Map(workers.map(w => [w.workerId, w])), [workers]);
@@ -139,6 +143,28 @@ const Dashboard = () => {
 
     // Sales Financials
     const totalSalesRevenue = sales.reduce((acc, curr) => acc + (curr.totalAmount || 0), 0);
+
+    // Monthly Payroll Financials & Activity
+    const currentMonthStr = format(new Date(), 'yyyy-MM');
+    const currentMonthPayroll = useMemo(() => {
+        return payrollRecords.filter(p => p.payrollMonth === currentMonthStr || p.payrollPeriod === currentMonthStr);
+    }, [payrollRecords, currentMonthStr]);
+
+    const totalPayrollNet = useMemo(() => currentMonthPayroll.reduce((acc, curr) => acc + (curr.netPay || 0), 0), [currentMonthPayroll]);
+    const totalPayrollPaid = useMemo(() => currentMonthPayroll.reduce((acc, curr) => acc + (curr.amountPaid || 0), 0), [currentMonthPayroll]);
+    const totalPayrollBalance = useMemo(() => currentMonthPayroll.reduce((acc, curr) => acc + (curr.balance ?? Math.max(0, curr.netPay - (curr.amountPaid || 0))), 0), [currentMonthPayroll]);
+    const paidWorkersCount = useMemo(() => currentMonthPayroll.filter(p => p.paymentStatus === 'Paid').length, [currentMonthPayroll]);
+    const pendingWorkersCount = useMemo(() => currentMonthPayroll.filter(p => p.paymentStatus === 'Pending').length, [currentMonthPayroll]);
+    const partialWorkersCount = useMemo(() => currentMonthPayroll.filter(p => p.paymentStatus === 'Partially Paid').length, [currentMonthPayroll]);
+
+    // Recent payroll payments recorded by managers/finance officers
+    const recentPayrollPayments = useMemo(() => {
+        return [...payrollPayments].sort((a, b) => {
+            const dateComp = (b.paymentDate || '').localeCompare(a.paymentDate || '');
+            if (dateComp !== 0) return dateComp;
+            return (b.id || 0) - (a.id || 0);
+        }).slice(0, 5);
+    }, [payrollPayments]);
 
     return (
         <div className="dashboard-wrapper" style={{ display: 'flex', flexDirection: 'column', gap: '1.75rem' }}>
@@ -345,6 +371,25 @@ const Dashboard = () => {
                     </span>
                     <span className="text-light" style={{ fontSize: '0.85rem', marginTop: '4px' }}>
                         {activeInventory.length} items across 4 categories
+                    </span>
+                </div>
+
+                {/* 5. Monthly Payroll */}
+                <div className="card stat-card" style={{ borderLeft: '4px solid #059669' }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                        <span className="stat-label">Payroll ({format(new Date(), 'MMM yyyy')})</span>
+                        <Link to="/payroll" style={{ fontSize: '0.75rem', fontWeight: 600, color: '#059669', display: 'flex', alignItems: 'center', gap: '0.2rem' }}>
+                            View <ArrowRight size={12} />
+                        </Link>
+                    </div>
+                    <span className="stat-value text-success" style={{ fontSize: '1.75rem' }}>
+                        {formatUGX(totalPayrollPaid)}
+                    </span>
+                    <span className="text-light" style={{ fontSize: '0.82rem', marginTop: '4px', display: 'flex', justifyContent: 'space-between' }}>
+                        <span>Net: {formatUGX(totalPayrollNet)}</span>
+                        <span style={{ color: totalPayrollBalance > 0 ? '#d97706' : '#059669', fontWeight: 600 }}>
+                            {totalPayrollBalance > 0 ? `Due: ${formatUGX(totalPayrollBalance)}` : '✓ All Settled'}
+                        </span>
                     </span>
                 </div>
             </div>
@@ -726,6 +771,88 @@ const Dashboard = () => {
                     </div>
                 </div>
             </div>
+
+            {/* Monthly Payroll & Payment Records */}
+            <section className="dashboard-section card" style={{ padding: '1.5rem' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.25rem', flexWrap: 'wrap', gap: '0.75rem' }}>
+                    <div>
+                        <h3 style={{ margin: 0, fontSize: '1.25rem', color: 'var(--color-primary-dark)', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                            <Banknote size={22} color="var(--color-primary)" /> Monthly Payroll & Payment Records ({format(new Date(), 'MMMM yyyy')})
+                        </h3>
+                        <p className="text-light" style={{ margin: '0.2rem 0 0 0', fontSize: '0.82rem' }}>
+                            Live payroll entries, manager payment disbursements, and wage settlements across farm staff.
+                        </p>
+                    </div>
+                    <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
+                        <Link to="/payroll" className="btn btn-secondary" style={{ fontSize: '0.82rem', padding: '0.35rem 0.75rem', display: 'inline-flex', alignItems: 'center', gap: '0.35rem' }}>
+                            Open Payroll Master Sheet <ArrowRight size={14} />
+                        </Link>
+                    </div>
+                </div>
+
+                {/* Quick Status Pill Bar */}
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: '0.85rem', marginBottom: '1.25rem' }}>
+                    <div style={{ padding: '0.85rem 1rem', background: '#f8fafc', borderRadius: '8px', border: '1px solid #e2e8f0' }}>
+                        <div style={{ fontSize: '0.78rem', color: '#64748b', fontWeight: 600, textTransform: 'uppercase' }}>Total Net Wage Bill</div>
+                        <div style={{ fontSize: '1.2rem', fontWeight: 700, color: '#0f172a', marginTop: '0.2rem' }}>{formatUGX(totalPayrollNet)}</div>
+                        <div style={{ fontSize: '0.78rem', color: '#64748b', marginTop: '0.2rem' }}>{currentMonthPayroll.length} workers registered</div>
+                    </div>
+                    <div style={{ padding: '0.85rem 1rem', background: '#f0fdf4', borderRadius: '8px', border: '1px solid #bbf7d0' }}>
+                        <div style={{ fontSize: '0.78rem', color: '#166534', fontWeight: 600, textTransform: 'uppercase' }}>Total Disbursed (Paid)</div>
+                        <div style={{ fontSize: '1.2rem', fontWeight: 700, color: '#15803d', marginTop: '0.2rem' }}>{formatUGX(totalPayrollPaid)}</div>
+                        <div style={{ fontSize: '0.78rem', color: '#166534', marginTop: '0.2rem' }}>{paidWorkersCount} fully paid worker(s)</div>
+                    </div>
+                    <div style={{ padding: '0.85rem 1rem', background: '#fffbeb', borderRadius: '8px', border: '1px solid #fde68a' }}>
+                        <div style={{ fontSize: '0.78rem', color: '#92400e', fontWeight: 600, textTransform: 'uppercase' }}>Remaining Balance Due</div>
+                        <div style={{ fontSize: '1.2rem', fontWeight: 700, color: '#b45309', marginTop: '0.2rem' }}>{formatUGX(totalPayrollBalance)}</div>
+                        <div style={{ fontSize: '0.78rem', color: '#92400e', marginTop: '0.2rem' }}>{partialWorkersCount} partial, {pendingWorkersCount} pending</div>
+                    </div>
+                </div>
+
+                {/* Live Recent Payment Activity Table */}
+                <div>
+                    <h4 style={{ margin: '0 0 0.65rem 0', fontSize: '0.95rem', color: '#334155', fontWeight: 600 }}>
+                        Recent Payment Disbursements Recorded by Managers
+                    </h4>
+                    {recentPayrollPayments.length === 0 ? (
+                        <div style={{ padding: '1.5rem', textAlign: 'center', background: '#f8fafc', borderRadius: '8px', color: '#64748b', fontSize: '0.85rem' }}>
+                            No payment transactions recorded for this month yet. Payments recorded by managers via the Payroll page will appear here live.
+                        </div>
+                    ) : (
+                        <div style={{ overflowX: 'auto' }}>
+                            <table className="table" style={{ width: '100%', fontSize: '0.85rem' }}>
+                                <thead>
+                                    <tr style={{ background: '#f8fafc', borderBottom: '1px solid #e2e8f0' }}>
+                                        <th style={{ padding: '0.55rem 0.75rem', textAlign: 'left' }}>Date</th>
+                                        <th style={{ padding: '0.55rem 0.75rem', textAlign: 'left' }}>Worker</th>
+                                        <th style={{ padding: '0.55rem 0.75rem', textAlign: 'left' }}>Amount Paid</th>
+                                        <th style={{ padding: '0.55rem 0.75rem', textAlign: 'left' }}>Method</th>
+                                        <th style={{ padding: '0.55rem 0.75rem', textAlign: 'left' }}>Recorded By</th>
+                                        <th style={{ padding: '0.55rem 0.75rem', textAlign: 'left' }}>Reference / Notes</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {recentPayrollPayments.map(payment => (
+                                        <tr key={payment.id || `${payment.workerId}-${payment.paymentDate}-${payment.amount}`} style={{ borderBottom: '1px solid #f1f5f9' }}>
+                                            <td style={{ padding: '0.55rem 0.75rem', fontWeight: 600, color: '#475569' }}>{payment.paymentDate}</td>
+                                            <td style={{ padding: '0.55rem 0.75rem', fontWeight: 600, color: '#0f172a' }}>{payment.workerName} ({payment.workerId})</td>
+                                            <td style={{ padding: '0.55rem 0.75rem', fontWeight: 700, color: '#15803d' }}>{formatUGX(payment.amount)}</td>
+                                            <td style={{ padding: '0.55rem 0.75rem' }}>
+                                                <span className="badge badge-info" style={{ fontSize: '0.75rem' }}>{payment.paymentMethod}</span>
+                                            </td>
+                                            <td style={{ padding: '0.55rem 0.75rem', color: '#64748b' }}>{payment.recordedBy || 'Manager'}</td>
+                                            <td style={{ padding: '0.55rem 0.75rem', color: '#64748b', fontSize: '0.8rem' }}>
+                                                {payment.paymentReference ? `Ref: ${payment.paymentReference} ` : ''}
+                                                {payment.notes || '-'}
+                                            </td>
+                                        </tr>
+                                    ))}
+                                </tbody>
+                            </table>
+                        </div>
+                    )}
+                </div>
+            </section>
         </div>
     );
 };

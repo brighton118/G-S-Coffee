@@ -146,8 +146,8 @@ const Payroll: React.FC = () => {
             notes: paymentNotes || undefined,
             createdAt: new Date().toISOString()
         };
-        await db.payrollPayments.add(paymentData);
-        void firestoreSyncService.savePayrollPayment(paymentData);
+        const newPaymentId = await db.payrollPayments.add(paymentData);
+        void firestoreSyncService.savePayrollPayment({ ...paymentData, id: newPaymentId });
 
         // 2. Update payrollRecord
         const updatedRecord = {
@@ -162,7 +162,7 @@ const Payroll: React.FC = () => {
             status: newStatus === 'Paid' ? ('Paid' as const) : ('Approved' as const)
         };
         await db.payrollRecords.update(record.id, updatedRecord);
-        void firestoreSyncService.savePayrollRecord({ ...record, ...updatedRecord });
+        void firestoreSyncService.savePayrollRecord({ ...record, ...updatedRecord, id: record.id });
 
         // 3. Activity Audit Log
         await db.activityLogs.add({
@@ -211,7 +211,7 @@ const Payroll: React.FC = () => {
         const balance = Math.max(0, netPay - amountPaid);
         const paymentStatus = amountPaid >= netPay && netPay > 0 ? 'Paid' : amountPaid > 0 ? 'Partially Paid' : 'Pending';
 
-        await db.payrollRecords.update(record.id, {
+        const updatedDeductionFields = {
             overtimeRate: newOvertimeRate,
             overtimeEarnings: newOvertimeEarnings,
             deductions: newDeduction,
@@ -220,7 +220,10 @@ const Payroll: React.FC = () => {
             netPay,
             balance,
             paymentStatus
-        });
+        };
+
+        await db.payrollRecords.update(record.id, updatedDeductionFields);
+        void firestoreSyncService.savePayrollRecord({ ...record, ...updatedDeductionFields });
 
         // Also update worker's saved overtime rate in worker profile for future cycles
         await db.workers.update(record.workerId, {

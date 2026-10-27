@@ -1,6 +1,7 @@
 import { db, AttendanceRecord, PayrollRecord } from '../db';
 import { loadAttendanceScheduleSettings } from '../utils/attendanceSchedule';
 import { timeToMinutes } from '../utils/calculations';
+import { firestoreSyncService } from './firestoreSync';
 
 function countMissedWorkdays(
     workerId: string,
@@ -73,11 +74,18 @@ export async function syncPayrollMonth(payrollMonth: string, now = new Date()): 
 }
 
 async function synchronizePayrollMonth(payrollMonth: string, now: Date): Promise<void> {
-    const [workers, attendanceRecords, existingRecords] = await Promise.all([
+    const [workers, attendanceRecords, existingRecords, payments] = await Promise.all([
         db.workers.where('status').equals('Active').toArray(),
         db.attendance.toArray(),
-        db.payrollRecords.where('payrollMonth').equals(payrollMonth).toArray()
+        db.payrollRecords.where('payrollMonth').equals(payrollMonth).toArray(),
+        db.payrollPayments.where('payrollMonth').equals(payrollMonth).toArray()
     ]);
+
+    const paymentsByWorker = new Map<string, number>();
+    for (const p of payments) {
+        paymentsByWorker.set(p.workerId, (paymentsByWorker.get(p.workerId) || 0) + (p.amount || 0));
+    }
+
     const recordsByWorker = new Map(existingRecords.map(record => [record.workerId, record]));
     const attendanceByWorkerAndDate = new Map<string, AttendanceRecord[]>();
     for (const record of attendanceRecords) {
@@ -122,7 +130,8 @@ async function synchronizePayrollMonth(payrollMonth: string, now: Date): Promise
             const overtimeRate = existing?.overtimeRate || worker.overtimeRate || 3500;
             const overtimeEarnings = Math.round(approvedOTHours * overtimeRate);
             const netPay = Math.max(0, Math.round(monthlySalary + overtimeEarnings - deductions));
-            const amountPaid = existing?.amountPaid || 0;
+            const recordedPayments = paymentsByWorker.get(worker.workerId) || 0;
+            const amountPaid = Math.max(existing?.amountPaid || 0, recordedPayments);
             const balance = Math.max(0, netPay - amountPaid);
             const paymentStatus = amountPaid >= netPay && netPay > 0
                 ? 'Paid'
@@ -157,9 +166,11 @@ async function synchronizePayrollMonth(payrollMonth: string, now: Date): Promise
                 const changedFields = Object.keys(payrollData) as (keyof typeof payrollData)[];
                 if (changedFields.some(field => existing[field] !== payrollData[field])) {
                     await db.payrollRecords.update(existing.id, payrollData);
+                    void firestoreSyncService.savePayrollRecord({ ...existing, ...payrollData });
                 }
             } else {
-                await db.payrollRecords.add(payrollData);
+                const newId = await db.payrollRecords.add(payrollData);
+                void firestoreSyncService.savePayrollRecord({ ...payrollData, id: newId });
             }
         }
     });
