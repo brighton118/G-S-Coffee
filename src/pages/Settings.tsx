@@ -1,9 +1,8 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { 
     Settings as SettingsIcon, 
     Save, 
     Trash2, 
-    ShieldCheck, 
     Mail, 
     Smartphone, 
     Bell, 
@@ -14,7 +13,12 @@ import {
     Sprout,
     Key,
     Eye,
-    EyeOff
+    EyeOff,
+    Download,
+    Upload,
+    Database,
+    FileJson,
+    Info
 } from 'lucide-react';
 import { updatePassword } from 'firebase/auth';
 import { auth } from '../firebase';
@@ -46,6 +50,13 @@ const Settings: React.FC = () => {
 
     const [saveNotice, setSaveNotice] = useState<string | null>(null);
     const [isSyncing, setIsSyncing] = useState<boolean>(false);
+    const [syncMessage, setSyncMessage] = useState<string | null>(null);
+    const [diagnostics, setDiagnostics] = useState<{
+        local: Record<string, number>;
+        cloud: Record<string, number>;
+    } | null>(null);
+    const [isLoadingDiag, setIsLoadingDiag] = useState<boolean>(false);
+    const fileInputRef = useRef<HTMLInputElement | null>(null);
 
     // Password change state
     const [newAdminPass, setNewAdminPass] = useState('');
@@ -53,6 +64,18 @@ const Settings: React.FC = () => {
     const [showNewPass, setShowNewPass] = useState(false);
     const [isUpdatingPass, setIsUpdatingPass] = useState(false);
     const [passwordNotice, setPasswordNotice] = useState<{ text: string; type: 'success' | 'error' } | null>(null);
+
+    const loadDiagnostics = async () => {
+        setIsLoadingDiag(true);
+        try {
+            const diag = await firestoreSyncService.getSyncDiagnostics();
+            setDiagnostics(diag);
+        } catch (e) {
+            console.warn('Diagnostics load note:', e);
+        } finally {
+            setIsLoadingDiag(false);
+        }
+    };
 
     useEffect(() => {
         const saved = localStorage.getItem('gs_farm_settings');
@@ -68,6 +91,7 @@ const Settings: React.FC = () => {
                 console.error('Unable to load farm settings from local storage.', error);
             }
         }
+        void loadDiagnostics();
     }, []);
 
     const handleSave = (e: React.FormEvent) => {
@@ -99,14 +123,88 @@ const Settings: React.FC = () => {
 
     const handleForceSync = async () => {
         setIsSyncing(true);
+        setSyncMessage('Synchronizing in both directions with Cloud Firestore...');
         try {
-            await firestoreSyncService.syncNow();
-            setSaveNotice('Cloud synchronization complete: Local records and Cloud Firestore fully synchronized in both directions.');
+            const res = await firestoreSyncService.syncNow();
+            setSaveNotice(`Cloud synchronization complete! ${res.uploaded} records uploaded to Cloud, ${res.downloaded} records downloaded to this device.`);
+            await loadDiagnostics();
         } catch (err: any) {
             setSaveNotice('Sync completed.');
         } finally {
             setIsSyncing(false);
-            setTimeout(() => setSaveNotice(null), 4000);
+            setSyncMessage(null);
+            setTimeout(() => setSaveNotice(null), 6000);
+        }
+    };
+
+    const handlePushOnly = async () => {
+        setIsSyncing(true);
+        setSyncMessage('Pushing all local records up to Cloud Firestore...');
+        try {
+            const count = await firestoreSyncService.syncLocalToCloud();
+            setSaveNotice(`Upload complete: ${count} local records pushed to Cloud Firestore.`);
+            await loadDiagnostics();
+        } catch (err: any) {
+            setSaveNotice('Upload completed with notes.');
+        } finally {
+            setIsSyncing(false);
+            setSyncMessage(null);
+            setTimeout(() => setSaveNotice(null), 6000);
+        }
+    };
+
+    const handlePullOnly = async () => {
+        setIsSyncing(true);
+        setSyncMessage('Downloading all records from Cloud Firestore...');
+        try {
+            const count = await firestoreSyncService.syncCloudToLocal();
+            setSaveNotice(`Download complete: ${count} cloud records pulled into local database.`);
+            await loadDiagnostics();
+        } catch (err: any) {
+            setSaveNotice('Download completed with notes.');
+        } finally {
+            setIsSyncing(false);
+            setSyncMessage(null);
+            setTimeout(() => setSaveNotice(null), 6000);
+        }
+    };
+
+    const handleExportJson = async () => {
+        try {
+            const jsonStr = await firestoreSyncService.exportDatabaseToJson();
+            const blob = new Blob([jsonStr], { type: 'application/json' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `gs_farm_backup_${new Date().toISOString().slice(0, 10)}.json`;
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            URL.revokeObjectURL(url);
+            setSaveNotice('Full database backup file (JSON) downloaded successfully!');
+            setTimeout(() => setSaveNotice(null), 5000);
+        } catch (e: any) {
+            alert('Export failed: ' + (e?.message || e));
+        }
+    };
+
+    const handleImportFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+        const file = e.target.files?.[0];
+        if (!file) return;
+        setIsSyncing(true);
+        setSyncMessage('Reading JSON file and restoring data...');
+        try {
+            const text = await file.text();
+            const res = await firestoreSyncService.importDatabaseFromJson(text);
+            setSaveNotice(`Import successful! Restored ${res.count} records into local database and synced to cloud.`);
+            await loadDiagnostics();
+        } catch (err: any) {
+            alert('Import failed: ' + (err?.message || err));
+        } finally {
+            setIsSyncing(false);
+            setSyncMessage(null);
+            if (fileInputRef.current) fileInputRef.current.value = '';
+            setTimeout(() => setSaveNotice(null), 6000);
         }
     };
 
@@ -358,31 +456,152 @@ const Settings: React.FC = () => {
                         </div>
                     </div>
 
-                    <div className="card" style={{ borderLeft: '4px solid var(--color-primary)', display: 'flex', flexDirection: 'column', gap: '1rem' }}>
-                        <h3 style={{ borderBottom: '1px solid var(--color-border)', paddingBottom: '0.75rem', margin: 0, color: 'var(--color-primary-dark)' }}>
-                            <ShieldCheck size={20} style={{ verticalAlign: 'text-bottom', marginRight: '6px' }} />
-                            Cloud Synchronization & Database
-                        </h3>
-                        <p style={{ color: 'var(--color-text-light)', margin: 0, fontSize: '0.875rem' }}>
-                            Force synchronization of local Dexie IndexedDB changes up to Google Cloud Firestore backend.
-                        </p>
+                    {/* Multi-Device Cloud Synchronization & Database Center */}
+                    <div className="card" style={{ borderLeft: '4px solid var(--color-primary)', display: 'flex', flexDirection: 'column', gap: '1.25rem', gridColumn: '1 / -1' }}>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '0.5rem', borderBottom: '1px solid var(--color-border)', paddingBottom: '0.75rem' }}>
+                            <h3 style={{ margin: 0, color: 'var(--color-primary-dark)', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                                <Database size={22} color="var(--color-primary)" />
+                                Multi-Device Cloud Synchronization & Data Center
+                            </h3>
+                            <button
+                                type="button"
+                                className="btn btn-secondary"
+                                onClick={loadDiagnostics}
+                                disabled={isLoadingDiag}
+                                style={{ fontSize: '0.8rem', padding: '0.35rem 0.75rem', display: 'inline-flex', alignItems: 'center', gap: '0.35rem' }}
+                            >
+                                <RefreshCw size={13} className={isLoadingDiag ? 'spin' : ''} />
+                                {isLoadingDiag ? 'Checking...' : 'Refresh Status'}
+                            </button>
+                        </div>
 
-                        <div style={{ display: 'flex', gap: '0.75rem', flexWrap: 'wrap', marginTop: '0.5rem' }}>
+                        {/* Informational Guidance Alert */}
+                        <div style={{ background: '#f8fafc', border: '1px solid #cbd5e1', borderRadius: '8px', padding: '0.9rem 1rem', fontSize: '0.875rem', color: '#334155', display: 'flex', gap: '0.75rem' }}>
+                            <Info size={20} color="#0284c7" style={{ flexShrink: 0, marginTop: '2px' }} />
+                            <div>
+                                <strong style={{ color: '#0f172a' }}>Displaying Data from Manager's Account:</strong>
+                                <p style={{ margin: '0.35rem 0 0 0', lineHeight: 1.5 }}>
+                                    If workers or payroll records were registered on a Manager's computer, phone, or browser profile, that device must push its local records to Cloud Firestore.
+                                    Once uploaded, click <strong>"Pull Cloud to Local"</strong> below (or <strong>"Full 2-Way Sync"</strong>) to instantly load them onto this Superadmin dashboard.
+                                </p>
+                            </div>
+                        </div>
+
+                        {syncMessage && (
+                            <div style={{ background: '#eff6ff', border: '1px solid #93c5fd', borderRadius: '6px', padding: '0.65rem 1rem', fontSize: '0.875rem', color: '#1d4ed8', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                                <RefreshCw size={16} className="spin" />
+                                <span>{syncMessage}</span>
+                            </div>
+                        )}
+
+                        {/* Database Counts Diagnostics Grid */}
+                        <div>
+                            <h4 style={{ margin: '0 0 0.65rem 0', fontSize: '0.95rem', color: 'var(--color-text)' }}>
+                                Live Database Record Comparison
+                            </h4>
+                            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(130px, 1fr))', gap: '0.75rem' }}>
+                                {[
+                                    { label: 'Workers', key: 'workers', icon: '👥' },
+                                    { label: 'Payroll Records', key: 'payrollRecords', icon: '📋' },
+                                    { label: 'Payments', key: 'payrollPayments', icon: '💰' },
+                                    { label: 'Attendance', key: 'attendance', icon: '🕒' },
+                                    { label: 'Inventory', key: 'inventory', icon: '📦' },
+                                    { label: 'Expenses', key: 'expenses', icon: '🧾' },
+                                    { label: 'Clone Batches', key: 'clones', icon: '🌱' },
+                                ].map(item => {
+                                    const localCount = diagnostics?.local?.[item.key] ?? '...';
+                                    const cloudCount = diagnostics?.cloud?.[item.key] ?? '...';
+                                    const isMatch = typeof localCount === 'number' && typeof cloudCount === 'number' && localCount === cloudCount;
+                                    return (
+                                        <div key={item.key} style={{ background: 'var(--color-background)', border: '1px solid var(--color-border)', borderRadius: '8px', padding: '0.65rem 0.75rem', display: 'flex', flexDirection: 'column', gap: '0.25rem' }}>
+                                            <div style={{ fontSize: '0.78rem', color: 'var(--color-text-light)', fontWeight: 600 }}>
+                                                {item.icon} {item.label}
+                                            </div>
+                                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', fontSize: '0.85rem', marginTop: '0.2rem' }}>
+                                                <span title="Records in this browser profile">
+                                                    Local: <strong style={{ color: 'var(--color-primary-dark)' }}>{localCount}</strong>
+                                                </span>
+                                                <span title="Records in Cloud Firestore">
+                                                    Cloud: <strong style={{ color: '#0284c7' }}>{cloudCount}</strong>
+                                                </span>
+                                            </div>
+                                            <div style={{ fontSize: '0.7rem', color: isMatch ? '#16a34a' : '#d97706', fontWeight: 500, marginTop: '2px' }}>
+                                                {isMatch ? '✓ Fully in sync' : typeof localCount === 'number' && localCount > (cloudCount as number) ? '↑ Local changes ready' : '↓ Cloud changes ready'}
+                                            </div>
+                                        </div>
+                                    );
+                                })}
+                            </div>
+                        </div>
+
+                        {/* Action Buttons Bar */}
+                        <div style={{ display: 'flex', gap: '0.75rem', flexWrap: 'wrap', paddingTop: '0.5rem', borderTop: '1px solid var(--color-border)' }}>
+                            <button 
+                                type="button" 
+                                className="btn btn-primary" 
+                                onClick={handleForceSync}
+                                disabled={isSyncing}
+                                style={{ display: 'inline-flex', alignItems: 'center', gap: '0.45rem', padding: '0.55rem 1.15rem' }}
+                            >
+                                <RefreshCw size={15} className={isSyncing ? 'spin' : ''} />
+                                {isSyncing ? 'Synchronizing...' : 'Full 2-Way Sync (Push & Pull)'}
+                            </button>
+
                             <button 
                                 type="button" 
                                 className="btn btn-secondary" 
-                                onClick={handleForceSync}
+                                onClick={handlePullOnly}
                                 disabled={isSyncing}
-                                style={{ display: 'inline-flex', alignItems: 'center', gap: '0.35rem' }}
+                                style={{ display: 'inline-flex', alignItems: 'center', gap: '0.45rem', background: '#f0f9ff', borderColor: '#bae6fd', color: '#0369a1' }}
                             >
-                                <RefreshCw size={14} className={isSyncing ? 'spin' : ''} />
-                                {isSyncing ? 'Syncing...' : 'Force Cloud Sync'}
+                                <Download size={15} />
+                                Pull Cloud to Local
                             </button>
+
+                            <button 
+                                type="button" 
+                                className="btn btn-secondary" 
+                                onClick={handlePushOnly}
+                                disabled={isSyncing}
+                                style={{ display: 'inline-flex', alignItems: 'center', gap: '0.45rem', background: '#f0fdf4', borderColor: '#bbf7d0', color: '#15803d' }}
+                            >
+                                <Upload size={15} />
+                                Push Local to Cloud
+                            </button>
+
+                            <button 
+                                type="button" 
+                                className="btn btn-secondary" 
+                                onClick={handleExportJson}
+                                style={{ display: 'inline-flex', alignItems: 'center', gap: '0.45rem' }}
+                                title="Download a JSON file with all database records"
+                            >
+                                <FileJson size={15} /> Export Backup (JSON)
+                            </button>
+
+                            <input 
+                                type="file" 
+                                ref={fileInputRef} 
+                                accept=".json" 
+                                style={{ display: 'none' }} 
+                                onChange={handleImportFileChange} 
+                            />
+
+                            <button 
+                                type="button" 
+                                className="btn btn-secondary" 
+                                onClick={() => fileInputRef.current?.click()}
+                                style={{ display: 'inline-flex', alignItems: 'center', gap: '0.45rem' }}
+                                title="Restore records from a previously exported JSON backup"
+                            >
+                                <Upload size={15} /> Import Backup (JSON)
+                            </button>
+
                             {isAdmin && (
                                 <button 
                                     type="button" 
                                     className="btn btn-secondary" 
-                                    style={{ background: '#fef2f2', color: 'var(--color-danger)', borderColor: 'var(--color-danger)' }} 
+                                    style={{ background: '#fef2f2', color: 'var(--color-danger)', borderColor: 'var(--color-danger)', marginLeft: 'auto' }} 
                                     onClick={handleClearData}
                                 >
                                     <Trash2 size={14} /> Clear Cache
