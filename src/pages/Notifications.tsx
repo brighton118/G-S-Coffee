@@ -14,10 +14,14 @@ import {
     CheckCircle2,
     Calendar,
     Radio,
-    Mail
+    Mail,
+    Smartphone,
+    MessageSquare,
+    ExternalLink
 } from 'lucide-react';
 import { notificationService } from '../utils/notificationService';
 import { emailService } from '../services/emailService';
+import { smsService } from '../services/smsService';
 import './Dashboard.css';
 
 const Notifications: React.FC = () => {
@@ -240,6 +244,23 @@ const Notifications: React.FC = () => {
                             <CheckSquare size={16} /> Mark All Read
                         </button>
                     )}
+                    <button 
+                        className="btn btn-secondary" 
+                        onClick={async () => {
+                            const granted = await smsService.requestNotificationPermission();
+                            if (granted) {
+                                smsService.showDevicePush('Live Alerts Active', 'Device screen notifications are enabled for G&S FARMS.');
+                                setEmailNotice({ type: 'success', text: '✅ Device screen notifications successfully activated!' });
+                                setTimeout(() => setEmailNotice(null), 5000);
+                            } else {
+                                alert('Please allow notifications in your browser permission prompt.');
+                            }
+                        }}
+                        style={{ display: 'inline-flex', alignItems: 'center', gap: '0.4rem' }}
+                        title="Enable screen notifications for this device"
+                    >
+                        <Bell size={16} /> Enable Device Push
+                    </button>
                     {notifications.some(n => !!n.read) && (
                         <button className="btn btn-secondary" onClick={clearAllRead} style={{ display: 'inline-flex', alignItems: 'center', gap: '0.4rem' }}>
                             <Trash2 size={16} /> Clear Read
@@ -394,26 +415,66 @@ const Notifications: React.FC = () => {
                                     </div>
                                 </div>
 
-                                <div style={{ display: 'flex', flexDirection: 'column', gap: '0.45rem', alignItems: 'flex-end', flexShrink: 0 }}>
-                                    <button 
-                                        className="btn btn-secondary"
-                                        style={{ padding: '0.35rem 0.65rem', fontSize: '0.8rem', display: 'inline-flex', alignItems: 'center', gap: '0.35rem', whiteSpace: 'nowrap' }}
-                                        onClick={() => handleSendSingleEmail(notif)}
-                                        disabled={sendingEmailId === notif.id}
-                                        title="Send this alert to configured farm manager emails"
-                                    >
-                                        <Mail size={14} /> 
-                                        {sendingEmailId === notif.id ? 'Sending...' : 'Email Alert'}
-                                    </button>
+                                <div style={{ display: 'flex', flexDirection: 'column', gap: '0.4rem', alignItems: 'flex-end', flexShrink: 0 }}>
+                                    <div style={{ display: 'flex', gap: '0.35rem', flexWrap: 'wrap', justifyContent: 'flex-end' }}>
+                                        <button 
+                                            className="btn btn-secondary"
+                                            style={{ padding: '0.3rem 0.55rem', fontSize: '0.78rem', display: 'inline-flex', alignItems: 'center', gap: '0.3rem', whiteSpace: 'nowrap' }}
+                                            onClick={() => handleSendSingleEmail(notif)}
+                                            disabled={sendingEmailId === notif.id}
+                                            title="Send alert email to brightonkato@gmail.com"
+                                        >
+                                            <Mail size={13} /> 
+                                            {sendingEmailId === notif.id ? 'Sending...' : 'Email'}
+                                        </button>
+
+                                        <button 
+                                            className="btn btn-secondary"
+                                            style={{ padding: '0.3rem 0.55rem', fontSize: '0.78rem', display: 'inline-flex', alignItems: 'center', gap: '0.3rem', whiteSpace: 'nowrap' }}
+                                            onClick={() => emailService.openGmailWeb({
+                                                subject: notif.title,
+                                                title: notif.title,
+                                                message: notif.message,
+                                                category: notif.type
+                                            })}
+                                            title="Open pre-filled in Gmail Web"
+                                        >
+                                            <ExternalLink size={13} /> Gmail
+                                        </button>
+
+                                        <button 
+                                            className="btn btn-secondary"
+                                            style={{ padding: '0.3rem 0.55rem', fontSize: '0.78rem', display: 'inline-flex', alignItems: 'center', gap: '0.3rem', whiteSpace: 'nowrap', color: '#16a34a' }}
+                                            onClick={() => smsService.openWhatsAppAlert({
+                                                title: notif.title,
+                                                message: notif.message,
+                                                category: notif.type
+                                            })}
+                                            title="Send alert directly via WhatsApp to 0788945330"
+                                        >
+                                            <MessageSquare size={13} /> WhatsApp
+                                        </button>
+
+                                        <button 
+                                            className="btn btn-secondary"
+                                            style={{ padding: '0.3rem 0.55rem', fontSize: '0.78rem', display: 'inline-flex', alignItems: 'center', gap: '0.3rem', whiteSpace: 'nowrap' }}
+                                            onClick={() => smsService.openNativeSMS({
+                                                message: `[G&S FARMS Alert] ${notif.title}\n${notif.message}`
+                                            })}
+                                            title="Open native SMS message app for 0788945330"
+                                        >
+                                            <Smartphone size={13} /> SMS
+                                        </button>
+                                    </div>
 
                                     {!notif.read && (
                                         <button 
                                             className="btn btn-secondary" 
-                                            style={{ padding: '0.35rem 0.65rem', fontSize: '0.8rem', display: 'inline-flex', alignItems: 'center', gap: '0.35rem', whiteSpace: 'nowrap' }}
+                                            style={{ padding: '0.3rem 0.65rem', fontSize: '0.78rem', display: 'inline-flex', alignItems: 'center', gap: '0.35rem', whiteSpace: 'nowrap' }}
                                             onClick={() => markAsRead(notif.id!)}
                                             title="Mark as Read"
                                         >
-                                            <CheckSquare size={14} /> Mark Read
+                                            <CheckSquare size={13} /> Mark Read
                                         </button>
                                     )}
                                 </div>

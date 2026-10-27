@@ -18,12 +18,15 @@ import {
     Upload,
     Database,
     FileJson,
-    Info
+    Info,
+    ExternalLink,
+    MessageSquare
 } from 'lucide-react';
 import { updatePassword } from 'firebase/auth';
 import { auth } from '../firebase';
 import { notificationService } from '../utils/notificationService';
 import { emailService } from '../services/emailService';
+import { smsService } from '../services/smsService';
 import { firestoreSyncService } from '../services/firestoreSync';
 import AdminInvitations from '../components/AdminInvitations';
 import {
@@ -38,10 +41,16 @@ const Settings: React.FC = () => {
     const [settings, setSettings] = useState({
         farmName: 'G&S FARMS',
         farmLocation: 'Mubende District, Uganda',
-        contactEmail: 'admin@gscoffee-farm.com',
-        notificationEmails: '',
+        contactEmail: 'brightonkato@gmail.com',
+        notificationEmails: 'brightonkato@gmail.com, brightonkato317@gmail.com',
+        emailApiKey: '',
         emailWebhookUrl: '',
-        contactPhone: '+256 700 123456',
+        contactPhone: '+256788945330',
+        smsProvider: 'manual',
+        smsApiKey: '',
+        smsUsername: '',
+        smsSenderId: 'GSFARMS',
+        smsWebhookUrl: '',
         ...DEFAULT_ATTENDANCE_SCHEDULE,
         enableSMSAlerts: true,
         enableEmailAlerts: true,
@@ -86,6 +95,12 @@ const Settings: React.FC = () => {
         if (saved) {
             try {
                 const parsedSettings = JSON.parse(saved);
+                if (parsedSettings.contactEmail === 'admin@gscoffee-farm.com' || parsedSettings.contactEmail === 'admin@gscoffee.farm') {
+                    parsedSettings.contactEmail = 'brightonkato@gmail.com';
+                }
+                if (parsedSettings.contactPhone === '+256 700 123456' || parsedSettings.contactPhone === '+256 700 000000') {
+                    parsedSettings.contactPhone = '+256788945330';
+                }
                 setSettings(current => ({
                     ...current,
                     ...parsedSettings,
@@ -330,7 +345,7 @@ const Settings: React.FC = () => {
                     <div className="card" style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
                         <h3 style={{ borderBottom: '1px solid var(--color-border)', paddingBottom: '0.75rem', margin: 0, color: 'var(--color-primary-dark)' }}>
                             <Bell size={18} style={{ verticalAlign: 'text-bottom', marginRight: '6px' }} />
-                            Notification Delivery Routing
+                            Notification Delivery Routing (Email &amp; Mobile)
                         </h3>
                         
                         <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
@@ -348,7 +363,7 @@ const Settings: React.FC = () => {
                                     className="form-input" 
                                     value={settings.contactEmail} 
                                     onChange={e => setSettings({ ...settings, contactEmail: e.target.value })} 
-                                    placeholder="admin@gscoffee-farm.com" 
+                                    placeholder="brightonkato@gmail.com" 
                                 />
                             </div>
 
@@ -359,22 +374,39 @@ const Settings: React.FC = () => {
                                     className="form-input" 
                                     value={settings.notificationEmails} 
                                     onChange={e => setSettings({ ...settings, notificationEmails: e.target.value })} 
-                                    placeholder="manager@gsfarm.farm, operations@gsfarm.farm" 
+                                    placeholder="brightonkato@gmail.com, brightonkato317@gmail.com" 
                                 />
                                 <span style={{ fontSize: '0.75rem', color: 'var(--color-text-light)' }}>
-                                    All listed emails will receive automated operational notifications and alert digests.
+                                    All listed emails will receive operational notifications, alerts, and shift summaries.
                                 </span>
                             </div>
 
                             <label style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', cursor: 'pointer', fontSize: '0.9rem', marginTop: '0.25rem' }}>
                                 <input type="checkbox" checked={settings.enableSMSAlerts} onChange={e => setSettings({ ...settings, enableSMSAlerts: e.target.checked })} style={{ width: '18px', height: '18px' }} />
-                                <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
-                                    <Smartphone size={16} /> Send SMS Alerts to {settings.contactPhone}
+                                <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', fontWeight: 600 }}>
+                                    <Smartphone size={16} color="#16a34a" /> Send SMS &amp; Mobile Alerts to {settings.contactPhone}
                                 </div>
                             </label>
+
+                            {/* Direct Email API Key (Web3Forms free direct delivery) */}
+                            <div className="form-group" style={{ marginBottom: '0.25rem' }}>
+                                <label className="form-label" style={{ fontSize: '0.85rem' }}>
+                                    Direct Email Access Key (Web3Forms or Webhook URL)
+                                </label>
+                                <input 
+                                    type="text" 
+                                    className="form-input" 
+                                    value={settings.emailApiKey} 
+                                    onChange={e => setSettings({ ...settings, emailApiKey: e.target.value })} 
+                                    placeholder="Optional: Paste Web3Forms Access Key from web3forms.com" 
+                                />
+                                <span style={{ fontSize: '0.75rem', color: 'var(--color-text-light)' }}>
+                                    Provides 100% free direct delivery straight to brightonkato@gmail.com with zero server setup.
+                                </span>
+                            </div>
                         </div>
 
-                        <h4 style={{ margin: '0.5rem 0 0.25rem 0', fontSize: '0.95rem', color: 'var(--color-text)' }}>Active Email & Alert Trigger Events:</h4>
+                        <h4 style={{ margin: '0.5rem 0 0.25rem 0', fontSize: '0.95rem', color: 'var(--color-text)' }}>Active Alert Trigger Events:</h4>
 
                         <div style={{ display: 'flex', flexDirection: 'column', gap: '0.6rem', background: 'var(--color-background)', padding: '0.75rem', borderRadius: '6px' }}>
                             <label style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', cursor: 'pointer', fontSize: '0.85rem' }}>
@@ -398,16 +430,19 @@ const Settings: React.FC = () => {
                             </label>
                         </div>
 
-                        <div style={{ display: 'flex', gap: '0.75rem', flexWrap: 'wrap', marginTop: '0.5rem' }}>
+                        <h4 style={{ margin: '0.5rem 0 0.25rem 0', fontSize: '0.95rem', color: 'var(--color-text)' }}>Live Notification Delivery Tests:</h4>
+
+                        <div style={{ display: 'flex', gap: '0.6rem', flexWrap: 'wrap' }}>
                             <button 
                                 type="button" 
                                 className="btn btn-primary" 
                                 onClick={handleSendTestEmail}
                                 disabled={isSendingTestEmail}
                                 style={{ fontSize: '0.85rem', display: 'inline-flex', alignItems: 'center', gap: '0.35rem' }}
+                                title="Queue and dispatch an operational test email to brightonkato@gmail.com"
                             >
                                 <Mail size={14} /> 
-                                {isSendingTestEmail ? 'Queuing Test Email...' : 'Send Test Notification Email'}
+                                {isSendingTestEmail ? 'Sending Test...' : 'Send Test Email'}
                             </button>
 
                             <button 
@@ -415,8 +450,70 @@ const Settings: React.FC = () => {
                                 className="btn btn-secondary" 
                                 onClick={handleSendTestAlert}
                                 style={{ fontSize: '0.85rem', display: 'inline-flex', alignItems: 'center', gap: '0.35rem' }}
+                                title="Create an in-app and mobile test alert"
                             >
-                                <Bell size={14} /> Send In-App Test Alert
+                                <Bell size={14} /> Test In-App Alert
+                            </button>
+
+                            <button 
+                                type="button" 
+                                className="btn btn-secondary" 
+                                onClick={() => emailService.openGmailWeb({
+                                    to: settings.contactEmail,
+                                    subject: 'System Test Notification',
+                                    title: 'G&S FARMS Email Delivery Verification',
+                                    message: `Operational alerts configured for brightonkato@gmail.com.\nManager Mobile: ${settings.contactPhone}\nStatus: Verified.`
+                                })}
+                                style={{ fontSize: '0.85rem', display: 'inline-flex', alignItems: 'center', gap: '0.35rem' }}
+                                title="Open Gmail in browser with pre-filled test notification"
+                            >
+                                <ExternalLink size={14} /> Open in Gmail Web
+                            </button>
+
+                            <button 
+                                type="button" 
+                                className="btn btn-primary" 
+                                onClick={() => smsService.openWhatsAppAlert({
+                                    to: settings.contactPhone,
+                                    title: 'System Delivery Verification',
+                                    message: `Test notification sent to mobile ${settings.contactPhone}. Operations monitoring active.`
+                                })}
+                                style={{ fontSize: '0.85rem', display: 'inline-flex', alignItems: 'center', gap: '0.35rem', backgroundColor: '#16a34a', borderColor: '#16a34a' }}
+                                title="Open WhatsApp alert to 0788945330"
+                            >
+                                <MessageSquare size={14} /> Test WhatsApp Alert
+                            </button>
+
+                            <button 
+                                type="button" 
+                                className="btn btn-secondary" 
+                                onClick={() => smsService.openNativeSMS({
+                                    to: settings.contactPhone,
+                                    message: `[G&S FARMS] Test mobile notification delivery to ${settings.contactPhone}. System operational.`
+                                })}
+                                style={{ fontSize: '0.85rem', display: 'inline-flex', alignItems: 'center', gap: '0.35rem' }}
+                                title="Open native SMS on your phone"
+                            >
+                                <Smartphone size={14} /> Test Mobile SMS
+                            </button>
+
+                            <button 
+                                type="button" 
+                                className="btn btn-secondary" 
+                                onClick={async () => {
+                                    const granted = await smsService.requestNotificationPermission();
+                                    if (granted) {
+                                        smsService.showDevicePush('Push Alerts Activated', `Notification tests active for ${settings.contactPhone} and ${settings.contactEmail}.`);
+                                        setSaveNotice('✅ Native device push notifications enabled on this screen!');
+                                        setTimeout(() => setSaveNotice(null), 5000);
+                                    } else {
+                                        alert('Please allow notification permission in your browser address bar.');
+                                    }
+                                }}
+                                style={{ fontSize: '0.85rem', display: 'inline-flex', alignItems: 'center', gap: '0.35rem' }}
+                                title="Enable browser/mobile screen push notifications"
+                            >
+                                <Bell size={14} /> Enable Screen Push
                             </button>
                         </div>
                     </div>

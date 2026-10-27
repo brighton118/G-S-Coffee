@@ -15,15 +15,17 @@ export interface EmailNotificationPayload {
 
 export interface EmailDispatchResult {
     success: boolean;
-    channel: 'Firebase Cloud Queue' | 'Webhook' | 'Mail Client' | string;
+    channel: 'Firebase Cloud Queue' | 'Web3Forms Direct' | 'Webhook' | 'Gmail Client' | string;
     recipients: string[];
     messageId?: string;
     error?: string;
+    message?: string;
 }
 
 class EmailService {
     /**
      * Retrieve recipient email addresses from local and cloud settings
+     * Defaulting to Brighton Kato's farm email addresses
      */
     public getRecipients(): string[] {
         const recipients: Set<string> = new Set();
@@ -31,7 +33,7 @@ class EmailService {
             const saved = localStorage.getItem('gs_farm_settings');
             if (saved) {
                 const parsed = JSON.parse(saved);
-                if (parsed.contactEmail && typeof parsed.contactEmail === 'string') {
+                if (parsed.contactEmail && typeof parsed.contactEmail === 'string' && parsed.contactEmail.includes('@')) {
                     recipients.add(parsed.contactEmail.trim().toLowerCase());
                 }
                 if (parsed.notificationEmails && typeof parsed.notificationEmails === 'string') {
@@ -46,9 +48,10 @@ class EmailService {
             console.warn('Error reading recipient settings:', e);
         }
 
-        // Fallback default
+        // Standard default recipients for G&S FARMS
         if (recipients.size === 0) {
-            recipients.add('admin@gscoffee-farm.com');
+            recipients.add('brightonkato@gmail.com');
+            recipients.add('brightonkato317@gmail.com');
         }
 
         return Array.from(recipients);
@@ -161,7 +164,7 @@ class EmailService {
     }
 
     /**
-     * Send email notification to user emails
+     * Send email notification to user emails via all available channels
      */
     public async sendNotificationEmail(payload: EmailNotificationPayload): Promise<EmailDispatchResult> {
         const recipients = payload.to 
@@ -185,9 +188,71 @@ class EmailService {
         const plainText = `${payload.title}\n\n${payload.message}\n\nGenerated: ${new Date().toLocaleString()}\nPortal: https://gsfarm.farm`;
 
         let messageId: string | undefined;
+        let directDelivered = false;
 
+        // Check settings for Web3Forms or Webhook keys
+        let emailApiKey = '';
+        let emailWebhookUrl = '';
         try {
-            // 1. Primary Cloud Dispatch: Add to Firestore 'mail' collection (Firebase Trigger Email extension standard)
+            const saved = localStorage.getItem('gs_farm_settings');
+            if (saved) {
+                const parsed = JSON.parse(saved);
+                emailApiKey = parsed.emailApiKey || '';
+                emailWebhookUrl = parsed.emailWebhookUrl || '';
+            }
+        } catch (e) {
+            console.warn('Error reading email API settings:', e);
+        }
+
+        // 1. Direct Web3Forms API dispatch (if key is provided)
+        if (emailApiKey) {
+            try {
+                const response = await fetch('https://api.web3forms.com/submit', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        access_key: emailApiKey,
+                        subject,
+                        from_name: 'G&S FARMS Portal',
+                        to: recipients.join(', '),
+                        message: plainText,
+                        html_message: html
+                    })
+                });
+
+                if (response.ok) {
+                    directDelivered = true;
+                    console.log(`[Email Service] Direct email delivered via Web3Forms to ${recipients.join(', ')}`);
+                }
+            } catch (apiErr) {
+                console.warn('[Email Service] Web3Forms dispatch note:', apiErr);
+            }
+        }
+
+        // 2. Custom Webhook Dispatch (e.g., Google Apps Script, Zapier, Make)
+        if (emailWebhookUrl && emailWebhookUrl.startsWith('http')) {
+            try {
+                await fetch(emailWebhookUrl, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        to: recipients,
+                        subject,
+                        title: payload.title,
+                        message: payload.message,
+                        category: payload.category,
+                        html,
+                        timestamp: new Date().toISOString()
+                    })
+                });
+                directDelivered = true;
+            } catch (webhookErr) {
+                console.warn('[Email Service] Custom webhook error:', webhookErr);
+            }
+        }
+
+        // 3. Cloud Firestore Queue (Trigger Email Extension standard)
+        try {
             const mailDocRef = await addDoc(collection(dbFirestore, 'mail'), {
                 to: recipients,
                 message: {
@@ -206,53 +271,30 @@ class EmailService {
 
             messageId = mailDocRef.id;
 
-            // 2. Record communication audit log into Dexie
+            // Record communication audit log into Dexie
             await db.notificationLogs.add({
                 timestamp: new Date().toISOString(),
                 channel: 'Email',
                 recipient: recipients.join(', '),
                 subject,
                 message: payload.message,
-                status: 'Sent'
+                status: directDelivered ? 'Sent (Direct)' : 'Queued (Cloud Mail)'
             });
-
-            // 3. Optional Direct Webhook Dispatch (if configured in Settings)
-            try {
-                const saved = localStorage.getItem('gs_farm_settings');
-                if (saved) {
-                    const parsed = JSON.parse(saved);
-                    if (parsed.emailWebhookUrl && typeof parsed.emailWebhookUrl === 'string' && parsed.emailWebhookUrl.startsWith('http')) {
-                        await fetch(parsed.emailWebhookUrl, {
-                            method: 'POST',
-                            headers: { 'Content-Type': 'application/json' },
-                            body: JSON.stringify({
-                                to: recipients,
-                                subject,
-                                title: payload.title,
-                                message: payload.message,
-                                category: payload.category,
-                                html,
-                                timestamp: new Date().toISOString()
-                            })
-                        });
-                    }
-                }
-            } catch (webhookErr) {
-                console.warn('Optional webhook dispatch note:', webhookErr);
-            }
 
             console.log(`[Email Service] Notification queued for ${recipients.join(', ')}: "${subject}" (Doc: ${messageId})`);
 
             return {
                 success: true,
-                channel: 'Firebase Cloud Queue',
+                channel: directDelivered ? 'Direct Email' : 'Firebase Cloud Queue',
                 recipients,
-                messageId
+                messageId,
+                message: directDelivered 
+                    ? `Email delivered directly to ${recipients.join(', ')}.`
+                    : `Notification queued for ${recipients.join(', ')}. Also available via 1-click Gmail Web.`
             };
         } catch (err: any) {
             console.error('[Email Service] Failed to dispatch email notification:', err);
 
-            // Log failure into Dexie
             await db.notificationLogs.add({
                 timestamp: new Date().toISOString(),
                 channel: 'Email',
@@ -272,7 +314,22 @@ class EmailService {
     }
 
     /**
-     * Helper to open the user's default email client with a pre-filled report/alert
+     * Opens Gmail Web directly with recipient, subject, and pre-formatted body populated
+     */
+    public openGmailWeb(payload: EmailNotificationPayload): void {
+        const recipients = payload.to 
+            ? (Array.isArray(payload.to) ? payload.to.join(',') : payload.to) 
+            : this.getRecipients().join(',');
+
+        const subject = encodeURIComponent(payload.subject.startsWith('[G&S FARMS]') ? payload.subject : `[G&S FARMS Alert] ${payload.subject}`);
+        const bodyText = encodeURIComponent(`${payload.title}\n\n${payload.message}\n\nLocation: Mubende District, Uganda\nPortal: https://gsfarm.farm\n--\nG&S FARMS Notifications`);
+
+        const gmailUrl = `https://mail.google.com/mail/?view=cm&fs=1&to=${encodeURIComponent(recipients)}&su=${subject}&body=${bodyText}`;
+        window.open(gmailUrl, '_blank');
+    }
+
+    /**
+     * Helper to open the user's default email client (Outlook, Apple Mail, etc.)
      */
     public openMailClient(payload: EmailNotificationPayload): void {
         const recipients = payload.to 
@@ -296,15 +353,15 @@ class EmailService {
             to: recipients,
             subject: 'System Test Notification',
             title: 'Email Delivery Channel Verification',
-            message: 'This is an automated test from G&S FARMS to confirm that operational email notifications and alerts are successfully configured and reaching authorized farm management.',
+            message: 'This is an automated test from G&S FARMS to confirm that operational email notifications and alerts are successfully reaching brightonkato@gmail.com and authorized farm management.',
             category: 'General',
             details: {
-                'Delivery System': 'Firebase Cloud Mail Queue',
+                'Delivery System': 'G&S FARMS Cloud Communication Engine',
                 'Farm Location': 'Mubende District, Uganda',
                 'Status': 'Operational & Verified',
                 'Recipient Email': recipients.join(', ')
             },
-            actionLabel: 'Open Dashboard',
+            actionLabel: 'Open Farm Portal',
             actionUrl: 'https://gsfarm.farm'
         });
     }

@@ -1,6 +1,7 @@
 import { db, AppNotification } from '../db';
 import { format, differenceInDays, parseISO } from 'date-fns';
 import { emailService } from '../services/emailService';
+import { smsService } from '../services/smsService';
 
 /**
  * G&S FARM Notification & Communication Engine
@@ -60,7 +61,7 @@ class NotificationService {
             status: 'Sent'
         });
 
-        // Automatic Email Dispatch if enabled
+        // 1. Automatic Email Dispatch if enabled
         try {
             const saved = localStorage.getItem('gs_farm_settings');
             let shouldEmail = channel === 'Email';
@@ -87,6 +88,37 @@ class NotificationService {
             }
         } catch (mailErr) {
             console.warn('[Notification Engine] Auto-email dispatch note:', mailErr);
+        }
+
+        // 2. Automatic SMS & Device Notification Dispatch
+        try {
+            const saved = localStorage.getItem('gs_farm_settings');
+            let shouldSMS = channel === 'SMS';
+
+            if (saved) {
+                const parsed = JSON.parse(saved);
+                if (parsed.enableSMSAlerts) {
+                    if (type === 'Inventory Low' && parsed.notifyLowStock) shouldSMS = true;
+                    if (type === 'Chamber Overdue' && parsed.notifyChamberOverdue) shouldSMS = true;
+                    if (type === 'Pending Overtime' && parsed.notifyPendingOvertime) shouldSMS = true;
+                    if (type === 'EOD_ATTENDANCE' && parsed.notifyEODAttendance) shouldSMS = true;
+                    if (type === 'General') shouldSMS = true;
+                }
+            }
+
+            if (shouldSMS || channel === 'SMS') {
+                void smsService.dispatchSMS({
+                    to: recipient,
+                    title,
+                    message,
+                    category: type
+                });
+            } else {
+                // Show device push notification for in-app alerts
+                smsService.showDevicePush(title, message);
+            }
+        } catch (smsErr) {
+            console.warn('[Notification Engine] Auto-SMS dispatch note:', smsErr);
         }
 
         console.log(`Notification [${channel}] Dispatched: ${title}`);
