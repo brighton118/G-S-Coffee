@@ -178,6 +178,102 @@ class FirestoreSyncService {
         }
     }
 
+    public async saveHumidChamber(record: any): Promise<void> {
+        try {
+            if (!record?.batchId) return;
+            const key = `HC-${record.batchId}-${record.id || Date.now()}`;
+            const docRef = doc(collection(dbFirestore, 'productionHumidChamber'), key);
+            await setDoc(docRef, { ...record, updatedAt: serverTimestamp() }, { merge: true });
+        } catch (e: any) {
+            console.warn('[Cloud Sync] Live humid chamber push note:', e?.message || e);
+        }
+    }
+
+    public async saveFirstHardening(record: any): Promise<void> {
+        try {
+            if (!record?.batchId) return;
+            const key = `FH-${record.batchId}-${record.id || Date.now()}`;
+            const docRef = doc(collection(dbFirestore, 'productionFirstHardening'), key);
+            await setDoc(docRef, { ...record, updatedAt: serverTimestamp() }, { merge: true });
+        } catch (e: any) {
+            console.warn('[Cloud Sync] Live first hardening push note:', e?.message || e);
+        }
+    }
+
+    public async saveSecondHardening(record: any): Promise<void> {
+        try {
+            if (!record?.batchId) return;
+            const key = `SH-${record.batchId}-${record.id || Date.now()}`;
+            const docRef = doc(collection(dbFirestore, 'productionSecondHardening'), key);
+            await setDoc(docRef, { ...record, updatedAt: serverTimestamp() }, { merge: true });
+        } catch (e: any) {
+            console.warn('[Cloud Sync] Live second hardening push note:', e?.message || e);
+        }
+    }
+
+    public async saveProductionSorting(record: any): Promise<void> {
+        try {
+            if (!record?.batchId) return;
+            const key = `SORT-${record.batchId}-${record.id || Date.now()}`;
+            const docRef = doc(collection(dbFirestore, 'productionSortings'), key);
+            await setDoc(docRef, { ...record, updatedAt: serverTimestamp() }, { merge: true });
+        } catch (e: any) {
+            console.warn('[Cloud Sync] Live sorting push note:', e?.message || e);
+        }
+    }
+
+    public async saveCloneStageHistory(record: any): Promise<void> {
+        try {
+            if (!record?.batchId) return;
+            const key = `CSH-${record.batchId}-${record.stageName}-${record.id || Date.now()}`;
+            const docRef = doc(collection(dbFirestore, 'cloneStageHistory'), key);
+            await setDoc(docRef, { ...record, updatedAt: serverTimestamp() }, { merge: true });
+        } catch (e: any) {
+            console.warn('[Cloud Sync] Live clone stage history push note:', e?.message || e);
+        }
+    }
+
+    public async savePlantletSale(record: any): Promise<void> {
+        try {
+            if (!record?.batchId) return;
+            const key = `PS-${record.batchId}-${record.id || Date.now()}`;
+            const docRef = doc(collection(dbFirestore, 'plantletSales'), key);
+            await setDoc(docRef, { ...record, updatedAt: serverTimestamp() }, { merge: true });
+        } catch (e: any) {
+            console.warn('[Cloud Sync] Live plantlet sale push note:', e?.message || e);
+        }
+    }
+
+    public async savePlantletSort(record: any): Promise<void> {
+        try {
+            if (!record?.batchId) return;
+            const docRef = doc(collection(dbFirestore, 'plantletSorts'), record.batchId);
+            await setDoc(docRef, { ...record, updatedAt: serverTimestamp() }, { merge: true });
+        } catch (e: any) {
+            console.warn('[Cloud Sync] Live plantlet sort push note:', e?.message || e);
+        }
+    }
+
+    public async saveOvertimeRule(record: any): Promise<void> {
+        try {
+            const key = `OT-RULE-${record.id || 'default'}`;
+            const docRef = doc(collection(dbFirestore, 'overtimeRules'), key);
+            await setDoc(docRef, { ...record, updatedAt: serverTimestamp() }, { merge: true });
+        } catch (e: any) {
+            console.warn('[Cloud Sync] Live overtime rule push note:', e?.message || e);
+        }
+    }
+
+    public async saveNotification(record: any): Promise<void> {
+        try {
+            const key = `NOTIF-${record.id || Date.now()}`;
+            const docRef = doc(collection(dbFirestore, 'notifications'), key);
+            await setDoc(docRef, { ...record, updatedAt: serverTimestamp() }, { merge: true });
+        } catch (e: any) {
+            console.warn('[Cloud Sync] Live notification push note:', e?.message || e);
+        }
+    }
+
     /**
      * Upload local Dexie records up to Cloud Firestore in safe chunked batches
      */
@@ -287,6 +383,95 @@ class FirestoreSyncService {
                 operations.push({
                     ref: doc(collection(dbFirestore, 'productionCuttings'), key),
                     data: { ...c, updatedAt: serverTimestamp() }
+                });
+            }
+
+            // 11. Production Humid Chamber
+            const humidChambers = await db.productionHumidChamber.toArray();
+            for (const hc of humidChambers) {
+                const key = `HC-${hc.batchId}-${hc.id || Date.now()}`;
+                operations.push({
+                    ref: doc(collection(dbFirestore, 'productionHumidChamber'), key),
+                    data: { ...hc, updatedAt: serverTimestamp() }
+                });
+            }
+
+            // 12. Production First Hardening
+            const firstHardenings = await db.productionFirstHardening.toArray();
+            for (const fh of firstHardenings) {
+                const key = `FH-${fh.batchId}-${fh.id || Date.now()}`;
+                operations.push({
+                    ref: doc(collection(dbFirestore, 'productionFirstHardening'), key),
+                    data: { ...fh, updatedAt: serverTimestamp() }
+                });
+            }
+
+            // 13. Production Second Hardening
+            const secondHardenings = await db.productionSecondHardening.toArray();
+            for (const sh of secondHardenings) {
+                const key = `SH-${sh.batchId}-${sh.id || Date.now()}`;
+                operations.push({
+                    ref: doc(collection(dbFirestore, 'productionSecondHardening'), key),
+                    data: { ...sh, updatedAt: serverTimestamp() }
+                });
+            }
+
+            // 14. Production Sortings
+            const sortings = await db.productionSortings.toArray();
+            for (const s of sortings) {
+                const key = `SORT-${s.batchId}-${s.id || Date.now()}`;
+                operations.push({
+                    ref: doc(collection(dbFirestore, 'productionSortings'), key),
+                    data: { ...s, updatedAt: serverTimestamp() }
+                });
+            }
+
+            // 15. Clone Stage History
+            const stageHistory = await db.cloneStageHistory.toArray();
+            for (const csh of stageHistory) {
+                const key = `CSH-${csh.batchId}-${csh.stageName}-${csh.id || Date.now()}`;
+                operations.push({
+                    ref: doc(collection(dbFirestore, 'cloneStageHistory'), key),
+                    data: { ...csh, updatedAt: serverTimestamp() }
+                });
+            }
+
+            // 16. Plantlet Sales
+            const plantletSales = await db.plantletSales.toArray();
+            for (const ps of plantletSales) {
+                const key = `PS-${ps.batchId}-${ps.id || Date.now()}`;
+                operations.push({
+                    ref: doc(collection(dbFirestore, 'plantletSales'), key),
+                    data: { ...ps, updatedAt: serverTimestamp() }
+                });
+            }
+
+            // 17. Plantlet Sorts
+            const plantletSorts = await db.plantletSorts.toArray();
+            for (const pst of plantletSorts) {
+                operations.push({
+                    ref: doc(collection(dbFirestore, 'plantletSorts'), pst.batchId),
+                    data: { ...pst, updatedAt: serverTimestamp() }
+                });
+            }
+
+            // 18. Overtime Rules
+            const overtimeRules = await db.overtimeRules.toArray();
+            for (const or_ of overtimeRules) {
+                const key = `OT-RULE-${or_.id || 'default'}`;
+                operations.push({
+                    ref: doc(collection(dbFirestore, 'overtimeRules'), key),
+                    data: { ...or_, updatedAt: serverTimestamp() }
+                });
+            }
+
+            // 19. Notifications (so all users see the same alerts)
+            const notifications = await db.notifications.toArray();
+            for (const notif of notifications) {
+                const key = `NOTIF-${notif.id || Date.now()}`;
+                operations.push({
+                    ref: doc(collection(dbFirestore, 'notifications'), key),
+                    data: { ...notif, updatedAt: serverTimestamp() }
                 });
             }
 
@@ -420,6 +605,136 @@ class FirestoreSyncService {
                 } else {
                     const { id: _ignore, ...cleanCut } = data;
                     await db.productionCuttings.add(cleanCut as any);
+                }
+            }
+
+            // 10. Pull Production Humid Chamber
+            const hcSnap = await getDocs(collection(dbFirestore, 'productionHumidChamber'));
+            for (const docSnap of hcSnap.docs) {
+                if (docSnap.id.startsWith('_') || docSnap.data()._isSystemSchema) continue;
+                const data = docSnap.data();
+                if (!data.batchId) continue;
+                const existing = await db.productionHumidChamber.where('batchId').equals(data.batchId).first();
+                if (existing && existing.id !== undefined) {
+                    await db.productionHumidChamber.update(existing.id, data as any);
+                } else {
+                    const { id: _ignore, ...clean } = data;
+                    await db.productionHumidChamber.add(clean as any);
+                }
+            }
+
+            // 11. Pull Production First Hardening
+            const fhSnap = await getDocs(collection(dbFirestore, 'productionFirstHardening'));
+            for (const docSnap of fhSnap.docs) {
+                if (docSnap.id.startsWith('_') || docSnap.data()._isSystemSchema) continue;
+                const data = docSnap.data();
+                if (!data.batchId) continue;
+                const existing = await db.productionFirstHardening.where('batchId').equals(data.batchId).first();
+                if (existing && existing.id !== undefined) {
+                    await db.productionFirstHardening.update(existing.id, data as any);
+                } else {
+                    const { id: _ignore, ...clean } = data;
+                    await db.productionFirstHardening.add(clean as any);
+                }
+            }
+
+            // 12. Pull Production Second Hardening
+            const shSnap = await getDocs(collection(dbFirestore, 'productionSecondHardening'));
+            for (const docSnap of shSnap.docs) {
+                if (docSnap.id.startsWith('_') || docSnap.data()._isSystemSchema) continue;
+                const data = docSnap.data();
+                if (!data.batchId) continue;
+                const existing = await db.productionSecondHardening.where('batchId').equals(data.batchId).first();
+                if (existing && existing.id !== undefined) {
+                    await db.productionSecondHardening.update(existing.id, data as any);
+                } else {
+                    const { id: _ignore, ...clean } = data;
+                    await db.productionSecondHardening.add(clean as any);
+                }
+            }
+
+            // 13. Pull Production Sortings
+            const sortSnap = await getDocs(collection(dbFirestore, 'productionSortings'));
+            for (const docSnap of sortSnap.docs) {
+                if (docSnap.id.startsWith('_') || docSnap.data()._isSystemSchema) continue;
+                const data = docSnap.data();
+                if (!data.batchId) continue;
+                const existing = await db.productionSortings.where('batchId').equals(data.batchId).first();
+                if (existing && existing.id !== undefined) {
+                    await db.productionSortings.update(existing.id, data as any);
+                } else {
+                    const { id: _ignore, ...clean } = data;
+                    await db.productionSortings.add(clean as any);
+                }
+            }
+
+            // 14. Pull Clone Stage History
+            const cshSnap = await getDocs(collection(dbFirestore, 'cloneStageHistory'));
+            for (const docSnap of cshSnap.docs) {
+                if (docSnap.id.startsWith('_') || docSnap.data()._isSystemSchema) continue;
+                const data = docSnap.data();
+                if (!data.batchId) continue;
+                const existing = await db.cloneStageHistory.where('batchId').equals(data.batchId).first();
+                if (existing && existing.id !== undefined) {
+                    await db.cloneStageHistory.update(existing.id, data as any);
+                } else {
+                    const { id: _ignore, ...clean } = data;
+                    await db.cloneStageHistory.add(clean as any);
+                }
+            }
+
+            // 15. Pull Plantlet Sales
+            const psSnap = await getDocs(collection(dbFirestore, 'plantletSales'));
+            for (const docSnap of psSnap.docs) {
+                if (docSnap.id.startsWith('_') || docSnap.data()._isSystemSchema) continue;
+                const data = docSnap.data();
+                if (!data.batchId) continue;
+                const existing = await db.plantletSales.where('batchId').equals(data.batchId).first();
+                if (existing && existing.id !== undefined) {
+                    await db.plantletSales.update(existing.id, data as any);
+                } else {
+                    const { id: _ignore, ...clean } = data;
+                    await db.plantletSales.add(clean as any);
+                }
+            }
+
+            // 16. Pull Plantlet Sorts
+            const pstSnap = await getDocs(collection(dbFirestore, 'plantletSorts'));
+            for (const docSnap of pstSnap.docs) {
+                if (docSnap.id.startsWith('_') || docSnap.data()._isSystemSchema) continue;
+                await db.plantletSorts.put(docSnap.data() as any);
+            }
+
+            // 17. Pull Overtime Rules
+            const orSnap = await getDocs(collection(dbFirestore, 'overtimeRules'));
+            for (const docSnap of orSnap.docs) {
+                if (docSnap.id.startsWith('_') || docSnap.data()._isSystemSchema) continue;
+                const data = docSnap.data();
+                const existing = await db.overtimeRules.toArray();
+                if (existing.length > 0 && existing[0].id !== undefined) {
+                    await db.overtimeRules.update(existing[0].id, data as any);
+                } else {
+                    const { id: _ignore, ...clean } = data;
+                    await db.overtimeRules.add(clean as any);
+                }
+            }
+
+            // 18. Pull Notifications (shared alerts across all users)
+            const notifSnap = await getDocs(collection(dbFirestore, 'notifications'));
+            for (const docSnap of notifSnap.docs) {
+                if (docSnap.id.startsWith('_') || docSnap.data()._isSystemSchema) continue;
+                const data = docSnap.data();
+                if (!data.type || !data.title) continue;
+                // Use date+type+title as dedup key
+                const existing = await db.notifications
+                    .where('date').equals(data.date || '')
+                    .filter(n => n.type === data.type && n.title === data.title)
+                    .first();
+                if (existing && existing.id !== undefined) {
+                    await db.notifications.update(existing.id, data as any);
+                } else {
+                    const { id: _ignore, ...clean } = data;
+                    await db.notifications.add(clean as any);
                 }
             }
 
@@ -583,6 +898,147 @@ class FirestoreSyncService {
                 });
             }, (err) => console.info('Firestore payroll listener active:', err.message));
 
+            // 8. Real-time Production Humid Chamber
+            const unsubHumidChamber = onSnapshot(collection(dbFirestore, 'productionHumidChamber'), (snap) => {
+                snap.docChanges().forEach(async (change) => {
+                    if (change.doc.id.startsWith('_') || change.doc.data()._isSystemSchema) return;
+                    if (change.type === 'added' || change.type === 'modified') {
+                        const data = change.doc.data();
+                        if (!data.batchId) return;
+                        const existing = await db.productionHumidChamber.where('batchId').equals(data.batchId).first();
+                        if (existing && existing.id !== undefined) {
+                            await db.productionHumidChamber.update(existing.id, data as any);
+                        } else {
+                            const { id: _ignore, ...clean } = data;
+                            await db.productionHumidChamber.add(clean as any);
+                        }
+                    }
+                });
+            }, (err) => console.info('Firestore humidChamber listener active:', err.message));
+
+            // 9. Real-time Production First Hardening
+            const unsubFirstHardening = onSnapshot(collection(dbFirestore, 'productionFirstHardening'), (snap) => {
+                snap.docChanges().forEach(async (change) => {
+                    if (change.doc.id.startsWith('_') || change.doc.data()._isSystemSchema) return;
+                    if (change.type === 'added' || change.type === 'modified') {
+                        const data = change.doc.data();
+                        if (!data.batchId) return;
+                        const existing = await db.productionFirstHardening.where('batchId').equals(data.batchId).first();
+                        if (existing && existing.id !== undefined) {
+                            await db.productionFirstHardening.update(existing.id, data as any);
+                        } else {
+                            const { id: _ignore, ...clean } = data;
+                            await db.productionFirstHardening.add(clean as any);
+                        }
+                    }
+                });
+            }, (err) => console.info('Firestore firstHardening listener active:', err.message));
+
+            // 10. Real-time Production Second Hardening
+            const unsubSecondHardening = onSnapshot(collection(dbFirestore, 'productionSecondHardening'), (snap) => {
+                snap.docChanges().forEach(async (change) => {
+                    if (change.doc.id.startsWith('_') || change.doc.data()._isSystemSchema) return;
+                    if (change.type === 'added' || change.type === 'modified') {
+                        const data = change.doc.data();
+                        if (!data.batchId) return;
+                        const existing = await db.productionSecondHardening.where('batchId').equals(data.batchId).first();
+                        if (existing && existing.id !== undefined) {
+                            await db.productionSecondHardening.update(existing.id, data as any);
+                        } else {
+                            const { id: _ignore, ...clean } = data;
+                            await db.productionSecondHardening.add(clean as any);
+                        }
+                    }
+                });
+            }, (err) => console.info('Firestore secondHardening listener active:', err.message));
+
+            // 11. Real-time Production Sortings
+            const unsubSortings = onSnapshot(collection(dbFirestore, 'productionSortings'), (snap) => {
+                snap.docChanges().forEach(async (change) => {
+                    if (change.doc.id.startsWith('_') || change.doc.data()._isSystemSchema) return;
+                    if (change.type === 'added' || change.type === 'modified') {
+                        const data = change.doc.data();
+                        if (!data.batchId) return;
+                        const existing = await db.productionSortings.where('batchId').equals(data.batchId).first();
+                        if (existing && existing.id !== undefined) {
+                            await db.productionSortings.update(existing.id, data as any);
+                        } else {
+                            const { id: _ignore, ...clean } = data;
+                            await db.productionSortings.add(clean as any);
+                        }
+                    }
+                });
+            }, (err) => console.info('Firestore sortings listener active:', err.message));
+
+            // 12. Real-time Clone Stage History
+            const unsubStageHistory = onSnapshot(collection(dbFirestore, 'cloneStageHistory'), (snap) => {
+                snap.docChanges().forEach(async (change) => {
+                    if (change.doc.id.startsWith('_') || change.doc.data()._isSystemSchema) return;
+                    if (change.type === 'added' || change.type === 'modified') {
+                        const data = change.doc.data();
+                        if (!data.batchId) return;
+                        const existing = await db.cloneStageHistory.where('batchId').equals(data.batchId).first();
+                        if (existing && existing.id !== undefined) {
+                            await db.cloneStageHistory.update(existing.id, data as any);
+                        } else {
+                            const { id: _ignore, ...clean } = data;
+                            await db.cloneStageHistory.add(clean as any);
+                        }
+                    }
+                });
+            }, (err) => console.info('Firestore cloneStageHistory listener active:', err.message));
+
+            // 13. Real-time Plantlet Sales
+            const unsubPlantletSales = onSnapshot(collection(dbFirestore, 'plantletSales'), (snap) => {
+                snap.docChanges().forEach(async (change) => {
+                    if (change.doc.id.startsWith('_') || change.doc.data()._isSystemSchema) return;
+                    if (change.type === 'added' || change.type === 'modified') {
+                        const data = change.doc.data();
+                        if (!data.batchId) return;
+                        const existing = await db.plantletSales.where('batchId').equals(data.batchId).first();
+                        if (existing && existing.id !== undefined) {
+                            await db.plantletSales.update(existing.id, data as any);
+                        } else {
+                            const { id: _ignore, ...clean } = data;
+                            await db.plantletSales.add(clean as any);
+                        }
+                    }
+                });
+            }, (err) => console.info('Firestore plantletSales listener active:', err.message));
+
+            // 14. Real-time Plantlet Sorts
+            const unsubPlantletSorts = onSnapshot(collection(dbFirestore, 'plantletSorts'), (snap) => {
+                snap.docChanges().forEach(async (change) => {
+                    if (change.doc.id.startsWith('_') || change.doc.data()._isSystemSchema) return;
+                    if (change.type === 'added' || change.type === 'modified') {
+                        await db.plantletSorts.put(change.doc.data() as any);
+                    } else if (change.type === 'removed') {
+                        await db.plantletSorts.delete(change.doc.id);
+                    }
+                });
+            }, (err) => console.info('Firestore plantletSorts listener active:', err.message));
+
+            // 15. Real-time Notifications (shared across all logged-in users)
+            const unsubNotifications = onSnapshot(collection(dbFirestore, 'notifications'), (snap) => {
+                snap.docChanges().forEach(async (change) => {
+                    if (change.doc.id.startsWith('_') || change.doc.data()._isSystemSchema) return;
+                    if (change.type === 'added' || change.type === 'modified') {
+                        const data = change.doc.data();
+                        if (!data.type || !data.title) return;
+                        const existing = await db.notifications
+                            .where('date').equals(data.date || '')
+                            .filter(n => n.type === data.type && n.title === data.title)
+                            .first();
+                        if (existing && existing.id !== undefined) {
+                            await db.notifications.update(existing.id, data as any);
+                        } else {
+                            const { id: _ignore, ...clean } = data;
+                            await db.notifications.add(clean as any);
+                        }
+                    }
+                });
+            }, (err) => console.info('Firestore notifications listener active:', err.message));
+
             this.syncListeners.push(
                 unsubWorkers, 
                 unsubSales, 
@@ -590,7 +1046,15 @@ class FirestoreSyncService {
                 unsubCloneBatches, 
                 unsubInventory, 
                 unsubAttendance,
-                unsubPayroll
+                unsubPayroll,
+                unsubHumidChamber,
+                unsubFirstHardening,
+                unsubSecondHardening,
+                unsubSortings,
+                unsubStageHistory,
+                unsubPlantletSales,
+                unsubPlantletSorts,
+                unsubNotifications
             );
         } catch (err: any) {
             console.info('Realtime sync setup completed:', err?.message || err);

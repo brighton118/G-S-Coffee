@@ -29,7 +29,7 @@ import { useUserRole } from '../context/UserRoleContext';
 import './Dashboard.css';
 
 const Settings: React.FC = () => {
-    const { isAdmin } = useUserRole();
+    const { isAdmin, isSuperAdmin } = useUserRole();
     const [settings, setSettings] = useState({
         farmName: 'G&S FARM',
         farmLocation: 'Mubende District, Uganda',
@@ -293,7 +293,7 @@ const Settings: React.FC = () => {
                     </div>
 
                     {/* Security and Cloud Sync */}
-                    {isAdmin && <AdminInvitations />}
+                    {isSuperAdmin && <AdminInvitations />}
 
                     {/* Change Account Password */}
                     <div className="card" style={{ borderLeft: '4px solid #f59e0b', display: 'flex', flexDirection: 'column', gap: '1rem' }}>

@@ -23,7 +23,7 @@ import AdminInvitations from '../components/AdminInvitations';
 import './Dashboard.css';
 
 const Dashboard = () => {
-    const { isAdmin, isManager, isStaff } = useUserRole();
+    const { isAdmin, isSuperAdmin, isManager, isStaff } = useUserRole();
     const todayDateStr = format(new Date(), 'yyyy-MM-dd');
     const [attendanceSortBy, setAttendanceSortBy] = useState<'recent' | 'name' | 'id'>('recent');
     const [attendanceFilter, setAttendanceFilter] = useState<'all' | 'working' | 'present' | 'late' | 'completed'>('all');
@@ -197,7 +197,7 @@ const Dashboard = () => {
                         <span style={{ fontSize: '1.25rem' }}>📊</span>
                         <span style={{ fontSize: '0.85rem', fontWeight: 600 }}>Export PDF Reports</span>
                     </Link>
-                    {isAdmin && (
+                    {isSuperAdmin && (
                         <a href="#team-accounts" className="btn btn-secondary" style={{ padding: '0.75rem', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '0.4rem', textAlign: 'center', background: '#fefce8', borderColor: '#fde047' }}>
                             <UserPlus size={20} color="#854d0e" />
                             <span style={{ fontSize: '0.85rem', fontWeight: 600, color: '#854d0e' }}>Team Accounts</span>
@@ -208,27 +208,27 @@ const Dashboard = () => {
 
             {/* Role Access Information Banner */}
             {isAdmin && (
-                <>
-                    <div className="card" style={{ padding: '0.85rem 1.25rem', background: '#fefce8', border: '1px solid #fef08a', borderRadius: '8px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '0.75rem' }}>
-                        <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
-                            <ShieldCheck size={24} color="#854d0e" />
-                            <div>
-                                <strong style={{ color: '#854d0e', fontSize: '0.95rem' }}>Administrator Master Session</strong>
-                                <div style={{ color: '#713f12', fontSize: '0.82rem' }}>
-                                    Full access. All records entered by Managers and Staff are synchronized live to your dashboard.
-                                </div>
+                <div className="card" style={{ padding: '0.85rem 1.25rem', background: '#fefce8', border: '1px solid #fef08a', borderRadius: '8px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '0.75rem' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+                        <ShieldCheck size={24} color="#854d0e" />
+                        <div>
+                            <strong style={{ color: '#854d0e', fontSize: '0.95rem' }}>Administrator Master Session</strong>
+                            <div style={{ color: '#713f12', fontSize: '0.82rem' }}>
+                                Full access. All records entered by Managers and Staff are synchronized live to your dashboard.
                             </div>
                         </div>
-                        <span className="badge badge-warning" style={{ fontWeight: 700, padding: '0.35rem 0.75rem' }}>
-                            👑 ADMIN ACCESS
-                        </span>
                     </div>
+                    <span className="badge badge-warning" style={{ fontWeight: 700, padding: '0.35rem 0.75rem' }}>
+                        👑 ADMIN ACCESS
+                    </span>
+                </div>
+            )}
 
-                    {/* Team & Staff User Management on Admin Dashboard */}
-                    <div id="team-accounts" style={{ scrollMarginTop: '1.5rem' }}>
-                        <AdminInvitations />
-                    </div>
-                </>
+            {/* Team & Staff User Management on Admin Dashboard (Super Admin only) */}
+            {isSuperAdmin && (
+                <div id="team-accounts" style={{ scrollMarginTop: '1.5rem' }}>
+                    <AdminInvitations />
+                </div>
             )}
 
             {isManager && (

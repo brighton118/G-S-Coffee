@@ -18,8 +18,8 @@ import Attendance from './pages/Attendance';
 import { firestoreSyncService, backfillAttendanceWorkerNames } from './services/firestoreSync';
 import { clearSeededDemoData } from './clearDemoData';
 import { notificationService } from './utils/notificationService';
+import { ensureAdminAccess, getUserRole, isSuperAdmin } from './services/adminAccess';
 import { auth } from './firebase';
-import { ensureAdminAccess, getUserRole } from './services/adminAccess';
 import { syncPayrollMonth } from './services/payrollSync';
 import { UserRoleContext, type UserRole } from './context/UserRoleContext';
 
@@ -154,6 +154,7 @@ const App = () => {
             value={{
                 role: userRole,
                 isAdmin: userRole === 'admin',
+                isSuperAdmin: isSuperAdmin(adminUser?.email),
                 isManager: userRole === 'manager',
                 isStaff: userRole === 'staff',
                 canEdit: userRole === 'admin' || userRole === 'manager',
