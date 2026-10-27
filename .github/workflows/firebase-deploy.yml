@@ -26,17 +26,19 @@ jobs:
 
       - name: Deploy to Firebase Hosting
         env:
+          FIREBASE_TOKEN: ${{ secrets.FIREBASE_TOKEN }}
           FIREBASE_SERVICE_ACCOUNT: ${{ secrets.FIREBASE_SERVICE_ACCOUNT_GS_COFFEE_3D022 }}
         run: |
-          node -e '
-            const fs = require("fs");
-            const sa = process.env.FIREBASE_SERVICE_ACCOUNT;
-            fs.writeFileSync(process.env.RUNNER_TEMP + "/sa.json", sa, "utf8");
-          '
-          export GOOGLE_APPLICATION_CREDENTIALS="$RUNNER_TEMP/sa.json"
           sudo npm install -g firebase-tools
-          firebase deploy --only hosting --project gs-coffee-3d022 --non-interactive > "$RUNNER_TEMP/deploy_log.txt" 2>&1 || {
-            ERR=$(tail -n 20 "$RUNNER_TEMP/deploy_log.txt" | tr '\r\n' '  ')
-            echo "::error::$ERR"
+          if [ -n "$FIREBASE_TOKEN" ]; then
+            echo "Deploying using FIREBASE_TOKEN..."
+            firebase deploy --only hosting --project gs-coffee-3d022 --token "$FIREBASE_TOKEN"
+          elif [ -n "$FIREBASE_SERVICE_ACCOUNT" ]; then
+            echo "Deploying using Service Account..."
+            echo "$FIREBASE_SERVICE_ACCOUNT" > "$RUNNER_TEMP/sa.json"
+            export GOOGLE_APPLICATION_CREDENTIALS="$RUNNER_TEMP/sa.json"
+            firebase deploy --only hosting --project gs-coffee-3d022 --non-interactive
+          else
+            echo "::error::Neither FIREBASE_TOKEN nor FIREBASE_SERVICE_ACCOUNT is available in GitHub Secrets."
             exit 1
-          }
+          fi
