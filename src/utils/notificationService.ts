@@ -1,9 +1,10 @@
 import { db, AppNotification } from '../db';
 import { format, differenceInDays, parseISO } from 'date-fns';
+import { emailService } from '../services/emailService';
 
 /**
  * G&S FARM Notification & Communication Engine
- * Manages In-App Alerts, SMS Mobile Dispatching, and Automated System Scans.
+ * Manages In-App Alerts, Email Dispatching, SMS Mobile Dispatching, and Automated System Scans.
  */
 
 export interface SystemScanSummary {
@@ -23,7 +24,8 @@ class NotificationService {
         title: string,
         message: string,
         channel: 'In-App' | 'SMS' | 'Email' = 'In-App',
-        recipient?: string
+        recipient?: string,
+        details?: Record<string, string | number>
     ): Promise<number | undefined> {
         const today = format(new Date(), 'yyyy-MM-dd');
 
@@ -57,6 +59,35 @@ class NotificationService {
             message,
             status: 'Sent'
         });
+
+        // Automatic Email Dispatch if enabled
+        try {
+            const saved = localStorage.getItem('gs_farm_settings');
+            let shouldEmail = channel === 'Email';
+
+            if (saved) {
+                const parsed = JSON.parse(saved);
+                if (parsed.enableEmailAlerts) {
+                    if (type === 'Inventory Low' && parsed.notifyLowStock) shouldEmail = true;
+                    if (type === 'Chamber Overdue' && parsed.notifyChamberOverdue) shouldEmail = true;
+                    if (type === 'Pending Overtime' && parsed.notifyPendingOvertime) shouldEmail = true;
+                    if (type === 'EOD_ATTENDANCE' && parsed.notifyEODAttendance) shouldEmail = true;
+                    if (type === 'General') shouldEmail = true;
+                }
+            }
+
+            if (shouldEmail) {
+                void emailService.sendNotificationEmail({
+                    subject: title,
+                    title,
+                    message,
+                    category: type,
+                    details
+                });
+            }
+        } catch (mailErr) {
+            console.warn('[Notification Engine] Auto-email dispatch note:', mailErr);
+        }
 
         console.log(`Notification [${channel}] Dispatched: ${title}`);
         return notifId;

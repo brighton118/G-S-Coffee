@@ -13,9 +13,11 @@ import {
     Trash2, 
     CheckCircle2,
     Calendar,
-    Radio
+    Radio,
+    Mail
 } from 'lucide-react';
 import { notificationService } from '../utils/notificationService';
+import { emailService } from '../services/emailService';
 import './Dashboard.css';
 
 const Notifications: React.FC = () => {
@@ -23,6 +25,9 @@ const Notifications: React.FC = () => {
     const [onlyUnread, setOnlyUnread] = useState<boolean>(false);
     const [isScanning, setIsScanning] = useState<boolean>(false);
     const [scanMessage, setScanMessage] = useState<string | null>(null);
+    const [sendingEmailId, setSendingEmailId] = useState<number | null>(null);
+    const [isSendingDigest, setIsSendingDigest] = useState<boolean>(false);
+    const [emailNotice, setEmailNotice] = useState<{ text: string; type: 'success' | 'error' } | null>(null);
 
     // Live Query for notifications sorted latest first
     const notifications = useLiveQuery(() => db.notifications.orderBy('id').reverse().toArray()) || [];
@@ -69,6 +74,97 @@ const Notifications: React.FC = () => {
         } finally {
             setIsScanning(false);
             setTimeout(() => setScanMessage(null), 6000);
+        }
+    };
+
+    const handleSendSingleEmail = async (notif: typeof notifications[0]) => {
+        if (!notif.id) return;
+        setSendingEmailId(notif.id);
+        setEmailNotice(null);
+
+        try {
+            const res = await emailService.sendNotificationEmail({
+                subject: notif.title,
+                title: notif.title,
+                message: notif.message,
+                category: notif.type,
+                details: {
+                    'Alert Type': notif.type,
+                    'Date Logged': notif.date,
+                    'Target Recipient': notif.recipient || 'Farm Management'
+                }
+            });
+
+            if (res.success) {
+                setEmailNotice({
+                    type: 'success',
+                    text: `Email dispatched successfully to: ${res.recipients.join(', ')} (Queued in Cloud Mail)`
+                });
+            } else {
+                setEmailNotice({
+                    type: 'error',
+                    text: `Failed to queue email: ${res.error || 'Unknown error'}`
+                });
+            }
+        } catch (err: any) {
+            setEmailNotice({
+                type: 'error',
+                text: `Error sending email: ${err?.message || err}`
+            });
+        } finally {
+            setSendingEmailId(null);
+            setTimeout(() => setEmailNotice(null), 7000);
+        }
+    };
+
+    const handleSendDigestEmail = async () => {
+        const unreadList = notifications.filter(n => !n.read);
+        if (unreadList.length === 0) {
+            alert('There are no unread notifications to email.');
+            return;
+        }
+
+        setIsSendingDigest(true);
+        setEmailNotice(null);
+
+        const summaryText = unreadList
+            .map((n, i) => `${i + 1}. [${n.type}] ${n.title}\n   ${n.message}`)
+            .join('\n\n');
+
+        try {
+            const res = await emailService.sendNotificationEmail({
+                subject: `Operations Digest: ${unreadList.length} Active System Alerts`,
+                title: `G&S FARMS Operational Digest (${unreadList.length} Alerts)`,
+                message: `The following ${unreadList.length} unread operational alerts require attention:\n\n${summaryText}`,
+                category: 'General',
+                details: {
+                    'Total Alerts': unreadList.length,
+                    'Stock Alerts': unreadList.filter(n => n.type === 'Inventory Low').length,
+                    'Chamber Alerts': unreadList.filter(n => n.type === 'Chamber Overdue').length,
+                    'Overtime Alerts': unreadList.filter(n => n.type === 'Pending Overtime').length,
+                    'Attendance Alerts': unreadList.filter(n => n.type === 'EOD_ATTENDANCE').length
+                }
+            });
+
+            if (res.success) {
+                setEmailNotice({
+                    type: 'success',
+                    text: `Operations digest containing ${unreadList.length} alerts successfully queued to: ${res.recipients.join(', ')}`
+                });
+            } else {
+                setEmailNotice({
+                    type: 'error',
+                    text: `Failed to dispatch digest: ${res.error || 'Unknown error'}`
+                });
+            }
+        } catch (err: any) {
+            setEmailNotice({
+                type: 'error',
+                text: `Error dispatching digest: ${err?.message || err}`
+            });
+        } finally {
+            setIsSendingDigest(false);
+            setTimeout(() => setEmailNotice(null), 7000);
         }
     };
 
@@ -128,6 +224,18 @@ const Notifications: React.FC = () => {
                         {isScanning ? 'Scanning...' : 'Scan System for Alerts'}
                     </button>
                     {unreadCount > 0 && (
+                        <button 
+                            className="btn btn-primary" 
+                            onClick={handleSendDigestEmail} 
+                            disabled={isSendingDigest}
+                            style={{ display: 'inline-flex', alignItems: 'center', gap: '0.4rem', backgroundColor: '#1e3a8a', borderColor: '#1e3a8a' }}
+                            title="Send all active unread alerts as an email digest to managers"
+                        >
+                            <Mail size={16} /> 
+                            {isSendingDigest ? 'Dispatching Digest...' : `Email Digest (${unreadCount})`}
+                        </button>
+                    )}
+                    {unreadCount > 0 && (
                         <button className="btn btn-secondary" onClick={markAllAsRead} style={{ display: 'inline-flex', alignItems: 'center', gap: '0.4rem' }}>
                             <CheckSquare size={16} /> Mark All Read
                         </button>
@@ -139,6 +247,23 @@ const Notifications: React.FC = () => {
                     )}
                 </div>
             </div>
+
+            {/* Email Dispatch Feedback Banner */}
+            {emailNotice && (
+                <div className="card" style={{ 
+                    padding: '0.85rem 1.25rem', 
+                    backgroundColor: emailNotice.type === 'success' ? '#f0fdf4' : '#fef2f2', 
+                    borderLeft: `4px solid ${emailNotice.type === 'success' ? '#22c55e' : '#ef4444'}`, 
+                    color: emailNotice.type === 'success' ? '#166534' : '#991b1b', 
+                    display: 'flex', 
+                    alignItems: 'center', 
+                    gap: '0.5rem',
+                    fontSize: '0.92rem'
+                }}>
+                    <Mail size={18} />
+                    <span>{emailNotice.text}</span>
+                </div>
+            )}
 
             {/* Scan Feedback Banner */}
             {scanMessage && (
@@ -269,16 +394,29 @@ const Notifications: React.FC = () => {
                                     </div>
                                 </div>
 
-                                {!notif.read && (
+                                <div style={{ display: 'flex', flexDirection: 'column', gap: '0.45rem', alignItems: 'flex-end', flexShrink: 0 }}>
                                     <button 
-                                        className="btn btn-secondary" 
+                                        className="btn btn-secondary"
                                         style={{ padding: '0.35rem 0.65rem', fontSize: '0.8rem', display: 'inline-flex', alignItems: 'center', gap: '0.35rem', whiteSpace: 'nowrap' }}
-                                        onClick={() => markAsRead(notif.id!)}
-                                        title="Mark as Read"
+                                        onClick={() => handleSendSingleEmail(notif)}
+                                        disabled={sendingEmailId === notif.id}
+                                        title="Send this alert to configured farm manager emails"
                                     >
-                                        <CheckSquare size={14} /> Mark Read
+                                        <Mail size={14} /> 
+                                        {sendingEmailId === notif.id ? 'Sending...' : 'Email Alert'}
                                     </button>
-                                )}
+
+                                    {!notif.read && (
+                                        <button 
+                                            className="btn btn-secondary" 
+                                            style={{ padding: '0.35rem 0.65rem', fontSize: '0.8rem', display: 'inline-flex', alignItems: 'center', gap: '0.35rem', whiteSpace: 'nowrap' }}
+                                            onClick={() => markAsRead(notif.id!)}
+                                            title="Mark as Read"
+                                        >
+                                            <CheckSquare size={14} /> Mark Read
+                                        </button>
+                                    )}
+                                </div>
                             </div>
                         );
                     })

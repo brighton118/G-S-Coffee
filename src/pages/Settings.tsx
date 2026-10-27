@@ -23,6 +23,7 @@ import {
 import { updatePassword } from 'firebase/auth';
 import { auth } from '../firebase';
 import { notificationService } from '../utils/notificationService';
+import { emailService } from '../services/emailService';
 import { firestoreSyncService } from '../services/firestoreSync';
 import AdminInvitations from '../components/AdminInvitations';
 import {
@@ -38,6 +39,8 @@ const Settings: React.FC = () => {
         farmName: 'G&S FARMS',
         farmLocation: 'Mubende District, Uganda',
         contactEmail: 'admin@gscoffee-farm.com',
+        notificationEmails: '',
+        emailWebhookUrl: '',
         contactPhone: '+256 700 123456',
         ...DEFAULT_ATTENDANCE_SCHEDULE,
         enableSMSAlerts: true,
@@ -49,6 +52,7 @@ const Settings: React.FC = () => {
     });
 
     const [saveNotice, setSaveNotice] = useState<string | null>(null);
+    const [isSendingTestEmail, setIsSendingTestEmail] = useState<boolean>(false);
     const [isSyncing, setIsSyncing] = useState<boolean>(false);
     const [syncMessage, setSyncMessage] = useState<string | null>(null);
     const [diagnostics, setDiagnostics] = useState<{
@@ -119,6 +123,25 @@ const Settings: React.FC = () => {
         );
         setSaveNotice('Test notification created and logged successfully!');
         setTimeout(() => setSaveNotice(null), 4000);
+    };
+
+    const handleSendTestEmail = async () => {
+        setIsSendingTestEmail(true);
+        try {
+            // Save settings first so emailService picks up latest entered email
+            localStorage.setItem('gs_farm_settings', JSON.stringify(settings));
+            const res = await emailService.sendTestEmail(settings.contactEmail);
+            if (res.success) {
+                setSaveNotice(`✅ Live test email successfully queued in Cloud Mail for: ${res.recipients.join(', ')}`);
+            } else {
+                setSaveNotice(`❌ Failed to send test email: ${res.error || 'Check email configuration.'}`);
+            }
+        } catch (err: any) {
+            setSaveNotice(`❌ Error sending test email: ${err?.message || err}`);
+        } finally {
+            setIsSendingTestEmail(false);
+            setTimeout(() => setSaveNotice(null), 8000);
+        }
     };
 
     const handleForceSync = async () => {
@@ -312,21 +335,46 @@ const Settings: React.FC = () => {
                         
                         <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
                             <label style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', cursor: 'pointer', fontSize: '0.9rem' }}>
+                                <input type="checkbox" checked={settings.enableEmailAlerts} onChange={e => setSettings({ ...settings, enableEmailAlerts: e.target.checked })} style={{ width: '18px', height: '18px' }} />
+                                <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', fontWeight: 600 }}>
+                                    <Mail size={16} color="var(--color-primary)" /> Enable Automatic Email Notifications
+                                </div>
+                            </label>
+
+                            <div className="form-group" style={{ marginBottom: '0.25rem' }}>
+                                <label className="form-label" style={{ fontSize: '0.85rem' }}>Primary Recipient Email</label>
+                                <input 
+                                    type="email" 
+                                    className="form-input" 
+                                    value={settings.contactEmail} 
+                                    onChange={e => setSettings({ ...settings, contactEmail: e.target.value })} 
+                                    placeholder="admin@gscoffee-farm.com" 
+                                />
+                            </div>
+
+                            <div className="form-group" style={{ marginBottom: '0.25rem' }}>
+                                <label className="form-label" style={{ fontSize: '0.85rem' }}>Additional Manager / Staff Emails (Comma-separated)</label>
+                                <input 
+                                    type="text" 
+                                    className="form-input" 
+                                    value={settings.notificationEmails} 
+                                    onChange={e => setSettings({ ...settings, notificationEmails: e.target.value })} 
+                                    placeholder="manager@gsfarm.farm, operations@gsfarm.farm" 
+                                />
+                                <span style={{ fontSize: '0.75rem', color: 'var(--color-text-light)' }}>
+                                    All listed emails will receive automated operational notifications and alert digests.
+                                </span>
+                            </div>
+
+                            <label style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', cursor: 'pointer', fontSize: '0.9rem', marginTop: '0.25rem' }}>
                                 <input type="checkbox" checked={settings.enableSMSAlerts} onChange={e => setSettings({ ...settings, enableSMSAlerts: e.target.checked })} style={{ width: '18px', height: '18px' }} />
                                 <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
                                     <Smartphone size={16} /> Send SMS Alerts to {settings.contactPhone}
                                 </div>
                             </label>
-
-                            <label style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', cursor: 'pointer', fontSize: '0.9rem' }}>
-                                <input type="checkbox" checked={settings.enableEmailAlerts} onChange={e => setSettings({ ...settings, enableEmailAlerts: e.target.checked })} style={{ width: '18px', height: '18px' }} />
-                                <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
-                                    <Mail size={16} /> Send Email PDF Reports to {settings.contactEmail}
-                                </div>
-                            </label>
                         </div>
 
-                        <h4 style={{ margin: '0.5rem 0 0.25rem 0', fontSize: '0.95rem', color: 'var(--color-text)' }}>Active Trigger Event Subscriptions:</h4>
+                        <h4 style={{ margin: '0.5rem 0 0.25rem 0', fontSize: '0.95rem', color: 'var(--color-text)' }}>Active Email & Alert Trigger Events:</h4>
 
                         <div style={{ display: 'flex', flexDirection: 'column', gap: '0.6rem', background: 'var(--color-background)', padding: '0.75rem', borderRadius: '6px' }}>
                             <label style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', cursor: 'pointer', fontSize: '0.85rem' }}>
@@ -350,14 +398,27 @@ const Settings: React.FC = () => {
                             </label>
                         </div>
 
-                        <button 
-                            type="button" 
-                            className="btn btn-secondary" 
-                            onClick={handleSendTestAlert}
-                            style={{ alignSelf: 'flex-start', fontSize: '0.85rem', display: 'inline-flex', alignItems: 'center', gap: '0.35rem', marginTop: '0.25rem' }}
-                        >
-                            <Bell size={14} /> Send Test Alert
-                        </button>
+                        <div style={{ display: 'flex', gap: '0.75rem', flexWrap: 'wrap', marginTop: '0.5rem' }}>
+                            <button 
+                                type="button" 
+                                className="btn btn-primary" 
+                                onClick={handleSendTestEmail}
+                                disabled={isSendingTestEmail}
+                                style={{ fontSize: '0.85rem', display: 'inline-flex', alignItems: 'center', gap: '0.35rem' }}
+                            >
+                                <Mail size={14} /> 
+                                {isSendingTestEmail ? 'Queuing Test Email...' : 'Send Test Notification Email'}
+                            </button>
+
+                            <button 
+                                type="button" 
+                                className="btn btn-secondary" 
+                                onClick={handleSendTestAlert}
+                                style={{ fontSize: '0.85rem', display: 'inline-flex', alignItems: 'center', gap: '0.35rem' }}
+                            >
+                                <Bell size={14} /> Send In-App Test Alert
+                            </button>
+                        </div>
                     </div>
 
                     {/* Operational Thresholds */}
