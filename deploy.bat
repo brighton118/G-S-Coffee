@@ -1,5 +1,6 @@
 @echo off
 set "PATH=D:\Downloads\G-S-Coffee-main\git\cmd;D:\Downloads\G-S-Coffee-main\nodejs\node-v20.15.0-win-x64;%PATH%"
+set "GOOGLE_APPLICATION_CREDENTIALS=%~dp0firebase-service-account.json"
 cd /d "D:\Downloads\G-S-Coffee-main\G-S-Coffee-main"
 
 echo Building production bundle...

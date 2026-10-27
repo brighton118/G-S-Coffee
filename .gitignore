@@ -7,4 +7,7 @@ dist
 .firebase
 G-S-Coffee-main/
 push.bat
+*service-account*.json
+*.key.json
+firebase-key.json
 
