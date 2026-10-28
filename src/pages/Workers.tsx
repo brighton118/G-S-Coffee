@@ -15,7 +15,8 @@ import {
     Trash2,
     AlertTriangle,
     ShieldCheck,
-    Lock
+    Lock,
+    RefreshCw
 } from 'lucide-react';
 import { QRCodeSVG } from 'qrcode.react';
 import { format } from 'date-fns';
@@ -52,10 +53,16 @@ const Workers: React.FC = () => {
 
     const workers = useLiveQuery(() => db.workers.toArray()) || [];
 
-    // Ensure all existing workers have their permanent card number, QR code, and automatic card dates locked in
+    // Ensure all existing workers have their permanent card number, QR code, and automatic UP-TO-DATE card dates locked in
     useEffect(() => {
         const ensurePermanentIdentifiers = async () => {
             const list = await db.workers.toArray();
+            const todayStr = format(new Date(), 'yyyy-MM-dd');
+            const expD = new Date();
+            expD.setFullYear(expD.getFullYear() + 1);
+            expD.setDate(expD.getDate() - 1);
+            const defaultExpiryStr = format(expD, 'yyyy-MM-dd');
+
             for (const w of list) {
                 let needsUpdate = false;
                 const updates: Partial<Worker> = {};
@@ -67,16 +74,10 @@ const Workers: React.FC = () => {
                     updates.farmCardNumber = `FC-${w.workerId.replace(/\D/g, '') || '1001'}`;
                     needsUpdate = true;
                 }
-                if (!w.cardIssuedDate) {
-                    updates.cardIssuedDate = w.dateJoined || format(new Date(), 'yyyy-MM-dd');
-                    needsUpdate = true;
-                }
-                if (!w.cardExpiryDate) {
-                    const baseDate = new Date(updates.cardIssuedDate || w.dateJoined || new Date());
-                    const expD = new Date(baseDate);
-                    expD.setFullYear(expD.getFullYear() + 1);
-                    expD.setDate(expD.getDate() - 1);
-                    updates.cardExpiryDate = format(expD, 'yyyy-MM-dd');
+                // Check if card dates are missing or outdated/expired (< today)
+                if (!w.cardIssuedDate || !w.cardExpiryDate || w.cardExpiryDate < todayStr) {
+                    updates.cardIssuedDate = todayStr;
+                    updates.cardExpiryDate = defaultExpiryStr;
                     needsUpdate = true;
                 }
                 if (needsUpdate) {
@@ -258,6 +259,27 @@ const Workers: React.FC = () => {
             status: (worker.status || 'Active') as 'Active' | 'Inactive'
         });
         setShowAddModal(true);
+    };
+
+    const handleRenewCardDates = async (worker: Worker) => {
+        const todayStr = format(new Date(), 'yyyy-MM-dd');
+        const expD = new Date();
+        expD.setFullYear(expD.getFullYear() + 1);
+        expD.setDate(expD.getDate() - 1);
+        const cardExpiryStr = format(expD, 'yyyy-MM-dd');
+
+        const updated: Worker = {
+            ...worker,
+            cardIssuedDate: todayStr,
+            cardExpiryDate: cardExpiryStr
+        };
+
+        await db.workers.update(worker.workerId, {
+            cardIssuedDate: todayStr,
+            cardExpiryDate: cardExpiryStr
+        });
+        void firestoreSyncService.saveWorker(updated);
+        setSelectedWorkerForCard(updated);
     };
 
     const handleConfirmDeleteAll = async () => {
@@ -913,7 +935,15 @@ const Workers: React.FC = () => {
                             </div>
                         )}
 
-                        <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '0.75rem', marginTop: '1.25rem' }}>
+                        <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '0.75rem', marginTop: '1.25rem', flexWrap: 'wrap' }}>
+                            <button
+                                className="btn btn-secondary"
+                                onClick={() => void handleRenewCardDates(selectedWorkerForCard)}
+                                title="Update card issue date to today and expiry to 1 year from now"
+                                style={{ display: 'inline-flex', alignItems: 'center', gap: '0.4rem' }}
+                            >
+                                <RefreshCw size={16} /> Renew / Update to Today
+                            </button>
                             <button
                                 className="btn btn-primary"
                                 onClick={() => void generateWorkerIdCardPDF(selectedWorkerForCard)}

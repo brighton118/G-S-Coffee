@@ -21,6 +21,11 @@ export async function seedDemoData() {
         { username: 'store_mgr', role: 'Store/Inventory Manager', active: true }
     ]);
 
+    const cardExpDate = new Date();
+    cardExpDate.setFullYear(cardExpDate.getFullYear() + 1);
+    cardExpDate.setDate(cardExpDate.getDate() - 1);
+    const cardExpiryStr = format(cardExpDate, 'yyyy-MM-dd');
+
     // 2. Seed Workers with Salary & Overtime Configuration
     const seedWorkers: Worker[] = [
         {
@@ -28,7 +33,9 @@ export async function seedDemoData() {
             fullName: 'John Kato',
             gender: 'Male',
             phoneNumber: '+256 712 345678',
-            dateJoined: '2024-01-10',
+            dateJoined: todayStr,
+            cardIssuedDate: todayStr,
+            cardExpiryDate: cardExpiryStr,
             status: 'Active',
             farmCardNumber: 'FC-1001',
             qrCode: 'GSF-W-0001',
@@ -40,7 +47,9 @@ export async function seedDemoData() {
             fullName: 'Mary Nabirye',
             gender: 'Female',
             phoneNumber: '+256 712 345679',
-            dateJoined: '2024-02-15',
+            dateJoined: todayStr,
+            cardIssuedDate: todayStr,
+            cardExpiryDate: cardExpiryStr,
             status: 'Active',
             farmCardNumber: 'FC-1002',
             qrCode: 'GSF-W-0002',
@@ -52,7 +61,9 @@ export async function seedDemoData() {
             fullName: 'Peter Ouma',
             gender: 'Male',
             phoneNumber: '+256 712 345680',
-            dateJoined: '2024-03-20',
+            dateJoined: todayStr,
+            cardIssuedDate: todayStr,
+            cardExpiryDate: cardExpiryStr,
             status: 'Active',
             farmCardNumber: 'FC-1003',
             qrCode: 'GSF-W-0003',
@@ -64,7 +75,9 @@ export async function seedDemoData() {
             fullName: 'Jane Namuli',
             gender: 'Female',
             phoneNumber: '+256 712 345681',
-            dateJoined: '2024-04-25',
+            dateJoined: todayStr,
+            cardIssuedDate: todayStr,
+            cardExpiryDate: cardExpiryStr,
             status: 'Active',
             farmCardNumber: 'FC-1004',
             qrCode: 'GSF-W-0004',
@@ -76,7 +89,9 @@ export async function seedDemoData() {
             fullName: 'David Lule',
             gender: 'Male',
             phoneNumber: '+256 712 345682',
-            dateJoined: '2024-05-30',
+            dateJoined: todayStr,
+            cardIssuedDate: todayStr,
+            cardExpiryDate: cardExpiryStr,
             status: 'Active',
             farmCardNumber: 'FC-1005',
             qrCode: 'GSF-W-0005',
