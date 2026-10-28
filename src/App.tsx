@@ -72,8 +72,21 @@ const App = () => {
             }
         });
 
+        // Safety fallback: Never keep the user on the loading spinner for more than 3.5 seconds
+        const safetyTimer = setTimeout(() => {
+            if (isMounted && authStatus === 'loading') {
+                if (!auth.currentUser) {
+                    setAuthStatus('signedOut');
+                } else {
+                    setAdminUser(auth.currentUser);
+                    setAuthStatus('authorized');
+                }
+            }
+        }, 3500);
+
         return () => {
             isMounted = false;
+            clearTimeout(safetyTimer);
             unsubscribe();
         };
     }, []);

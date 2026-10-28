@@ -11,11 +11,13 @@ import {
     CheckCircle2, 
     AlertTriangle, 
     UserCheck,
-    ArrowRight
+    ArrowRight,
+    Mail
 } from 'lucide-react';
 import { format } from 'date-fns';
 import { generateAttendancePDF } from '../utils/pdfGenerator';
 import { loadAttendanceScheduleSettings } from '../utils/attendanceSchedule';
+import { emailService } from '../services/emailService';
 
 const Attendance: React.FC = () => {
     const [selectedDate, setSelectedDate] = useState<string>(format(new Date(), 'yyyy-MM-dd'));
@@ -53,6 +55,43 @@ const Attendance: React.FC = () => {
     const presentToday = dayRecords.filter(r => r.status === 'Present' || r.status === 'Late').length;
     const lateToday = dayRecords.filter(r => r.status === 'Late' || r.isLate).length;
     const otEligibleCount = dayRecords.filter(r => (r.overtimeHours || 0) > 0 || r.overtimeStatus === 'Pending' || r.overtimeStatus === 'Approved').length;
+    const absentWorkers = activeWorkers.filter(w => !dayRecords.some(r => r.workerId === w.workerId));
+
+    const [isSendingAlert, setIsSendingAlert] = useState<boolean>(false);
+    const [attendanceNotice, setAttendanceNotice] = useState<string | null>(null);
+
+    const handleSendMissedAttendanceAlert = async () => {
+        if (absentWorkers.length === 0) {
+            setAttendanceNotice('✅ All active workers have scanned in! Zero absences detected.');
+            setTimeout(() => setAttendanceNotice(null), 4000);
+            return;
+        }
+
+        setIsSendingAlert(true);
+        setAttendanceNotice(null);
+        try {
+            const absentSummary = absentWorkers.map(w => `${w.fullName} (${w.workerId})`).join(', ');
+            const res = await emailService.sendMissedAttendanceEmail({
+                workerId: absentWorkers[0].workerId,
+                workerName: absentWorkers.length === 1 ? absentWorkers[0].fullName : `${absentWorkers[0].fullName} + ${absentWorkers.length - 1} other(s)`,
+                date: selectedDate,
+                scheduledShift: 'Standard Farm Shift (08:00 - 17:00)',
+                timeInWindow: `${attendanceSchedule.attendanceTimeInStart} - ${attendanceSchedule.attendanceTimeInEnd}`,
+                notes: `Total unrecorded workers on ${selectedDate}: ${absentWorkers.length}. Absent: ${absentSummary}`
+            });
+
+            if (res.success) {
+                setAttendanceNotice(`✅ Missed attendance alert for ${absentWorkers.length} worker(s) dispatched via Brevo to ${res.recipients.join(', ')}!`);
+            } else {
+                setAttendanceNotice(`❌ Failed to dispatch alert: ${res.error || 'Check Brevo configuration'}`);
+            }
+        } catch (err: any) {
+            setAttendanceNotice(`❌ Error sending alert: ${err?.message || err}`);
+        } finally {
+            setIsSendingAlert(false);
+            setTimeout(() => setAttendanceNotice(null), 6000);
+        }
+    };
 
     return (
         <div className="page-wrapper" style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
@@ -88,8 +127,24 @@ const Attendance: React.FC = () => {
                     >
                         <Download size={16} /> Export PDF
                     </button>
+                    <button 
+                        className="btn btn-secondary"
+                        onClick={handleSendMissedAttendanceAlert}
+                        disabled={isSendingAlert || absentWorkers.length === 0}
+                        style={{ display: 'inline-flex', alignItems: 'center', gap: '0.4rem', backgroundColor: '#fef2f2', color: '#b91c1c', borderColor: '#fca5a5' }}
+                        title="Dispatch missed attendance alert via Brevo to farm management"
+                    >
+                        <Mail size={16} /> {isSendingAlert ? 'Dispatching...' : `Alert Absences (${absentWorkers.length})`}
+                    </button>
                 </div>
             </div>
+
+            {attendanceNotice && (
+                <div className="card" style={{ padding: '0.85rem 1.25rem', backgroundColor: attendanceNotice.startsWith('✅') ? '#f0fdf4' : '#fef2f2', borderLeft: `4px solid ${attendanceNotice.startsWith('✅') ? '#22c55e' : '#ef4444'}`, color: attendanceNotice.startsWith('✅') ? '#166534' : '#b91c1c', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                    <CheckCircle2 size={18} />
+                    <span>{attendanceNotice}</span>
+                </div>
+            )}
 
             {/* KPI Cards */}
             <div className="stats-grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: '1rem' }}>

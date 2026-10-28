@@ -13,13 +13,15 @@ import {
     Banknote, 
     ShoppingCart,
     Trash2,
-    AlertTriangle
+    AlertTriangle,
+    Mail
 } from 'lucide-react';
 import { generateSalesReceiptPDF, generateSalesSummaryPDF } from '../utils/pdfGenerator';
 import { formatUGX } from '../utils/calculations';
 import { deleteAllSalesSystemWide, deleteSingleSalesOrderSystemWide } from '../clearDemoData';
 import { firestoreSyncService } from '../services/firestoreSync';
 import { notificationService } from '../utils/notificationService';
+import { emailService } from '../services/emailService';
 import { auth } from '../firebase';
 import { useUserRole } from '../context/UserRoleContext';
 import './Sales.css';
@@ -39,6 +41,55 @@ const Sales: React.FC = () => {
     const [orderToDelete, setOrderToDelete] = useState<SalesOrder | null>(null);
     const [isDeleting, setIsDeleting] = useState(false);
     const [deleteError, setDeleteError] = useState('');
+    const [emailingOrderId, setEmailingOrderId] = useState<number | string | null>(null);
+    const [salesNotice, setSalesNotice] = useState<string | null>(null);
+
+    const handleEmailReceipt = async (order: SalesOrder) => {
+        const orderKey = order.id || order.invoiceNumber || 'order';
+        setEmailingOrderId(orderKey);
+        try {
+            const inv = order.invoiceNumber || order.orderId || 'GSF-INV';
+            const varName = order.variety || order.cloneType || 'KR1';
+            const qty = order.quantity || order.quantityOrdered || 0;
+            const unitPrice = order.unitPrice || order.pricePerClone || 2500;
+            let targetEmail = order.customerEmail;
+
+            if (!targetEmail || !targetEmail.includes('@')) {
+                const entered = prompt(`Enter recipient email to send invoice #${inv}:`);
+                if (!entered || !entered.includes('@')) {
+                    setSalesNotice('Email canceled or invalid address.');
+                    setTimeout(() => setSalesNotice(null), 4000);
+                    return;
+                }
+                targetEmail = entered.trim();
+            }
+
+            const res = await emailService.sendSalesInvoiceEmail({
+                invoiceNumber: inv,
+                orderDate: order.orderDate || new Date().toISOString().split('T')[0],
+                customerName: order.customerName,
+                customerEmail: targetEmail,
+                customerPhone: order.customerPhone || '',
+                cloneType: varName,
+                quantity: qty,
+                unitPrice: unitPrice,
+                totalAmount: order.totalAmount,
+                amountPaid: order.amountPaid ?? order.totalAmount,
+                location: order.customerLocation || 'Mubende District'
+            });
+
+            if (res.success) {
+                setSalesNotice(`✅ Invoice #${inv} receipt sent via Brevo to ${res.recipients.join(', ')}!`);
+            } else {
+                setSalesNotice(`❌ Could not dispatch invoice receipt: ${res.error || 'Check Brevo configuration'}`);
+            }
+        } catch (err: any) {
+            setSalesNotice(`❌ Error sending invoice: ${err?.message || err}`);
+        } finally {
+            setEmailingOrderId(null);
+            setTimeout(() => setSalesNotice(null), 6000);
+        }
+    };
 
     // Sales are recorded as fully paid cash transactions.
     const [formData, setFormData] = useState<{
@@ -130,6 +181,27 @@ const Sales: React.FC = () => {
                 'Location': formData.customerLocation || 'Farm Gate'
             },
             sourceUser: auth.currentUser?.email || 'Farm Sales Manager'
+        });
+
+        // Dispatch official Brevo transactional email invoice receipt
+        void emailService.sendSalesInvoiceEmail({
+            invoiceNumber: invoiceNum,
+            orderDate: today,
+            customerName: formData.customerName.trim(),
+            customerEmail: formData.customerEmail.trim() || undefined,
+            customerPhone: formData.customerPhone.trim(),
+            cloneType: formData.variety,
+            quantity: formData.quantity,
+            unitPrice: formData.unitPrice,
+            totalAmount,
+            amountPaid: totalAmount,
+            location: formData.customerLocation.trim() || 'Mubende District'
+        }).then(res => {
+            if (res.success) {
+                console.log(`[Sales] Brevo invoice dispatched for ${invoiceNum}`);
+            }
+        }).catch(err => {
+            console.warn('[Sales] Brevo invoice dispatch note:', err);
         });
 
         // Activity log
@@ -227,6 +299,13 @@ const Sales: React.FC = () => {
                     )}
                 </div>
             </div>
+
+            {salesNotice && (
+                <div className="card" style={{ padding: '0.85rem 1.25rem', backgroundColor: salesNotice.startsWith('✅') ? '#f0fdf4' : '#fef2f2', borderLeft: `4px solid ${salesNotice.startsWith('✅') ? '#22c55e' : '#ef4444'}`, color: salesNotice.startsWith('✅') ? '#166534' : '#b91c1c', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                    <CheckCircle2 size={18} />
+                    <span>{salesNotice}</span>
+                </div>
+            )}
 
             {/* KPI Cards (No Dues) */}
             <div className="stats-grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: '1rem' }}>
@@ -373,6 +452,15 @@ const Sales: React.FC = () => {
                                                     <Receipt size={14} /> Cash Receipt
                                                 </button>
                                                 <button 
+                                                    className="btn btn-primary" 
+                                                    style={{ padding: '0.35rem 0.65rem', fontSize: '0.8rem', display: 'inline-flex', alignItems: 'center', gap: '0.35rem', backgroundColor: '#15803d', borderColor: '#15803d' }}
+                                                    title="Email Official Sales Receipt via Brevo"
+                                                    disabled={emailingOrderId === (order.id || order.invoiceNumber)}
+                                                    onClick={() => handleEmailReceipt(order)}
+                                                >
+                                                    <Mail size={14} /> {emailingOrderId === (order.id || order.invoiceNumber) ? 'Sending...' : 'Email'}
+                                                </button>
+                                                <button 
                                                     className="btn btn-outline-danger" 
                                                     style={{ padding: '0.35rem 0.5rem', fontSize: '0.8rem', display: 'inline-flex', alignItems: 'center' }}
                                                     title="Delete Sale"
@@ -439,13 +527,21 @@ const Sales: React.FC = () => {
                                     </div>
                                 </div>
 
-                                <div style={{ display: 'flex', gap: '0.5rem', marginTop: '0.75rem' }}>
+                                <div style={{ display: 'flex', gap: '0.5rem', marginTop: '0.75rem', flexWrap: 'wrap' }}>
                                     <button
                                         className="btn btn-secondary sales-receipt-button"
-                                        style={{ flex: 1, margin: 0 }}
+                                        style={{ flex: 1, margin: 0, minWidth: '120px' }}
                                         onClick={() => generateSalesReceiptPDF(order)}
                                     >
                                         <Receipt size={15} /> Cash Receipt
+                                    </button>
+                                    <button
+                                        className="btn btn-primary"
+                                        style={{ flex: 1, margin: 0, minWidth: '120px', backgroundColor: '#15803d', borderColor: '#15803d', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: '0.35rem' }}
+                                        disabled={emailingOrderId === (order.id || order.invoiceNumber)}
+                                        onClick={() => handleEmailReceipt(order)}
+                                    >
+                                        <Mail size={15} /> {emailingOrderId === (order.id || order.invoiceNumber) ? 'Sending...' : 'Email Receipt'}
                                     </button>
                                     {isAdmin && (
                                         <button

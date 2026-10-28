@@ -22,6 +22,7 @@ export interface Worker {
     fullName: string;
     gender: 'Male' | 'Female' | string;
     phoneNumber: string;
+    email?: string;
     dateJoined: string;
     status: 'Active' | 'Inactive' | string;
     monthlySalary: number; // Monthly Base Salary in UGX
@@ -385,6 +386,9 @@ export interface AppNotification {
     read: number;
     recipient?: string;
     channel?: 'In-App' | 'SMS' | 'Email' | string;
+    severity?: 'info' | 'warning' | 'critical';
+    recordId?: string;
+    module?: string;
 }
 
 export interface NotificationLog {

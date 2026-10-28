@@ -11,7 +11,9 @@ import {
     X, 
     Printer,
     History,
-    ShieldCheck
+    ShieldCheck,
+    Mail,
+    CheckCircle2
 } from 'lucide-react';
 import { format } from 'date-fns';
 import { generatePayrollMasterPDF, generatePayslipPDF } from '../utils/pdfGenerator';
@@ -19,6 +21,8 @@ import { formatUGX } from '../utils/calculations';
 import { syncPayrollMonth } from '../services/payrollSync';
 import { firestoreSyncService } from '../services/firestoreSync';
 import { notificationService } from '../utils/notificationService';
+import { emailService } from '../services/emailService';
+import { auth } from '../firebase';
 import Overtime from './Overtime';
 
 const PAYMENT_METHODS = ['Cash', 'Mobile Money', 'Bank Transfer', 'Other'];
@@ -51,6 +55,73 @@ const Payroll: React.FC = () => {
     const [deductionAmount, setDeductionAmount] = useState<number>(0);
     const [deductionReason, setDeductionReason] = useState<string>('');
     const [adjustOvertimeRate, setAdjustOvertimeRate] = useState<number>(3500);
+
+    const [isEmailingSummary, setIsEmailingSummary] = useState<boolean>(false);
+    const [isEmailingPayslip, setIsEmailingPayslip] = useState<boolean>(false);
+    const [payrollNotice, setPayrollNotice] = useState<string | null>(null);
+
+    const handleEmailMonthSummary = async () => {
+        setIsEmailingSummary(true);
+        setPayrollNotice(null);
+        try {
+            const res = await emailService.sendPayrollCompletionEmail({
+                payrollMonth: selectedMonth,
+                totalWorkers,
+                totalGrossPay: totalMonthlySalaries,
+                totalOvertimePay: totalApprovedOvertime,
+                totalDeductions,
+                totalNetPay: totalNetPayroll,
+                paymentStatusSummary: `${paidCount} Paid in Full, ${partialCount} Partial, ${pendingCount} Pending`,
+                authorizedBy: auth.currentUser?.email || recordedBy
+            });
+
+            if (res.success) {
+                setPayrollNotice(`✅ Payroll summary for ${selectedMonth} sent via Brevo to ${res.recipients.join(', ')}!`);
+            } else {
+                setPayrollNotice(`❌ Could not email payroll summary: ${res.error || 'Check Brevo status'}`);
+            }
+        } catch (err: any) {
+            setPayrollNotice(`❌ Error dispatching payroll email: ${err?.message || err}`);
+        } finally {
+            setIsEmailingSummary(false);
+            setTimeout(() => setPayrollNotice(null), 6000);
+        }
+    };
+
+    const handleEmailWorkerPayslip = async (record: PayrollRecord) => {
+        setIsEmailingPayslip(true);
+        setPayrollNotice(null);
+        try {
+            const worker = workers.find(w => w.workerId === record.workerId);
+            const workerEmail = worker?.email;
+
+            const res = await emailService.sendWorkerPayslipEmail({
+                workerName: record.workerName,
+                workerEmail,
+                workerId: record.workerId,
+                farmCardNumber: record.farmCardNumber,
+                payrollMonth: record.payrollMonth || selectedMonth,
+                baseSalary: record.monthlySalary || 0,
+                overtimeHours: record.approvedOvertimeHours || 0,
+                overtimePay: record.overtimeEarnings || 0,
+                deductions: record.deductions || 0,
+                netPay: record.netPay || 0,
+                paymentMethod: record.paymentMethod,
+                paymentDate: record.paymentDate
+            });
+
+            if (res.success) {
+                setPayrollNotice(`✅ Payslip for ${record.workerName} sent via Brevo to ${res.recipients.join(', ')}!`);
+            } else {
+                setPayrollNotice(`❌ Could not email payslip: ${res.error || 'Check Brevo status'}`);
+            }
+        } catch (err: any) {
+            setPayrollNotice(`❌ Error dispatching payslip: ${err?.message || err}`);
+        } finally {
+            setIsEmailingPayslip(false);
+            setTimeout(() => setPayrollNotice(null), 6000);
+        }
+    };
 
     // Queries
     const workers = useLiveQuery(() => db.workers.toArray()) || [];
@@ -299,8 +370,24 @@ const Payroll: React.FC = () => {
                     >
                         <Download size={16} /> Export Payroll PDF
                     </button>
+                    <button
+                        className="btn btn-primary"
+                        onClick={handleEmailMonthSummary}
+                        disabled={isEmailingSummary || currentMonthPayroll.length === 0}
+                        style={{ backgroundColor: '#15803d', borderColor: '#15803d', display: 'inline-flex', alignItems: 'center', gap: '0.35rem' }}
+                        title="Dispatch monthly payroll summary via Brevo"
+                    >
+                        <Mail size={16} /> {isEmailingSummary ? 'Dispatching...' : 'Email Month Summary (Brevo)'}
+                    </button>
                 </div>
             </div>
+
+            {payrollNotice && (
+                <div className="card" style={{ padding: '0.85rem 1.25rem', backgroundColor: payrollNotice.startsWith('✅') ? '#f0fdf4' : '#fef2f2', borderLeft: `4px solid ${payrollNotice.startsWith('✅') ? '#22c55e' : '#ef4444'}`, color: payrollNotice.startsWith('✅') ? '#166534' : '#b91c1c', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                    <CheckCircle2 size={18} />
+                    <span>{payrollNotice}</span>
+                </div>
+            )}
 
             {/* Sub-tab Navigation */}
             <div style={{ display: 'flex', gap: '0.5rem', borderBottom: '1px solid var(--color-border)', paddingBottom: '0.5rem', flexWrap: 'wrap' }}>
@@ -958,20 +1045,29 @@ const Payroll: React.FC = () => {
                             </div>
                         </div>
 
-                        <div style={{ display: 'flex', gap: '0.75rem', marginTop: '1.25rem' }}>
+                        <div style={{ display: 'flex', gap: '0.75rem', marginTop: '1.25rem', flexWrap: 'wrap' }}>
                             <button 
                                 className="btn btn-secondary" 
-                                style={{ flex: 1 }}
+                                style={{ flex: 1, minWidth: '130px' }}
                                 onClick={() => generatePayslipPDF(selectedRecordForPayslip)}
                             >
-                                <Download size={16} /> Download PDF Payslip
+                                <Download size={16} /> Download PDF
                             </button>
                             <button 
-                                className="btn btn-primary" 
-                                style={{ flex: 1 }}
+                                className="btn btn-primary"
+                                style={{ flex: 1, minWidth: '140px', backgroundColor: '#15803d', borderColor: '#15803d', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: '0.4rem' }}
+                                onClick={() => handleEmailWorkerPayslip(selectedRecordForPayslip)}
+                                disabled={isEmailingPayslip}
+                                title="Send payslip via Brevo transactional email"
+                            >
+                                <Mail size={16} /> {isEmailingPayslip ? 'Sending...' : 'Email Payslip (Brevo)'}
+                            </button>
+                            <button 
+                                className="btn btn-secondary" 
+                                style={{ flex: 1, minWidth: '110px' }}
                                 onClick={() => window.print()}
                             >
-                                <Printer size={16} /> Print Payslip
+                                <Printer size={16} /> Print
                             </button>
                         </div>
                     </div>

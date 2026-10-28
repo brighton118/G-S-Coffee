@@ -24,7 +24,8 @@ export type { UserRole };
 export const SUPER_ADMIN_EMAILS: string[] = [
     'gs.farms.ug@gmail.com',
     'gsfarm@gmail.com',
-    'brighton118@gmail.com'
+    'brighton118@gmail.com',
+    'brightonkato317@gmail.com'
 ];
 
 export function isSuperAdmin(email?: string | null): boolean {
@@ -62,12 +63,30 @@ export async function getUserRole(user: FirebaseUser): Promise<UserRole> {
     try {
         const email = (user.email || '').toLowerCase().trim();
 
-        // 0. Super Admin check - always guaranteed Admin access
+        // 0. Super Admin check - always guaranteed instant Admin access
         if (email && SUPER_ADMIN_EMAILS.includes(email)) {
             localStorage.setItem(`gs_user_role_${user.uid}`, 'admin');
             localStorage.setItem('gs_user_role', 'admin');
-            await setUserRoleInFirestore(user, 'admin', 'Super Administrator');
+            void setUserRoleInFirestore(user, 'admin', 'Super Administrator').catch(err => console.warn(err));
             return 'admin';
+        }
+
+        // Fast path: use cached local role immediately if available
+        const cached = localStorage.getItem(`gs_user_role_${user.uid}`) as UserRole;
+        if (cached && (cached === 'admin' || cached === 'manager' || cached === 'staff')) {
+            // Background refresh to avoid blocking the UI
+            void (async () => {
+                try {
+                    const userDocRef = doc(dbFirestore, 'users', user.uid);
+                    const userSnap = await getDoc(userDocRef);
+                    if (userSnap.exists() && userSnap.data()?.role) {
+                        const freshRole = userSnap.data()?.role;
+                        localStorage.setItem(`gs_user_role_${user.uid}`, freshRole);
+                        localStorage.setItem('gs_user_role', freshRole);
+                    }
+                } catch (_) {}
+            })();
+            return cached;
         }
 
         // 1. Check managers table first (if manager account was created, role is strictly manager)
@@ -130,11 +149,11 @@ export async function getUserRole(user: FirebaseUser): Promise<UserRole> {
         }
 
         // 5. Check user-specific cached local role fallback
-        const cached = localStorage.getItem(`gs_user_role_${user.uid}`) as UserRole;
-        if (cached === 'manager' || cached === 'staff') {
-            return cached;
+        const fallbackRole = localStorage.getItem(`gs_user_role_${user.uid}`) as UserRole;
+        if (fallbackRole === 'manager' || fallbackRole === 'staff') {
+            return fallbackRole;
         }
-        if (cached === 'admin' && isSuperAdmin(email)) {
+        if (fallbackRole === 'admin' && isSuperAdmin(email)) {
             return 'admin';
         }
 

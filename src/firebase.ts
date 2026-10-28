@@ -2,6 +2,7 @@ import { initializeApp } from "firebase/app";
 import { getAnalytics } from "firebase/analytics";
 import { initializeFirestore } from "firebase/firestore";
 import { getAuth, browserLocalPersistence, setPersistence } from "firebase/auth";
+import { getFunctions } from "firebase/functions";
 
 const getAuthDomain = () => {
     if (typeof window !== 'undefined' && window.location.hostname) {
@@ -31,6 +32,7 @@ export const dbFirestore = initializeFirestore(app, {
     ignoreUndefinedProperties: true
 });
 export const auth = getAuth(app);
+export const functionsInstance = getFunctions(app);
 
 // Guarantee permanent local session persistence so the user stays signed in indefinitely until manually logged out
 if (typeof window !== 'undefined') {

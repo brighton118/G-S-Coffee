@@ -1,0 +1,380 @@
+/* Settings Page Styling: Dropdowns, Accordions & Segmented Views */
+
+.settings-nav-control-bar {
+    display: flex;
+    flex-direction: column;
+    gap: 0.85rem;
+    background: var(--color-surface);
+    border: 1px solid var(--color-border);
+    border-radius: var(--border-radius);
+    padding: 1rem 1.25rem;
+    box-shadow: var(--box-shadow-sm);
+    transition: all 0.2s ease-in-out;
+}
+
+.settings-nav-top-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    flex-wrap: wrap;
+    gap: 1rem;
+}
+
+.settings-nav-dropdown-group {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    flex: 1;
+    min-width: 280px;
+}
+
+.settings-nav-label {
+    display: flex;
+    align-items: center;
+    gap: 0.45rem;
+    font-size: 0.9rem;
+    font-weight: 700;
+    color: var(--color-primary-dark);
+    white-space: nowrap;
+}
+
+.settings-select-wrapper {
+    position: relative;
+    flex: 1;
+    max-width: 480px;
+}
+
+.settings-select-dropdown {
+    width: 100%;
+    appearance: none;
+    -webkit-appearance: none;
+    background-color: #f8fafc;
+    border: 1.5px solid var(--color-primary-light);
+    border-radius: 8px;
+    padding: 0.55rem 2.25rem 0.55rem 0.85rem;
+    font-size: 0.92rem;
+    font-weight: 600;
+    color: var(--color-primary-dark);
+    cursor: pointer;
+    outline: none;
+    transition: all 0.2s ease;
+    box-shadow: 0 1px 2px rgba(0, 0, 0, 0.04);
+}
+
+.settings-select-dropdown:hover {
+    background-color: #ffffff;
+    border-color: var(--color-primary);
+}
+
+.settings-select-dropdown:focus {
+    border-color: var(--color-primary);
+    box-shadow: 0 0 0 3px rgba(45, 76, 30, 0.15);
+    background-color: #ffffff;
+}
+
+.settings-select-chevron {
+    position: absolute;
+    right: 0.75rem;
+    top: 50%;
+    transform: translateY(-50%);
+    pointer-events: none;
+    color: var(--color-primary);
+    transition: transform 0.2s ease;
+}
+
+/* Pills bar for fast 1-click desktop navigation */
+.settings-pills-row {
+    display: flex;
+    align-items: center;
+    gap: 0.45rem;
+    flex-wrap: wrap;
+    padding-top: 0.5rem;
+    border-top: 1px dashed var(--color-border);
+}
+
+.settings-pill-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.35rem;
+    padding: 0.35rem 0.75rem;
+    border-radius: 20px;
+    font-size: 0.8rem;
+    font-weight: 600;
+    background: #f1f5f9;
+    color: #475569;
+    border: 1px solid #cbd5e1;
+    cursor: pointer;
+    transition: all 0.18s ease;
+}
+
+.settings-pill-btn:hover {
+    background: #e2e8f0;
+    color: #0f172a;
+    border-color: #94a3b8;
+}
+
+.settings-pill-btn.active {
+    background: var(--color-primary);
+    color: #ffffff;
+    border-color: var(--color-primary-dark);
+    box-shadow: 0 2px 4px rgba(45, 76, 30, 0.25);
+}
+
+/* Accordion Section Cards */
+.settings-accordion-card {
+    background: var(--color-surface);
+    border: 1px solid var(--color-border);
+    border-radius: var(--border-radius);
+    box-shadow: var(--box-shadow-sm);
+    transition: border-color 0.2s ease, box-shadow 0.2s ease;
+    overflow: hidden;
+}
+
+.settings-accordion-card:hover {
+    border-color: #b0c0a9;
+}
+
+.settings-accordion-header {
+    width: 100%;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 1rem 1.25rem;
+    background: transparent;
+    border: none;
+    text-align: left;
+    cursor: pointer;
+    user-select: none;
+    transition: background-color 0.15s ease;
+}
+
+.settings-accordion-header:hover {
+    background-color: rgba(45, 76, 30, 0.03);
+}
+
+.settings-accordion-header:focus-visible {
+    outline: 2px solid var(--color-primary);
+    outline-offset: -2px;
+}
+
+.settings-accordion-title-wrap {
+    display: flex;
+    align-items: center;
+    gap: 0.65rem;
+    flex: 1;
+    min-width: 0;
+}
+
+.settings-accordion-title {
+    margin: 0;
+    font-size: 1.05rem;
+    font-weight: 700;
+    color: var(--color-primary-dark);
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+.settings-accordion-meta {
+    display: flex;
+    align-items: center;
+    gap: 0.6rem;
+    margin-left: auto;
+    padding-left: 0.5rem;
+}
+
+.settings-accordion-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.25rem;
+    padding: 0.2rem 0.55rem;
+    border-radius: 12px;
+    font-size: 0.72rem;
+    font-weight: 600;
+    background: #f1f5f9;
+    color: #475569;
+    border: 1px solid #e2e8f0;
+    white-space: nowrap;
+}
+
+.settings-chevron-icon {
+    transition: transform 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+    color: var(--color-text-light);
+    flex-shrink: 0;
+}
+
+.settings-chevron-icon.rotated {
+    transform: rotate(180deg);
+}
+
+.settings-accordion-body {
+    padding: 0 1.25rem 1.25rem 1.25rem;
+    border-top: 1px solid #edf2eb;
+    display: flex;
+    flex-direction: column;
+    gap: 1rem;
+    animation: settingsFadeIn 0.2s ease-in-out;
+}
+
+/* Inner sub-accordion dropdown styles */
+.settings-sub-accordion {
+    border: 1px solid #e2e8f0;
+    border-radius: 8px;
+    background: #ffffff;
+    overflow: hidden;
+    transition: border-color 0.2s ease;
+}
+
+.settings-sub-accordion:hover {
+    border-color: #cbd5e1;
+}
+
+.settings-sub-accordion-header {
+    width: 100%;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 0.65rem 0.9rem;
+    background: #f8fafc;
+    border: none;
+    text-align: left;
+    cursor: pointer;
+    font-size: 0.88rem;
+    font-weight: 600;
+    color: #1e293b;
+    transition: background-color 0.15s ease;
+}
+
+.settings-sub-accordion-header:hover {
+    background: #f1f5f9;
+}
+
+.settings-sub-accordion-body {
+    padding: 0.85rem 0.9rem;
+    border-top: 1px solid #e2e8f0;
+    animation: settingsFadeIn 0.18s ease-in-out;
+}
+
+@keyframes settingsFadeIn {
+    from {
+        opacity: 0;
+        transform: translateY(-4px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+/* Sticky floating save bar */
+.settings-save-bar {
+    position: sticky;
+    bottom: 1rem;
+    z-index: 20;
+    background: rgba(255, 255, 255, 0.95);
+    backdrop-filter: blur(8px);
+    -webkit-backdrop-filter: blur(8px);
+    border: 1.5px solid var(--color-primary-light);
+    border-radius: var(--border-radius);
+    padding: 0.75rem 1.25rem;
+    box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.15), 0 8px 10px -6px rgba(0, 0, 0, 0.1);
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    flex-wrap: wrap;
+    gap: 1rem;
+}
+
+/* Responsive adjustments */
+@media (max-width: 768px) {
+    .settings-nav-control-bar {
+        padding: 0.85rem;
+    }
+    .settings-pills-row {
+        display: none; /* Mobile uses the native select dropdown cleanly */
+    }
+    .settings-nav-dropdown-group {
+        width: 100%;
+    }
+    .settings-select-wrapper {
+        max-width: 100%;
+    }
+    .settings-save-bar {
+        bottom: 0.5rem;
+        padding: 0.65rem 0.9rem;
+    }
+}
+
+/* Role Badges in Settings Header */
+.settings-role-badge {
+    padding: 0.45rem 0.9rem;
+    border-radius: 6px;
+    font-size: 0.82rem;
+    font-weight: 600;
+    display: inline-flex;
+    align-items: center;
+    gap: 0.45rem;
+}
+
+.settings-role-badge.admin {
+    background: #f0fdf4;
+    border: 1px solid #86efac;
+    color: #166534;
+}
+
+.settings-role-badge.manager {
+    background: #eff6ff;
+    border: 1px solid #93c5fd;
+    color: #1e40af;
+}
+
+.settings-role-badge.staff {
+    background: #f8fafc;
+    border: 1px solid #cbd5e1;
+    color: #334155;
+}
+
+/* Permission indicator pills inside form fields */
+.settings-perm-pill {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.25rem;
+    font-size: 0.72rem;
+    font-weight: 600;
+    padding: 0.15rem 0.45rem;
+    border-radius: 4px;
+    margin-left: 0.4rem;
+}
+
+.settings-perm-pill.admin-only {
+    background: #fef2f2;
+    color: #991b1b;
+    border: 1px solid #fecaca;
+}
+
+.settings-perm-pill.manager-access {
+    background: #ecfdf5;
+    color: #065f46;
+    border: 1px solid #a7f3d0;
+}
+
+.settings-perm-pill.staff-view {
+    background: #f1f5f9;
+    color: #475569;
+    border: 1px solid #e2e8f0;
+}
+
+/* Disabled styling across settings form */
+.form-input:disabled {
+    background-color: #f8fafc !important;
+    color: #64748b !important;
+    border-color: #e2e8f0 !important;
+    cursor: not-allowed;
+    user-select: text;
+}
+
+input[type="checkbox"]:disabled {
+    cursor: not-allowed;
+    opacity: 0.65;
+}
+
