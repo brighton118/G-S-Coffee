@@ -42,7 +42,7 @@ const Settings: React.FC = () => {
         farmName: 'G&S FARMS',
         farmLocation: 'Mubende District, Uganda',
         contactEmail: 'gs.farms.ug@gmail.com',
-        notificationEmails: 'gs.farms.ug@gmail.com',
+        notificationEmails: 'brightonkato317@gmail.com',
         emailApiKey: '',
         emailWebhookUrl: '',
         contactPhone: '+256788945330',
@@ -60,6 +60,7 @@ const Settings: React.FC = () => {
         notifyEODAttendance: true,
     });
 
+    const [testEmailTarget, setTestEmailTarget] = useState<string>('brightonkato317@gmail.com');
     const [saveNotice, setSaveNotice] = useState<string | null>(null);
     const [isSendingTestEmail, setIsSendingTestEmail] = useState<boolean>(false);
     const [isSyncing, setIsSyncing] = useState<boolean>(false);
@@ -147,14 +148,15 @@ const Settings: React.FC = () => {
         setTimeout(() => setSaveNotice(null), 4000);
     };
 
-    const handleSendTestEmail = async () => {
+    const handleSendTestEmail = async (overrideTarget?: string) => {
         setIsSendingTestEmail(true);
+        const target = overrideTarget || testEmailTarget || settings.contactEmail;
         try {
             // Save settings first so emailService picks up latest entered email
             localStorage.setItem('gs_farm_settings', JSON.stringify(settings));
-            const res = await emailService.sendTestEmail(settings.contactEmail);
+            const res = await emailService.sendTestEmail(target);
             if (res.success) {
-                setSaveNotice(`✅ Live test email successfully queued in Cloud Mail for: ${res.recipients.join(', ')}`);
+                setSaveNotice(`✅ Live test email queued for: ${res.recipients.join(', ')} (${res.channel})`);
             } else {
                 setSaveNotice(`❌ Failed to send test email: ${res.error || 'Check email configuration.'}`);
             }
@@ -437,21 +439,58 @@ const Settings: React.FC = () => {
                             </label>
                         </div>
 
-                        <h4 style={{ margin: '0.5rem 0 0.25rem 0', fontSize: '0.95rem', color: 'var(--color-text)' }}>Live Notification Delivery Tests:</h4>
+                        <h4 style={{ margin: '0.5rem 0 0.25rem 0', fontSize: '0.95rem', color: 'var(--color-text)' }}>
+                            Live Notification Delivery Tests (Email &amp; Mobile):
+                        </h4>
 
-                        <div style={{ display: 'flex', gap: '0.6rem', flexWrap: 'wrap' }}>
-                            <button 
-                                type="button" 
-                                className="btn btn-primary" 
-                                onClick={handleSendTestEmail}
-                                disabled={isSendingTestEmail}
-                                style={{ fontSize: '0.85rem', display: 'inline-flex', alignItems: 'center', gap: '0.35rem' }}
-                                title="Queue and dispatch an operational test email to gs.farms.ug@gmail.com"
-                            >
-                                <Mail size={14} /> 
-                                {isSendingTestEmail ? 'Sending Test...' : 'Send Test Email'}
-                            </button>
+                        {/* Dedicated Email Testing Card */}
+                        <div style={{ background: 'var(--color-background)', padding: '0.85rem', borderRadius: '8px', border: '1px solid var(--color-border)', display: 'flex', flexDirection: 'column', gap: '0.65rem' }}>
+                            <div style={{ display: 'flex', flexDirection: 'column', gap: '0.35rem' }}>
+                                <label style={{ fontSize: '0.8rem', fontWeight: 600, color: 'var(--color-text)' }}>
+                                    Target Test Email Address:
+                                </label>
+                                <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }}>
+                                    <input 
+                                        type="email" 
+                                        className="form-input" 
+                                        value={testEmailTarget} 
+                                        onChange={e => setTestEmailTarget(e.target.value)} 
+                                        placeholder="brightonkato317@gmail.com" 
+                                        style={{ maxWidth: '320px', flex: 1 }}
+                                    />
+                                    <button 
+                                        type="button" 
+                                        className="btn btn-primary" 
+                                        onClick={() => handleSendTestEmail(testEmailTarget)}
+                                        disabled={isSendingTestEmail}
+                                        style={{ fontSize: '0.85rem', display: 'inline-flex', alignItems: 'center', gap: '0.35rem' }}
+                                        title={`Dispatch test email to ${testEmailTarget}`}
+                                    >
+                                        <Mail size={14} /> 
+                                        {isSendingTestEmail ? 'Dispatching...' : `Send Test to ${testEmailTarget}`}
+                                    </button>
+                                    <button 
+                                        type="button" 
+                                        className="btn btn-secondary" 
+                                        onClick={() => emailService.openGmailWeb({
+                                            to: testEmailTarget,
+                                            subject: 'System Test Notification',
+                                            title: 'G&S FARMS Email Delivery Verification',
+                                            message: `Operational alerts test for ${testEmailTarget}.\nSuperadmin: gs.farms.ug@gmail.com\nManager Mobile: ${settings.contactPhone}\nPortal: https://gsfarm.farm\nStatus: Verified.`
+                                        })}
+                                        style={{ fontSize: '0.85rem', display: 'inline-flex', alignItems: 'center', gap: '0.35rem' }}
+                                        title={`Open Gmail in browser with pre-filled message to ${testEmailTarget}`}
+                                    >
+                                        <ExternalLink size={14} /> Open in Gmail Web (1-Click)
+                                    </button>
+                                </div>
+                            </div>
+                            <small style={{ color: 'var(--color-text-light)', fontSize: '0.78rem', lineHeight: 1.4 }}>
+                                💡 <strong>Tip:</strong> "Send Test" writes the email into the Cloud Mail Queue. Clicking <strong>"Open in Gmail Web (1-Click)"</strong> opens your Gmail in a new tab with recipient <code>{testEmailTarget}</code> and full G&amp;S FARMS alert body ready to send immediately!
+                            </small>
+                        </div>
 
+                        <div style={{ display: 'flex', gap: '0.6rem', flexWrap: 'wrap', marginTop: '0.25rem' }}>
                             <button 
                                 type="button" 
                                 className="btn btn-secondary" 
@@ -460,21 +499,6 @@ const Settings: React.FC = () => {
                                 title="Create an in-app and mobile test alert"
                             >
                                 <Bell size={14} /> Test In-App Alert
-                            </button>
-
-                            <button 
-                                type="button" 
-                                className="btn btn-secondary" 
-                                onClick={() => emailService.openGmailWeb({
-                                    to: settings.contactEmail,
-                                    subject: 'System Test Notification',
-                                    title: 'G&S FARMS Email Delivery Verification',
-                                    message: `Operational alerts configured for gs.farms.ug@gmail.com.\nManager Mobile: ${settings.contactPhone}\nStatus: Verified.`
-                                })}
-                                style={{ fontSize: '0.85rem', display: 'inline-flex', alignItems: 'center', gap: '0.35rem' }}
-                                title="Open Gmail in browser with pre-filled test notification"
-                            >
-                                <ExternalLink size={14} /> Open in Gmail Web
                             </button>
 
                             <button 

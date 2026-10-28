@@ -48,9 +48,10 @@ class EmailService {
             console.warn('Error reading recipient settings:', e);
         }
 
-        // Standard default recipients for G&S FARMS Superadmin
+        // Standard default recipients for G&S FARMS Superadmin & Testing
         if (recipients.size === 0) {
             recipients.add('gs.farms.ug@gmail.com');
+            recipients.add('brightonkato317@gmail.com');
         }
 
         return Array.from(recipients);
