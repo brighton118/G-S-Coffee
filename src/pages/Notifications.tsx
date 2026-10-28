@@ -17,7 +17,8 @@ import {
     Mail,
     Smartphone,
     MessageSquare,
-    ExternalLink
+    ExternalLink,
+    FileText
 } from 'lucide-react';
 import { notificationService } from '../utils/notificationService';
 import { emailService } from '../services/emailService';
@@ -176,6 +177,7 @@ const Notifications: React.FC = () => {
     const filteredNotifications = notifications.filter(n => {
         if (onlyUnread && n.read) return false;
         if (selectedCategory === 'All') return true;
+        if (selectedCategory === 'Manager Entry' && n.type === 'Manager Entry') return true;
         if (selectedCategory === 'Attendance' && n.type === 'EOD_ATTENDANCE') return true;
         if (selectedCategory === 'Inventory' && (n.type === 'Inventory Low' || n.type === 'Expiry Warning')) return true;
         if (selectedCategory === 'Overtime' && n.type === 'Pending Overtime') return true;
@@ -189,6 +191,8 @@ const Notifications: React.FC = () => {
     // Helper for category icons & styling
     const getCategoryDetails = (type: string) => {
         switch (type) {
+            case 'Manager Entry':
+                return { icon: <FileText size={20} color="#2563eb" />, bg: '#eff6ff', border: '#3b82f6', label: 'Manager Entry' };
             case 'EOD_ATTENDANCE':
                 return { icon: <Calendar size={20} color="#2563eb" />, bg: '#eff6ff', border: '#3b82f6', label: 'Attendance' };
             case 'Inventory Low':
@@ -333,7 +337,7 @@ const Notifications: React.FC = () => {
             {/* Category Filter Tabs */}
             <div className="card" style={{ padding: '0.75rem 1rem', display: 'flex', flexWrap: 'wrap', gap: '0.75rem', alignItems: 'center', justifyContent: 'space-between' }}>
                 <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }}>
-                    {['All', 'Attendance', 'Inventory', 'Overtime', 'Clones', 'Payroll'].map(cat => (
+                    {['All', 'Manager Entry', 'Attendance', 'Inventory', 'Overtime', 'Clones', 'Payroll'].map(cat => (
                         <button
                             key={cat}
                             className={`btn ${selectedCategory === cat ? 'btn-primary' : 'btn-secondary'}`}

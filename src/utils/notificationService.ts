@@ -30,14 +30,16 @@ class NotificationService {
     ): Promise<number | undefined> {
         const today = format(new Date(), 'yyyy-MM-dd');
 
-        // Prevent duplicate alerts with same title and date
-        const existing = await db.notifications
-            .where({ date: today, type })
-            .filter(n => n.title === title)
-            .first();
+        // Prevent duplicate alerts with same title and date (bypass for Manager Entry so every entry creates an alert)
+        if (type !== 'Manager Entry') {
+            const existing = await db.notifications
+                .where({ date: today, type })
+                .filter(n => n.title === title)
+                .first();
 
-        if (existing) {
-            return existing.id;
+            if (existing) {
+                return existing.id;
+            }
         }
 
         // Save in-app notification
@@ -61,18 +63,19 @@ class NotificationService {
             status: 'Sent'
         });
 
-        // 1. Automatic Email Dispatch if enabled
+        // 1. Automatic Email Dispatch to Admin & Managers
         try {
             const saved = localStorage.getItem('gs_farm_settings');
-            let shouldEmail = channel === 'Email';
+            let shouldEmail = channel === 'Email' || type === 'Manager Entry';
 
             if (saved) {
                 const parsed = JSON.parse(saved);
-                if (parsed.enableEmailAlerts) {
+                if (parsed.enableEmailAlerts !== false) {
                     if (type === 'Inventory Low' && parsed.notifyLowStock) shouldEmail = true;
                     if (type === 'Chamber Overdue' && parsed.notifyChamberOverdue) shouldEmail = true;
                     if (type === 'Pending Overtime' && parsed.notifyPendingOvertime) shouldEmail = true;
                     if (type === 'EOD_ATTENDANCE' && parsed.notifyEODAttendance) shouldEmail = true;
+                    if (type === 'Manager Entry' && parsed.notifyManagerEntry !== false) shouldEmail = true;
                     if (type === 'General') shouldEmail = true;
                 }
             }
@@ -242,6 +245,37 @@ class NotificationService {
             pendingOTFound: pendingOT,
             eodGenerated: eod
         };
+    }
+
+    /**
+     * Dispatch notification when a manager enters new operational data
+     * Immediately pushes to in-app notification center and emails admin accounts
+     */
+    public async notifyManagerDataEntry(params: {
+        module: string;
+        action: string;
+        description: string;
+        details?: Record<string, string | number>;
+        sourceUser?: string;
+    }): Promise<number | undefined> {
+        const title = `Manager Entry: ${params.action} (${params.module})`;
+        const userLabel = params.sourceUser || 'Farm Manager';
+        const message = `${params.description}\n\nEntered by: ${userLabel}`;
+
+        return this.createNotification(
+            'Manager Entry',
+            title,
+            message,
+            'In-App',
+            'Farm Admin',
+            {
+                'Module': params.module,
+                'Action': params.action,
+                'Entered By': userLabel,
+                'Timestamp': new Date().toLocaleString('en-GB'),
+                ...(params.details || {})
+            }
+        );
     }
 }
 

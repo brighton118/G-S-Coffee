@@ -376,7 +376,7 @@ export interface ActivityLog {
 
 export interface AppNotification {
     id?: number;
-    type: 'Inventory Low' | 'Expiry Warning' | 'Chamber Overdue' | 'Missing Attendance' | 'Pending Overtime' | 'Payroll Approval' | 'General' | string;
+    type: 'Inventory Low' | 'Expiry Warning' | 'Chamber Overdue' | 'Missing Attendance' | 'Pending Overtime' | 'Payroll Approval' | 'General' | 'Manager Entry' | string;
     title: string;
     message: string;
     date: string;
@@ -406,6 +406,7 @@ export interface NotificationSettings {
     chamberOverdueAlerts: boolean;
     attendanceExceptionAlerts: boolean;
     pendingOvertimeAlerts: boolean;
+    notifyManagerEntry?: boolean;
 }
 
 // --- Database Configuration ---

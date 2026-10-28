@@ -26,6 +26,8 @@ import {
     deleteSingleExpenseSystemWide
 } from '../clearDemoData';
 import { firestoreSyncService } from '../services/firestoreSync';
+import { notificationService } from '../utils/notificationService';
+import { auth } from '../firebase';
 import { useUserRole } from '../context/UserRoleContext';
 
 const CATEGORIES = [
@@ -260,6 +262,23 @@ const Inventory: React.FC = () => {
         await db.inventoryTransactions.add(initialTx);
         void firestoreSyncService.saveInventoryTransaction(initialTx);
 
+        // Notify Superadmin and Manager email about new inventory item
+        void notificationService.notifyManagerDataEntry({
+            module: 'Inventory & Supplies',
+            action: 'New Stock Item Added',
+            description: `Inventory item "${newItem.name}" added to stock with initial quantity of ${newItem.quantity} ${newItem.unit} in ${newItem.location || 'Central Store'}.`,
+            details: {
+                'Item ID': newItem.inventoryId,
+                'Item Name': newItem.name,
+                'Category': newItem.category,
+                'Initial Stock': `${newItem.quantity} ${newItem.unit}`,
+                'Location': newItem.location || 'Central Store',
+                'Min Threshold': `${newItem.minStockLevel || 5} ${newItem.unit}`,
+                'Supplier': newItem.supplier || 'N/A'
+            },
+            sourceUser: auth.currentUser?.email || 'Farm Inventory Manager'
+        });
+
         setShowAddModal(false);
         setFormData({
             name: '',
@@ -309,6 +328,22 @@ const Inventory: React.FC = () => {
         };
         await db.inventoryTransactions.add(adjustmentTx);
         void firestoreSyncService.saveInventoryTransaction(adjustmentTx);
+
+        // Notify Superadmin and Manager email about stock adjustment
+        void notificationService.notifyManagerDataEntry({
+            module: 'Inventory & Supplies',
+            action: `Stock ${isStockOut ? 'Issued' : 'Restocked'}: ${selectedItemForStock.name}`,
+            description: `Inventory item "${selectedItemForStock.name}" quantity was adjusted by ${delta > 0 ? '+' : ''}${delta} ${selectedItemForStock.unit} (${stockReason}). New stock balance: ${newQuantity} ${selectedItemForStock.unit}.`,
+            details: {
+                'Item Name': selectedItemForStock.name,
+                'Action': isStockOut ? 'Stock Usage (Out)' : 'Stock Addition (Restock)',
+                'Quantity Changed': `${delta > 0 ? '+' : ''}${delta} ${selectedItemForStock.unit}`,
+                'New Total Balance': `${newQuantity} ${selectedItemForStock.unit}`,
+                'Reason': stockReason,
+                'Location': selectedItemForStock.location || 'Central Store'
+            },
+            sourceUser: auth.currentUser?.email || 'Farm Inventory Manager'
+        });
 
         setShowStockModal(false);
         setSelectedItemForStock(null);

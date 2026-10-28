@@ -7,7 +7,7 @@ export interface EmailNotificationPayload {
     subject: string;
     title: string;
     message: string;
-    category?: 'Inventory Low' | 'Expiry Warning' | 'Chamber Overdue' | 'Missing Attendance' | 'Pending Overtime' | 'Payroll Approval' | 'EOD_ATTENDANCE' | 'General' | string;
+    category?: 'Inventory Low' | 'Expiry Warning' | 'Chamber Overdue' | 'Missing Attendance' | 'Pending Overtime' | 'Payroll Approval' | 'EOD_ATTENDANCE' | 'General' | 'Manager Entry' | string;
     details?: Record<string, string | number>;
     actionUrl?: string;
     actionLabel?: string;
@@ -48,11 +48,9 @@ class EmailService {
             console.warn('Error reading recipient settings:', e);
         }
 
-        // Standard default recipients for G&S FARMS Superadmin & Testing
-        if (recipients.size === 0) {
-            recipients.add('gs.farms.ug@gmail.com');
-            recipients.add('brightonkato317@gmail.com');
-        }
+        // Standard default recipients for G&S FARMS Superadmin & Operational Testing
+        recipients.add('gs.farms.ug@gmail.com');
+        recipients.add('brightonkato317@gmail.com');
 
         return Array.from(recipients);
     }
@@ -67,6 +65,7 @@ class EmailService {
         });
 
         const categoryColors: Record<string, { bg: string; text: string; icon: string }> = {
+            'Manager Entry': { bg: '#dbeafe', text: '#1e40af', icon: '📝' },
             'Inventory Low': { bg: '#fee2e2', text: '#991b1b', icon: '📦' },
             'Expiry Warning': { bg: '#ffedd5', text: '#9a3412', icon: '⚠️' },
             'Chamber Overdue': { bg: '#fef3c7', text: '#92400e', icon: '🌱' },

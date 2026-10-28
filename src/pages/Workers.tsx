@@ -21,6 +21,8 @@ import { generateWorkersMasterPDF, generateWorkerIdCardPDF } from '../utils/pdfG
 import { formatUGX } from '../utils/calculations';
 import { deleteAllWorkersSystemWide, deleteSingleWorkerSystemWide } from '../clearDemoData';
 import { firestoreSyncService } from '../services/firestoreSync';
+import { notificationService } from '../utils/notificationService';
+import { auth } from '../firebase';
 import { useUserRole } from '../context/UserRoleContext';
 import './Workers.css';
 
@@ -79,6 +81,21 @@ const Workers: React.FC = () => {
             };
             await db.workers.update(editingWorker.workerId, updated);
             void firestoreSyncService.saveWorker(updated);
+
+            void notificationService.notifyManagerDataEntry({
+                module: 'Workforce',
+                action: `Worker Profile Updated: ${updated.fullName}`,
+                description: `Worker ${updated.fullName} (${editingWorker.workerId}) profile was updated by management.`,
+                details: {
+                    'Worker ID': editingWorker.workerId,
+                    'Full Name': updated.fullName,
+                    'Status': updated.status,
+                    'Monthly Base': `UGX ${updated.monthlySalary.toLocaleString()}`,
+                    'Phone': updated.phoneNumber
+                },
+                sourceUser: auth.currentUser?.email || 'Farm HR Manager'
+            });
+
             setEditingWorker(null);
         } else {
             // Add new worker
@@ -101,6 +118,24 @@ const Workers: React.FC = () => {
 
             await db.workers.add(newWorker);
             void firestoreSyncService.saveWorker(newWorker);
+
+            // Notify Superadmin and Manager email about new worker
+            void notificationService.notifyManagerDataEntry({
+                module: 'Workforce',
+                action: 'New Worker Registered',
+                description: `New worker "${newWorker.fullName}" (ID: ${newWorker.workerId}) was registered with Farm Card ${newWorker.farmCardNumber}.`,
+                details: {
+                    'Worker ID': newWorker.workerId,
+                    'Full Name': newWorker.fullName,
+                    'Phone Number': newWorker.phoneNumber,
+                    'Gender': newWorker.gender,
+                    'Monthly Base': `UGX ${newWorker.monthlySalary.toLocaleString()}`,
+                    'Date Joined': newWorker.dateJoined,
+                    'Status': newWorker.status
+                },
+                sourceUser: auth.currentUser?.email || 'Farm HR Manager'
+            });
+
             setSelectedWorkerForCard(newWorker);
         }
 

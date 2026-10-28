@@ -18,6 +18,7 @@ import { generatePayrollMasterPDF, generatePayslipPDF } from '../utils/pdfGenera
 import { formatUGX } from '../utils/calculations';
 import { syncPayrollMonth } from '../services/payrollSync';
 import { firestoreSyncService } from '../services/firestoreSync';
+import { notificationService } from '../utils/notificationService';
 import Overtime from './Overtime';
 
 const PAYMENT_METHODS = ['Cash', 'Mobile Money', 'Bank Transfer', 'Other'];
@@ -172,6 +173,25 @@ const Payroll: React.FC = () => {
             recordIdentifier: `${record.workerId} (${selectedMonth})`,
             date: new Date().toISOString(),
             description: `Recorded payment of ${formatUGX(paymentAmount)} via ${paymentMethod} for ${record.workerName}. New Balance: ${formatUGX(newBalance)}`
+        });
+
+        // Notify Superadmin and Manager email about payroll payment
+        void notificationService.notifyManagerDataEntry({
+            module: 'Payroll & Finance',
+            action: 'Payroll Payment Recorded',
+            description: `Payment of UGX ${Number(paymentAmount).toLocaleString()} was recorded for ${record.workerName} (${record.workerId}) via ${paymentMethod}. New remaining balance: UGX ${newBalance.toLocaleString()}.`,
+            details: {
+                'Worker': record.workerName,
+                'Worker ID': record.workerId,
+                'Payroll Month': selectedMonth,
+                'Amount Paid': `UGX ${Number(paymentAmount).toLocaleString()}`,
+                'Payment Method': paymentMethod,
+                'Reference #': paymentReference || 'N/A',
+                'Payment Status': newStatus,
+                'Remaining Balance': `UGX ${newBalance.toLocaleString()}`,
+                'Recorded By': recordedBy
+            },
+            sourceUser: recordedBy
         });
 
         setShowPaymentModal(false);

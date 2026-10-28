@@ -20,7 +20,8 @@ import {
     FileJson,
     Info,
     ExternalLink,
-    MessageSquare
+    MessageSquare,
+    FileText
 } from 'lucide-react';
 import { updatePassword } from 'firebase/auth';
 import { auth } from '../firebase';
@@ -58,6 +59,7 @@ const Settings: React.FC = () => {
         notifyChamberOverdue: true,
         notifyPendingOvertime: true,
         notifyEODAttendance: true,
+        notifyManagerEntry: true,
     });
 
     const [testEmailTarget, setTestEmailTarget] = useState<string>('brightonkato317@gmail.com');
@@ -102,12 +104,14 @@ const Settings: React.FC = () => {
                     parsedSettings.contactEmail === 'brightonkato@gmail.com') {
                     parsedSettings.contactEmail = 'gs.farms.ug@gmail.com';
                 }
-                if (!parsedSettings.notificationEmails ||
-                    parsedSettings.notificationEmails.includes('brightonkato@gmail.com')) {
-                    parsedSettings.notificationEmails = 'gs.farms.ug@gmail.com';
+                if (!parsedSettings.notificationEmails) {
+                    parsedSettings.notificationEmails = 'brightonkato317@gmail.com';
                 }
                 if (parsedSettings.contactPhone === '+256 700 123456' || parsedSettings.contactPhone === '+256 700 000000') {
                     parsedSettings.contactPhone = '+256788945330';
+                }
+                if (parsedSettings.notifyManagerEntry === undefined) {
+                    parsedSettings.notifyManagerEntry = true;
                 }
                 setSettings(current => ({
                     ...current,
@@ -162,6 +166,34 @@ const Settings: React.FC = () => {
             }
         } catch (err: any) {
             setSaveNotice(`❌ Error sending test email: ${err?.message || err}`);
+        } finally {
+            setIsSendingTestEmail(false);
+            setTimeout(() => setSaveNotice(null), 8000);
+        }
+    };
+
+    const handleTestManagerEntryEmail = async () => {
+        setIsSendingTestEmail(true);
+        try {
+            localStorage.setItem('gs_farm_settings', JSON.stringify(settings));
+            await notificationService.notifyManagerDataEntry({
+                module: 'Clone Production',
+                action: 'New Clone Batch Created (Manager Test)',
+                description: 'Manager entered a test batch GSF-CLONE-TEST (KR1) with 1,200 cuttings from Mother Garden Block A.',
+                details: {
+                    'Batch ID': 'GSF-CLONE-TEST',
+                    'Variety': 'KR1',
+                    'Original Quantity': '1,200 cuttings',
+                    'Source Farm': 'G&S Mother Garden Block A',
+                    'Entered By': 'Farm Operations Manager',
+                    'Target Admin': 'gs.farms.ug@gmail.com',
+                    'Test Recipient': testEmailTarget || 'brightonkato317@gmail.com'
+                },
+                sourceUser: 'Farm Operations Manager'
+            });
+            setSaveNotice(`✅ Manager Entry alert dispatched & queued to admin emails (${settings.contactEmail}, ${testEmailTarget})!`);
+        } catch (e: any) {
+            setSaveNotice(`❌ Error dispatching test manager entry: ${e?.message || e}`);
         } finally {
             setIsSendingTestEmail(false);
             setTimeout(() => setSaveNotice(null), 8000);
@@ -419,6 +451,11 @@ const Settings: React.FC = () => {
 
                         <div style={{ display: 'flex', flexDirection: 'column', gap: '0.6rem', background: 'var(--color-background)', padding: '0.75rem', borderRadius: '6px' }}>
                             <label style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', cursor: 'pointer', fontSize: '0.85rem' }}>
+                                <input type="checkbox" checked={settings.notifyManagerEntry !== false} onChange={e => setSettings({ ...settings, notifyManagerEntry: e.target.checked })} />
+                                <FileText size={14} color="#2563eb" /> <strong>Manager Data Entry Alerts</strong> (New Batches, Sales Orders, Workers, Stock Restocks)
+                            </label>
+
+                            <label style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', cursor: 'pointer', fontSize: '0.85rem' }}>
                                 <input type="checkbox" checked={settings.notifyEODAttendance} onChange={e => setSettings({ ...settings, notifyEODAttendance: e.target.checked })} />
                                 <Clock size={14} color="#2563eb" /> Daily End of Day (17:00) Attendance Summary
                             </label>
@@ -491,6 +528,17 @@ const Settings: React.FC = () => {
                         </div>
 
                         <div style={{ display: 'flex', gap: '0.6rem', flexWrap: 'wrap', marginTop: '0.25rem' }}>
+                            <button 
+                                type="button" 
+                                className="btn btn-primary" 
+                                onClick={handleTestManagerEntryEmail}
+                                disabled={isSendingTestEmail}
+                                style={{ fontSize: '0.85rem', display: 'inline-flex', alignItems: 'center', gap: '0.35rem', backgroundColor: '#1e40af', borderColor: '#1e40af' }}
+                                title="Send a simulated manager data entry notification email to admin"
+                            >
+                                <FileText size={14} /> {isSendingTestEmail ? 'Sending...' : 'Test Manager Entry Email'}
+                            </button>
+
                             <button 
                                 type="button" 
                                 className="btn btn-secondary" 

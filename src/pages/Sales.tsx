@@ -19,6 +19,8 @@ import { generateSalesReceiptPDF, generateSalesSummaryPDF } from '../utils/pdfGe
 import { formatUGX } from '../utils/calculations';
 import { deleteAllSalesSystemWide, deleteSingleSalesOrderSystemWide } from '../clearDemoData';
 import { firestoreSyncService } from '../services/firestoreSync';
+import { notificationService } from '../utils/notificationService';
+import { auth } from '../firebase';
 import { useUserRole } from '../context/UserRoleContext';
 import './Sales.css';
 
@@ -111,6 +113,24 @@ const Sales: React.FC = () => {
         const id = await db.salesOrders.add(newOrder);
         const createdOrder = { ...newOrder, id };
         void firestoreSyncService.saveSale(createdOrder);
+
+        // Notify Superadmin and Manager email about new sale
+        void notificationService.notifyManagerDataEntry({
+            module: 'Sales & Revenue',
+            action: 'New Cash Sale Recorded',
+            description: `Sales invoice #${invoiceNum} recorded for customer "${formData.customerName}" - ${formData.quantity} ${formData.variety} plantlets totaling UGX ${totalAmount.toLocaleString()}.`,
+            details: {
+                'Invoice #': invoiceNum,
+                'Customer': formData.customerName,
+                'Customer Phone': formData.customerPhone || 'N/A',
+                'Variety': formData.variety,
+                'Quantity': `${formData.quantity} plantlets`,
+                'Unit Price': `UGX ${formData.unitPrice.toLocaleString()}`,
+                'Total Revenue': `UGX ${totalAmount.toLocaleString()}`,
+                'Location': formData.customerLocation || 'Farm Gate'
+            },
+            sourceUser: auth.currentUser?.email || 'Farm Sales Manager'
+        });
 
         // Activity log
         await db.activityLogs.add({

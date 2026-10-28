@@ -15,6 +15,7 @@ import { format } from 'date-fns';
 import { generateOvertimePDF } from '../utils/pdfGenerator';
 import { DEFAULT_OVERTIME_RULES, formatUGX } from '../utils/calculations';
 import { loadAttendanceScheduleSettings } from '../utils/attendanceSchedule';
+import { notificationService } from '../utils/notificationService';
 
 interface OvertimeProps {
     embedded?: boolean;
@@ -105,6 +106,22 @@ const Overtime: React.FC<OvertimeProps> = ({ embedded = false }) => {
             recordIdentifier: `${approvalModalRecord.workerId} (${approvalModalRecord.date})`,
             date: new Date().toISOString(),
             description: `${approvalAction} ${finalHours} overtime hours for ${approvalModalRecord.workerName || approvalModalRecord.workerId}. Reason: ${approvalReason}`
+        });
+
+        // Notify Superadmin and Manager email about overtime decision
+        void notificationService.notifyManagerDataEntry({
+            module: 'Workforce & Overtime',
+            action: `Overtime ${approvalAction}: ${approvalModalRecord.workerName || approvalModalRecord.workerId}`,
+            description: `Supervisor "${supervisorName}" marked overtime as ${approvalAction} (${finalHours} hrs) for ${approvalModalRecord.workerName || approvalModalRecord.workerId} on shift date ${approvalModalRecord.date}. Reason: ${approvalReason}.`,
+            details: {
+                'Worker': approvalModalRecord.workerName || approvalModalRecord.workerId,
+                'Shift Date': approvalModalRecord.date,
+                'Status': approvalAction,
+                'Approved Hours': `${finalHours} hrs`,
+                'Supervisor': supervisorName,
+                'Reason': approvalReason
+            },
+            sourceUser: supervisorName
         });
 
         // Sync with existing payroll record if present for this worker & month

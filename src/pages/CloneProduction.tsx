@@ -22,6 +22,8 @@ import { generateProductionBatchMasterPDF } from '../utils/pdfGenerator';
 import { validateSortingReconciliation } from '../utils/calculations';
 import { deleteAllClonesSystemWide, deleteSingleCloneBatchSystemWide } from '../clearDemoData';
 import { firestoreSyncService } from '../services/firestoreSync';
+import { notificationService } from '../utils/notificationService';
+import { auth } from '../firebase';
 import { useUserRole } from '../context/UserRoleContext';
 import './CloneProduction.css';
 
@@ -123,6 +125,23 @@ const CloneProduction: React.FC = () => {
         };
         await db.productionCuttings.add(cuttingRecord);
         void firestoreSyncService.saveProductionCutting(cuttingRecord);
+
+        // Notify Superadmin and Manager email about new batch
+        void notificationService.notifyManagerDataEntry({
+            module: 'Clone Production',
+            action: 'New Clone Batch Created',
+            description: `Batch ${newBatch.batchId} (${newBatch.variety}) was created with ${newBatch.originalQuantity.toLocaleString()} cuttings from ${newBatch.sourceFarm}.`,
+            details: {
+                'Batch ID': newBatch.batchId,
+                'Variety': newBatch.variety,
+                'Quantity': `${newBatch.originalQuantity.toLocaleString()} cuttings`,
+                'Source Farm': newBatch.sourceFarm,
+                'Mother Plant': newBatch.sourceMotherPlant || 'N/A',
+                'Date Obtained': newBatch.dateObtained,
+                'Notes': newBatch.notes || 'None'
+            },
+            sourceUser: auth.currentUser?.email || 'Farm Operations Manager'
+        });
 
         setShowNewBatchModal(false);
         setNewBatchData({
@@ -326,6 +345,23 @@ const CloneProduction: React.FC = () => {
                 currentQuantity: recon.totalValidated
             });
         }
+
+        // Notify Superadmin and Manager email about stage transition
+        void notificationService.notifyManagerDataEntry({
+            module: 'Clone Production',
+            action: `Batch Stage Advanced: ${advancingBatch.batchId}`,
+            description: `Batch ${advancingBatch.batchId} (${advancingBatch.variety}) advanced from ${advancingBatch.currentStage}. Retained: ${advanceData.quantityRetained} plants, Lost: ${advanceData.quantityLost || 0}.`,
+            details: {
+                'Batch ID': advancingBatch.batchId,
+                'Variety': advancingBatch.variety,
+                'Previous Stage': advancingBatch.currentStage,
+                'Quantity Retained': `${advanceData.quantityRetained} plants`,
+                'Quantity Lost': `${advanceData.quantityLost || 0} plants`,
+                'Reason for Loss': advanceData.lossReason || 'N/A',
+                'Responsible Worker': advanceData.responsibleWorker || 'N/A'
+            },
+            sourceUser: auth.currentUser?.email || 'Farm Operations Manager'
+        });
 
         setAdvancingBatch(null);
     };
