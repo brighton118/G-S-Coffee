@@ -1,5 +1,6 @@
 import { FormEvent, useEffect, useState } from 'react';
 import {
+    createUserWithEmailAndPassword,
     getRedirectResult,
     GoogleAuthProvider,
     sendPasswordResetEmail,
@@ -9,6 +10,7 @@ import {
 } from 'firebase/auth';
 import { Banknote, Eye, EyeOff, LockKeyhole, Mail } from 'lucide-react';
 import { auth } from '../firebase';
+import { isSuperAdmin } from '../services/adminAccess';
 import './AdminAuth.css';
 
 interface AdminAuthProps {
@@ -45,7 +47,21 @@ const AdminAuth = ({ message, onClearMessage }: AdminAuthProps) => {
             const cleanEmail = email.trim().toLowerCase();
             const cleanPassword = password.trim();
 
-            await signInWithEmailAndPassword(auth, cleanEmail, cleanPassword);
+            try {
+                await signInWithEmailAndPassword(auth, cleanEmail, cleanPassword);
+            } catch (authErr: any) {
+                const code = authErr?.code || '';
+                // If designated superadmin and account not yet created, auto-bootstrap creation
+                if (isSuperAdmin(cleanEmail) && (
+                    code === 'auth/user-not-found' || 
+                    code === 'auth/invalid-credential' || 
+                    code === 'auth/invalid-login-credentials'
+                )) {
+                    await createUserWithEmailAndPassword(auth, cleanEmail, cleanPassword);
+                    return;
+                }
+                throw authErr;
+            }
         } catch (error: any) {
             console.error('Firebase Auth Error:', error);
             const code = error?.code || '';
