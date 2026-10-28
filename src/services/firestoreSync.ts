@@ -71,6 +71,8 @@ class FirestoreSyncService {
                 ...worker,
                 qrCode: worker.qrCode || existing?.qrCode || worker.workerId,
                 farmCardNumber: worker.farmCardNumber || existing?.farmCardNumber || `FC-${worker.workerId.replace(/\D/g, '') || '1001'}`,
+                cardIssuedDate: worker.cardIssuedDate || existing?.cardIssuedDate || worker.dateJoined,
+                cardExpiryDate: worker.cardExpiryDate || existing?.cardExpiryDate,
                 updatedAt: serverTimestamp()
             };
             const docRef = doc(collection(dbFirestore, 'workers'), worker.workerId);
@@ -632,7 +634,9 @@ class FirestoreSyncService {
                         ...data,
                         workerId,
                         qrCode: data.qrCode || existingLocal?.qrCode || workerId,
-                        farmCardNumber: data.farmCardNumber || existingLocal?.farmCardNumber || `FC-${workerId.replace(/\D/g, '') || '1001'}`
+                        farmCardNumber: data.farmCardNumber || existingLocal?.farmCardNumber || `FC-${workerId.replace(/\D/g, '') || '1001'}`,
+                        cardIssuedDate: data.cardIssuedDate || existingLocal?.cardIssuedDate || data.dateJoined || existingLocal?.dateJoined,
+                        cardExpiryDate: data.cardExpiryDate || existingLocal?.cardExpiryDate
                     };
                     await db.workers.put(safeWorker as any);
                     downloadedCount++;
@@ -1151,7 +1155,9 @@ class FirestoreSyncService {
                         ...w,
                         workerId: w.workerId,
                         qrCode: w.qrCode || existingLocal?.qrCode || w.workerId,
-                        farmCardNumber: w.farmCardNumber || existingLocal?.farmCardNumber || `FC-${w.workerId.replace(/\D/g, '') || '1001'}`
+                        farmCardNumber: w.farmCardNumber || existingLocal?.farmCardNumber || `FC-${w.workerId.replace(/\D/g, '') || '1001'}`,
+                        cardIssuedDate: w.cardIssuedDate || existingLocal?.cardIssuedDate || w.dateJoined || existingLocal?.dateJoined,
+                        cardExpiryDate: w.cardExpiryDate || existingLocal?.cardExpiryDate
                     };
                     await db.workers.put(safeWorker);
                     count++;
@@ -1272,7 +1278,9 @@ class FirestoreSyncService {
                             ...wData,
                             workerId: wId,
                             qrCode: wData.qrCode || existingLocal?.qrCode || wId,
-                            farmCardNumber: wData.farmCardNumber || existingLocal?.farmCardNumber || `FC-${wId.replace(/\D/g, '') || '1001'}`
+                            farmCardNumber: wData.farmCardNumber || existingLocal?.farmCardNumber || `FC-${wId.replace(/\D/g, '') || '1001'}`,
+                            cardIssuedDate: wData.cardIssuedDate || existingLocal?.cardIssuedDate || wData.dateJoined || existingLocal?.dateJoined,
+                            cardExpiryDate: wData.cardExpiryDate || existingLocal?.cardExpiryDate
                         };
                         await db.workers.put(safeWorker as any);
                     } else if (change.type === 'removed') {

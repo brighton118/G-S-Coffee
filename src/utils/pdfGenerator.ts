@@ -940,32 +940,34 @@ export async function generateWorkerIdCardPDF(worker: Worker): Promise<void> {
     doc.setFontSize(11.0);
     doc.text(formattedIdNumber, 61.2, 33.2, { align: 'center' });
 
-    // 5. Issued & Expiry Dates
-    let issuedDateStr = '01/08/2026';
-    if (worker.dateJoined) {
+    // 5. Issued & Expiry Dates - Automatically synced with enrollment date
+    const rawIssueDate = worker.cardIssuedDate || worker.dateJoined;
+    let baseIssueDate = new Date();
+    if (rawIssueDate) {
+        const parsed = new Date(rawIssueDate);
+        if (!isNaN(parsed.getTime())) {
+            baseIssueDate = parsed;
+        }
+    }
+    const issuedDateStr = format(baseIssueDate, 'dd/MM/yyyy');
+
+    let expiresDateStr = '';
+    if (worker.cardExpiryDate) {
         try {
-            const hireD = new Date(worker.dateJoined);
-            if (!isNaN(hireD.getTime())) {
-                issuedDateStr = format(hireD, 'dd/MM/yyyy');
+            const parsedExp = new Date(worker.cardExpiryDate);
+            if (!isNaN(parsedExp.getTime())) {
+                expiresDateStr = format(parsedExp, 'dd/MM/yyyy');
             }
         } catch {
-            issuedDateStr = '01/08/2026';
+            // fallback to calculation below
         }
     }
 
-    let expiresDateStr = '31/07/2027';
-    if (worker.dateJoined) {
-        try {
-            const hireD = new Date(worker.dateJoined);
-            if (!isNaN(hireD.getTime())) {
-                const expD = new Date(hireD);
-                expD.setFullYear(expD.getFullYear() + 1);
-                expD.setDate(expD.getDate() - 1);
-                expiresDateStr = format(expD, 'dd/MM/yyyy');
-            }
-        } catch {
-            expiresDateStr = '31/07/2027';
-        }
+    if (!expiresDateStr) {
+        const expD = new Date(baseIssueDate);
+        expD.setFullYear(expD.getFullYear() + 1);
+        expD.setDate(expD.getDate() - 1);
+        expiresDateStr = format(expD, 'dd/MM/yyyy');
     }
 
     doc.setTextColor(24, 24, 27);

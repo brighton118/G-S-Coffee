@@ -28,6 +28,8 @@ export interface Worker {
     overtimeRate?: number; // Hourly Overtime Rate in UGX (configured in Payroll)
     farmCardNumber?: string;
     qrCode?: string;
+    cardIssuedDate?: string; // Exact automatic date card was issued upon enrollment (yyyy-MM-dd)
+    cardExpiryDate?: string; // Exact automatic card expiry date (yyyy-MM-dd)
     position?: string;
     department?: string;
     emergencyContact?: string;

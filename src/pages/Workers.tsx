@@ -52,7 +52,7 @@ const Workers: React.FC = () => {
 
     const workers = useLiveQuery(() => db.workers.toArray()) || [];
 
-    // Ensure all existing workers have their permanent card number and QR code locked in
+    // Ensure all existing workers have their permanent card number, QR code, and automatic card dates locked in
     useEffect(() => {
         const ensurePermanentIdentifiers = async () => {
             const list = await db.workers.toArray();
@@ -65,6 +65,18 @@ const Workers: React.FC = () => {
                 }
                 if (!w.farmCardNumber) {
                     updates.farmCardNumber = `FC-${w.workerId.replace(/\D/g, '') || '1001'}`;
+                    needsUpdate = true;
+                }
+                if (!w.cardIssuedDate) {
+                    updates.cardIssuedDate = w.dateJoined || format(new Date(), 'yyyy-MM-dd');
+                    needsUpdate = true;
+                }
+                if (!w.cardExpiryDate) {
+                    const baseDate = new Date(updates.cardIssuedDate || w.dateJoined || new Date());
+                    const expD = new Date(baseDate);
+                    expD.setFullYear(expD.getFullYear() + 1);
+                    expD.setDate(expD.getDate() - 1);
+                    updates.cardExpiryDate = format(expD, 'yyyy-MM-dd');
                     needsUpdate = true;
                 }
                 if (needsUpdate) {
@@ -101,6 +113,20 @@ const Workers: React.FC = () => {
             const preservedQrCode = existingRecord?.qrCode || editingWorker.qrCode || editingWorker.workerId;
             const preservedCardNumber = existingRecord?.farmCardNumber || editingWorker.farmCardNumber || `FC-${editingWorker.workerId.replace(/\D/g, '') || '1001'}`;
             const preservedDateJoined = existingRecord?.dateJoined || editingWorker.dateJoined;
+            const preservedIssuedDate = existingRecord?.cardIssuedDate || editingWorker.cardIssuedDate || preservedDateJoined;
+
+            let preservedExpiryDate = existingRecord?.cardExpiryDate || editingWorker.cardExpiryDate;
+            if (!preservedExpiryDate && preservedIssuedDate) {
+                try {
+                    const parsed = new Date(preservedIssuedDate);
+                    const exp = new Date(parsed);
+                    exp.setFullYear(exp.getFullYear() + 1);
+                    exp.setDate(exp.getDate() - 1);
+                    preservedExpiryDate = format(exp, 'yyyy-MM-dd');
+                } catch {
+                    // ignore
+                }
+            }
 
             const updated: Worker = {
                 ...editingWorker,
@@ -113,7 +139,9 @@ const Workers: React.FC = () => {
                 workerId: editingWorker.workerId,
                 qrCode: preservedQrCode,
                 farmCardNumber: preservedCardNumber,
-                dateJoined: preservedDateJoined
+                dateJoined: preservedDateJoined,
+                cardIssuedDate: preservedIssuedDate,
+                cardExpiryDate: preservedExpiryDate
             };
             await db.workers.update(editingWorker.workerId, updated);
             void firestoreSyncService.saveWorker(updated);
@@ -121,11 +149,13 @@ const Workers: React.FC = () => {
             void notificationService.notifyManagerDataEntry({
                 module: 'Workforce',
                 action: `Worker Profile Updated: ${updated.fullName}`,
-                description: `Worker ${updated.fullName} (${editingWorker.workerId}) profile was updated. Permanent Farm Card #${preservedCardNumber} and QR Code remain unchanged.`,
+                description: `Worker ${updated.fullName} (${editingWorker.workerId}) profile was updated. Permanent Farm Card #${preservedCardNumber} (Issued: ${preservedIssuedDate}, Expires: ${preservedExpiryDate}) and QR Code remain unchanged.`,
                 details: {
                     'Worker ID': editingWorker.workerId,
                     'Full Name': updated.fullName,
                     'Farm Card #': preservedCardNumber,
+                    'Card Issued': preservedIssuedDate ? format(new Date(preservedIssuedDate), 'dd/MM/yyyy') : 'N/A',
+                    'Card Expires': preservedExpiryDate ? format(new Date(preservedExpiryDate), 'dd/MM/yyyy') : 'N/A',
                     'QR Code': 'Permanent (Preserved)',
                     'Status': updated.status,
                     'Monthly Base': `UGX ${updated.monthlySalary.toLocaleString()}`,
@@ -157,8 +187,15 @@ const Workers: React.FC = () => {
 
             const nextIdNum = maxIdNum + 1;
             const newId = `GSF-W-${nextIdNum.toString().padStart(4, '0')}`;
-            const todayStr = format(new Date(), 'yyyy-MM-dd');
+            const enrollmentDate = new Date();
+            const todayStr = format(enrollmentDate, 'yyyy-MM-dd');
             const farmCardNum = `FC-${maxCardNum + 1}`;
+
+            // Automatic card issue date and 1-year expiry date immediately on enrollment
+            const expiryDate = new Date(enrollmentDate);
+            expiryDate.setFullYear(expiryDate.getFullYear() + 1);
+            expiryDate.setDate(expiryDate.getDate() - 1);
+            const cardExpiryStr = format(expiryDate, 'yyyy-MM-dd');
 
             const newWorker: Worker = {
                 workerId: newId,
@@ -166,6 +203,8 @@ const Workers: React.FC = () => {
                 gender: formData.gender as 'Male' | 'Female',
                 phoneNumber: formData.phoneNumber.trim() || '+256 700 000000',
                 dateJoined: todayStr,
+                cardIssuedDate: todayStr, // Automatic exact date card was generated on enrollment
+                cardExpiryDate: cardExpiryStr, // Automatic 1-year card validity
                 status: formData.status as 'Active' | 'Inactive',
                 farmCardNumber: farmCardNum,
                 qrCode: newId,
@@ -178,12 +217,14 @@ const Workers: React.FC = () => {
             // Notify Superadmin and Manager email about new worker
             void notificationService.notifyManagerDataEntry({
                 module: 'Workforce',
-                action: 'New Worker Registered',
-                description: `New worker "${newWorker.fullName}" (ID: ${newWorker.workerId}) was registered with Farm Card ${newWorker.farmCardNumber}.`,
+                action: 'New Worker Registered & Card Issued',
+                description: `New worker "${newWorker.fullName}" (ID: ${newWorker.workerId}) was registered. Farm Card ${newWorker.farmCardNumber} automatically generated (Issued: ${format(enrollmentDate, 'dd/MM/yyyy')}, Expires: ${format(expiryDate, 'dd/MM/yyyy')}).`,
                 details: {
                     'Worker ID': newWorker.workerId,
                     'Full Name': newWorker.fullName,
                     'Farm Card #': newWorker.farmCardNumber || 'N/A',
+                    'Card Issued': format(enrollmentDate, 'dd/MM/yyyy'),
+                    'Card Expires': format(expiryDate, 'dd/MM/yyyy'),
                     'QR Code': newWorker.qrCode || newWorker.workerId,
                     'Phone Number': newWorker.phoneNumber,
                     'Gender': newWorker.gender,
@@ -802,12 +843,17 @@ const Workers: React.FC = () => {
                                         zIndex: 2
                                     }}
                                 >
-                                    {selectedWorkerForCard.dateJoined
-                                        ? format(new Date(selectedWorkerForCard.dateJoined), 'dd/MM/yyyy')
-                                        : '01/08/2026'}
+                                    {(() => {
+                                        try {
+                                            const issueD = selectedWorkerForCard.cardIssuedDate || selectedWorkerForCard.dateJoined;
+                                            return issueD ? format(new Date(issueD), 'dd/MM/yyyy') : format(new Date(), 'dd/MM/yyyy');
+                                        } catch {
+                                            return format(new Date(), 'dd/MM/yyyy');
+                                        }
+                                    })()}
                                 </div>
 
-                                {/* Dynamic Expires Date Value */}
+                                {/* Dynamic Expires Date Value - Automatic 1-Year Expiry */}
                                 <div
                                     style={{
                                         position: 'absolute',
@@ -821,13 +867,19 @@ const Workers: React.FC = () => {
                                 >
                                     {(() => {
                                         try {
-                                            const baseD = selectedWorkerForCard.dateJoined ? new Date(selectedWorkerForCard.dateJoined) : new Date('2026-08-01');
+                                            if (selectedWorkerForCard.cardExpiryDate) {
+                                                return format(new Date(selectedWorkerForCard.cardExpiryDate), 'dd/MM/yyyy');
+                                            }
+                                            const issueD = selectedWorkerForCard.cardIssuedDate || selectedWorkerForCard.dateJoined;
+                                            const baseD = issueD ? new Date(issueD) : new Date();
                                             const expD = new Date(baseD);
                                             expD.setFullYear(expD.getFullYear() + 1);
                                             expD.setDate(expD.getDate() - 1);
                                             return format(expD, 'dd/MM/yyyy');
                                         } catch {
-                                            return '31/07/2027';
+                                            const nextY = new Date();
+                                            nextY.setFullYear(nextY.getFullYear() + 1);
+                                            return format(nextY, 'dd/MM/yyyy');
                                         }
                                     })()}
                                 </div>
