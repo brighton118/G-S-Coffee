@@ -21,15 +21,24 @@ import {
     Info,
     ExternalLink,
     MessageSquare,
-    FileText
+    FileText,
+    MapPin,
+    Phone,
+    Building,
+    Navigation,
+    Globe,
+    User,
+    ShieldCheck
 } from 'lucide-react';
 import { updatePassword } from 'firebase/auth';
-import { auth } from '../firebase';
+import { doc, getDoc, setDoc, serverTimestamp } from 'firebase/firestore';
+import { auth, dbFirestore } from '../firebase';
 import { notificationService } from '../utils/notificationService';
 import { emailService } from '../services/emailService';
 import { smsService } from '../services/smsService';
 import { firestoreSyncService } from '../services/firestoreSync';
 import AdminInvitations from '../components/AdminInvitations';
+import { SUPER_ADMIN_EMAILS } from '../services/adminAccess';
 import {
     DEFAULT_ATTENDANCE_SCHEDULE,
     normalizeAttendanceScheduleSettings
@@ -39,14 +48,22 @@ import './Dashboard.css';
 
 const Settings: React.FC = () => {
     const { isAdmin, isSuperAdmin } = useUserRole();
+    const isSuperAdminEmail = Boolean(auth.currentUser?.email && SUPER_ADMIN_EMAILS.includes(auth.currentUser.email.toLowerCase().trim()));
+    const canManageSettings = isAdmin || isSuperAdmin || isSuperAdminEmail;
+
     const [settings, setSettings] = useState({
         farmName: 'G&S FARMS',
         farmLocation: 'Mubende District, Uganda',
+        farmRegion: 'Central Region, Mubende District',
+        farmLandmark: 'Main Farm Gate, G&S Coffee Estate',
+        contactPerson: 'Farm Administrator',
         contactEmail: 'gs.farms.ug@gmail.com',
         notificationEmails: 'brightonkato317@gmail.com',
         emailApiKey: '',
         emailWebhookUrl: '',
         contactPhone: '+256788945330',
+        secondaryPhone: '',
+        currency: 'UGX',
         smsProvider: 'manual',
         smsApiKey: '',
         smsUsername: '',
@@ -61,6 +78,7 @@ const Settings: React.FC = () => {
         notifyEODAttendance: true,
         notifyManagerEntry: true,
     });
+    const [isSaving, setIsSaving] = useState<boolean>(false);
 
     const [testEmailTarget, setTestEmailTarget] = useState<string>('brightonkato317@gmail.com');
     const [saveNotice, setSaveNotice] = useState<string | null>(null);
@@ -94,38 +112,59 @@ const Settings: React.FC = () => {
     };
 
     useEffect(() => {
+        let isMounted = true;
+        // 1. Initial load from local storage
         const saved = localStorage.getItem('gs_farm_settings');
         if (saved) {
             try {
                 const parsedSettings = JSON.parse(saved);
-                if (!parsedSettings.contactEmail || 
-                    parsedSettings.contactEmail === 'admin@gscoffee-farm.com' || 
-                    parsedSettings.contactEmail === 'admin@gscoffee.farm' ||
-                    parsedSettings.contactEmail === 'brightonkato@gmail.com') {
-                    parsedSettings.contactEmail = 'gs.farms.ug@gmail.com';
-                }
-                if (!parsedSettings.notificationEmails) {
-                    parsedSettings.notificationEmails = 'brightonkato317@gmail.com';
-                }
-                if (parsedSettings.contactPhone === '+256 700 123456' || parsedSettings.contactPhone === '+256 700 000000') {
-                    parsedSettings.contactPhone = '+256788945330';
-                }
-                if (parsedSettings.notifyManagerEntry === undefined) {
-                    parsedSettings.notifyManagerEntry = true;
-                }
                 setSettings(current => ({
                     ...current,
                     ...parsedSettings,
                     ...normalizeAttendanceScheduleSettings(parsedSettings)
                 }));
+                if (parsedSettings.contactEmail) {
+                    setTestEmailTarget(parsedSettings.contactEmail);
+                }
             } catch (error) {
                 console.error('Unable to load farm settings from local storage.', error);
             }
         }
+
+        // 2. Fetch latest settings from Cloud Firestore to keep all devices in sync
+        const loadCloudSettings = async () => {
+            try {
+                const docRef = doc(dbFirestore, 'settings', 'general');
+                const docSnap = await getDoc(docRef);
+                if (docSnap.exists() && isMounted) {
+                    const cloudData = docSnap.data();
+                    setSettings(current => {
+                        const merged = {
+                            ...current,
+                            ...cloudData,
+                            ...normalizeAttendanceScheduleSettings(cloudData)
+                        };
+                        localStorage.setItem('gs_farm_settings', JSON.stringify(merged));
+                        if (cloudData.contactEmail) {
+                            setTestEmailTarget(cloudData.contactEmail);
+                        }
+                        return merged;
+                    });
+                }
+            } catch (err) {
+                console.warn('Cloud settings fetch note:', err);
+            }
+        };
+
+        void loadCloudSettings();
         void loadDiagnostics();
+
+        return () => {
+            isMounted = false;
+        };
     }, []);
 
-    const handleSave = (e: React.FormEvent) => {
+    const handleSave = async (e: React.FormEvent) => {
         e.preventDefault();
         if (settings.attendanceTimeInStart >= settings.attendanceTimeInEnd) {
             alert('The time-in window must end after it starts.');
@@ -135,9 +174,26 @@ const Settings: React.FC = () => {
             alert('The time-out window must end after it starts.');
             return;
         }
-        localStorage.setItem('gs_farm_settings', JSON.stringify(settings));
-        setSaveNotice('Settings and Notification Routing saved successfully.');
-        setTimeout(() => setSaveNotice(null), 4000);
+
+        setIsSaving(true);
+        try {
+            localStorage.setItem('gs_farm_settings', JSON.stringify(settings));
+            await firestoreSyncService.saveSettings(settings);
+            const docRef = doc(dbFirestore, 'settings', 'general');
+            await setDoc(docRef, {
+                ...settings,
+                updatedAt: serverTimestamp(),
+                updatedBy: auth.currentUser?.email || 'Administrator'
+            }, { merge: true });
+
+            setSaveNotice('✅ All farm settings, emails, phone numbers, and location saved and synced across all devices!');
+        } catch (err: any) {
+            console.error('Error saving settings to cloud:', err);
+            setSaveNotice('✅ Settings saved locally (Cloud sync will update when reconnected).');
+        } finally {
+            setIsSaving(false);
+            setTimeout(() => setSaveNotice(null), 5000);
+        }
     };
 
     const handleSendTestAlert = async () => {
@@ -341,9 +397,18 @@ const Settings: React.FC = () => {
                         <SettingsIcon size={28} /> System & Notification Settings
                     </h1>
                     <p className="text-light" style={{ margin: '0.25rem 0 0 0' }}>
-                        Configure farm properties, operational thresholds, and SMS/Email communication routing.
+                        Configure farm properties, contact details, locations, operational thresholds, and SMS/Email routing.
                     </p>
                 </div>
+                {canManageSettings ? (
+                    <div style={{ background: '#f0fdf4', border: '1px solid #86efac', color: '#166534', padding: '0.45rem 0.9rem', borderRadius: '6px', fontSize: '0.82rem', fontWeight: 600, display: 'inline-flex', alignItems: 'center', gap: '0.4rem' }}>
+                        <ShieldCheck size={16} color="#16a34a" /> Administrator Configuration Mode (Full Edit Rights)
+                    </div>
+                ) : (
+                    <div style={{ background: '#fef3c7', border: '1px solid #fde047', color: '#854d0e', padding: '0.45rem 0.9rem', borderRadius: '6px', fontSize: '0.82rem', fontWeight: 600 }}>
+                        View-Only Mode
+                    </div>
+                )}
             </div>
 
             {saveNotice && (
@@ -356,29 +421,125 @@ const Settings: React.FC = () => {
             <form onSubmit={handleSave}>
                 <div className="settings-grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(360px, 1fr))', gap: '1.5rem' }}>
 
-                    {/* General Preferences */}
+                    {/* General Farm Info, Location & Contacts */}
                     <div className="card" style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
                         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: '1px solid var(--color-border)', paddingBottom: '0.75rem' }}>
-                            <h3 style={{ margin: 0, color: 'var(--color-primary-dark)' }}>
-                                General Farm Info
+                            <h3 style={{ margin: 0, color: 'var(--color-primary-dark)', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                                <Building size={20} color="var(--color-primary)" />
+                                Farm Info, Location &amp; Contacts
                             </h3>
                             <img src="/assets/gs_farm_logo_transparent.png" alt="G&S FARMS" style={{ height: '30px', width: 'auto', objectFit: 'contain' }} />
                         </div>
+
                         <div className="form-group">
-                            <label className="form-label">Farm Organization Name</label>
-                            <input type="text" className="form-input" value={settings.farmName} onChange={e => setSettings({ ...settings, farmName: e.target.value })} />
+                            <label className="form-label" style={{ display: 'flex', alignItems: 'center', gap: '0.35rem' }}>
+                                <Building size={14} color="var(--color-primary)" /> Farm Organization Name
+                            </label>
+                            <input 
+                                type="text" 
+                                className="form-input" 
+                                value={settings.farmName} 
+                                onChange={e => setSettings({ ...settings, farmName: e.target.value })} 
+                                placeholder="G&S FARMS"
+                            />
                         </div>
+
                         <div className="form-group">
-                            <label className="form-label">Physical Location Address</label>
-                            <input type="text" className="form-input" value={settings.farmLocation} onChange={e => setSettings({ ...settings, farmLocation: e.target.value })} />
+                            <label className="form-label" style={{ display: 'flex', alignItems: 'center', gap: '0.35rem' }}>
+                                <MapPin size={14} color="#dc2626" /> Physical Location Address (District, Country)
+                            </label>
+                            <input 
+                                type="text" 
+                                className="form-input" 
+                                value={settings.farmLocation} 
+                                onChange={e => setSettings({ ...settings, farmLocation: e.target.value })} 
+                                placeholder="Mubende District, Uganda"
+                            />
                         </div>
-                        <div className="form-group">
-                            <label className="form-label">Manager Mobile Phone (SMS Alert Target)</label>
-                            <input type="text" className="form-input" value={settings.contactPhone} onChange={e => setSettings({ ...settings, contactPhone: e.target.value })} placeholder="+256 700 000000" />
+
+                        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(170px, 1fr))', gap: '0.85rem' }}>
+                            <div className="form-group" style={{ margin: 0 }}>
+                                <label className="form-label" style={{ display: 'flex', alignItems: 'center', gap: '0.35rem', fontSize: '0.82rem' }}>
+                                    <Globe size={14} color="#0284c7" /> Sub-County / Region
+                                </label>
+                                <input 
+                                    type="text" 
+                                    className="form-input" 
+                                    value={settings.farmRegion || ''} 
+                                    onChange={e => setSettings({ ...settings, farmRegion: e.target.value })} 
+                                    placeholder="Central Region, Mubende"
+                                />
+                            </div>
+
+                            <div className="form-group" style={{ margin: 0 }}>
+                                <label className="form-label" style={{ display: 'flex', alignItems: 'center', gap: '0.35rem', fontSize: '0.82rem' }}>
+                                    <Navigation size={14} color="#16a34a" /> Landmark / Gate GPS
+                                </label>
+                                <input 
+                                    type="text" 
+                                    className="form-input" 
+                                    value={settings.farmLandmark || ''} 
+                                    onChange={e => setSettings({ ...settings, farmLandmark: e.target.value })} 
+                                    placeholder="Main Estate Gate / GPS"
+                                />
+                            </div>
                         </div>
+
                         <div className="form-group">
-                            <label className="form-label">Manager Email (Reports & Summaries)</label>
-                            <input type="email" className="form-input" value={settings.contactEmail} onChange={e => setSettings({ ...settings, contactEmail: e.target.value })} placeholder="admin@gscoffee.farm" />
+                            <label className="form-label" style={{ display: 'flex', alignItems: 'center', gap: '0.35rem' }}>
+                                <User size={14} color="var(--color-primary)" /> Primary Contact Person / Manager
+                            </label>
+                            <input 
+                                type="text" 
+                                className="form-input" 
+                                value={settings.contactPerson || ''} 
+                                onChange={e => setSettings({ ...settings, contactPerson: e.target.value })} 
+                                placeholder="Farm Administrator / Brighton"
+                            />
+                        </div>
+
+                        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(170px, 1fr))', gap: '0.85rem' }}>
+                            <div className="form-group" style={{ margin: 0 }}>
+                                <label className="form-label" style={{ display: 'flex', alignItems: 'center', gap: '0.35rem', fontSize: '0.82rem' }}>
+                                    <Phone size={14} color="#16a34a" /> Primary Mobile (SMS &amp; WhatsApp)
+                                </label>
+                                <input 
+                                    type="text" 
+                                    className="form-input" 
+                                    value={settings.contactPhone} 
+                                    onChange={e => setSettings({ ...settings, contactPhone: e.target.value })} 
+                                    placeholder="+256788945330"
+                                />
+                            </div>
+
+                            <div className="form-group" style={{ margin: 0 }}>
+                                <label className="form-label" style={{ display: 'flex', alignItems: 'center', gap: '0.35rem', fontSize: '0.82rem' }}>
+                                    <Smartphone size={14} color="#0284c7" /> Secondary / Operations Phone
+                                </label>
+                                <input 
+                                    type="text" 
+                                    className="form-input" 
+                                    value={settings.secondaryPhone || ''} 
+                                    onChange={e => setSettings({ ...settings, secondaryPhone: e.target.value })} 
+                                    placeholder="+256 700 000000"
+                                />
+                            </div>
+                        </div>
+
+                        <div className="form-group">
+                            <label className="form-label" style={{ display: 'flex', alignItems: 'center', gap: '0.35rem' }}>
+                                <Mail size={14} color="var(--color-primary)" /> Primary Contact Email (System Reports)
+                            </label>
+                            <input 
+                                type="email" 
+                                className="form-input" 
+                                value={settings.contactEmail} 
+                                onChange={e => {
+                                    setSettings({ ...settings, contactEmail: e.target.value });
+                                    setTestEmailTarget(e.target.value);
+                                }} 
+                                placeholder="gs.farms.ug@gmail.com"
+                            />
                         </div>
                     </div>
 
@@ -853,15 +1014,25 @@ const Settings: React.FC = () => {
                 </div>
 
                 {/* Save Button Bar */}
-                <div style={{ marginTop: '1.5rem', display: 'flex', justifyContent: 'flex-start' }}>
-                    {isAdmin ? (
-                        <button type="submit" className="btn btn-primary" style={{ padding: '0.6rem 1.5rem', fontSize: '1rem', display: 'inline-flex', alignItems: 'center', gap: '0.5rem' }}>
-                            <Save size={18} /> Save All Configurations
+                <div style={{ marginTop: '1.5rem', display: 'flex', alignItems: 'center', gap: '1rem', flexWrap: 'wrap' }}>
+                    {canManageSettings ? (
+                        <button 
+                            type="submit" 
+                            className="btn btn-primary" 
+                            disabled={isSaving}
+                            style={{ padding: '0.65rem 1.75rem', fontSize: '1rem', display: 'inline-flex', alignItems: 'center', gap: '0.5rem', fontWeight: 600 }}
+                        >
+                            <Save size={18} /> {isSaving ? 'Saving Configurations...' : 'Save All Configurations'}
                         </button>
                     ) : (
                         <div className="badge badge-warning" style={{ padding: '0.6rem 1.25rem', fontSize: '0.85rem', fontWeight: 600 }}>
                             ⚠️ System configuration changes are restricted to Administrators (View-Only Mode)
                         </div>
+                    )}
+                    {isSaving && (
+                        <span style={{ fontSize: '0.875rem', color: 'var(--color-primary)', display: 'inline-flex', alignItems: 'center', gap: '0.35rem' }}>
+                            <RefreshCw size={14} className="spin" /> Syncing across cloud...
+                        </span>
                     )}
                 </div>
             </form>

@@ -1,6 +1,7 @@
 import { 
     collection, 
     doc, 
+    getDoc,
     getDocs, 
     onSnapshot,
     serverTimestamp,
@@ -58,6 +59,40 @@ class FirestoreSyncService {
     private updateStatus(partial: Partial<SyncStatus>) {
         this.currentStatus = { ...this.currentStatus, ...partial };
         this.statusListeners.forEach(cb => cb(this.currentStatus));
+    }
+
+    /**
+     * Settings Cloud Sync methods
+     */
+    public async saveSettings(settings: any): Promise<void> {
+        try {
+            const settingsRef = doc(dbFirestore, 'settings', 'general');
+            await setDoc(settingsRef, {
+                ...settings,
+                updatedAt: serverTimestamp()
+            }, { merge: true });
+            console.log('[Cloud Sync] Settings saved to Cloud Firestore.');
+        } catch (e: any) {
+            console.warn('[Cloud Sync] Save settings note:', e?.message || e);
+        }
+    }
+
+    public async pullSettings(): Promise<any> {
+        try {
+            const settingsRef = doc(dbFirestore, 'settings', 'general');
+            const snap = await getDoc(settingsRef);
+            if (snap.exists()) {
+                const cloudSettings = snap.data();
+                const saved = localStorage.getItem('gs_farm_settings');
+                const local = saved ? JSON.parse(saved) : {};
+                const merged = { ...local, ...cloudSettings };
+                localStorage.setItem('gs_farm_settings', JSON.stringify(merged));
+                return merged;
+            }
+        } catch (e: any) {
+            console.warn('[Cloud Sync] Pull settings note:', e?.message || e);
+        }
+        return null;
     }
 
     /**
@@ -620,6 +655,13 @@ class FirestoreSyncService {
         let downloadedCount = 0;
 
         try {
+            // 0. Pull General Farm Settings & Contacts
+            try {
+                await this.pullSettings();
+            } catch (sErr) {
+                console.warn('[Cloud Sync] Pull settings note:', sErr);
+            }
+
             // 1. Pull Workers
             try {
                 const workersSnap = await getDocs(collection(dbFirestore, 'workers'));
@@ -1575,6 +1617,17 @@ class FirestoreSyncService {
                 });
             }, (err) => console.info('Firestore notifications listener active:', err.message));
 
+            // 16. Real-time General Settings (synced across all logged-in devices)
+            const unsubSettings = onSnapshot(doc(dbFirestore, 'settings', 'general'), (snap) => {
+                if (snap.exists()) {
+                    const cloudSettings = snap.data();
+                    const saved = localStorage.getItem('gs_farm_settings');
+                    const local = saved ? JSON.parse(saved) : {};
+                    const merged = { ...local, ...cloudSettings };
+                    localStorage.setItem('gs_farm_settings', JSON.stringify(merged));
+                }
+            }, (err) => console.info('Firestore settings listener active:', err.message));
+
             this.syncListeners.push(
                 unsubWorkers, 
                 unsubSales, 
@@ -1591,7 +1644,8 @@ class FirestoreSyncService {
                 unsubStageHistory,
                 unsubPlantletSales,
                 unsubPlantletSorts,
-                unsubNotifications
+                unsubNotifications,
+                unsubSettings
             );
         } catch (err: any) {
             console.info('Realtime sync setup completed:', err?.message || err);
