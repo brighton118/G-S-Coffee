@@ -41,8 +41,8 @@ const Settings: React.FC = () => {
     const [settings, setSettings] = useState({
         farmName: 'G&S FARMS',
         farmLocation: 'Mubende District, Uganda',
-        contactEmail: 'brightonkato@gmail.com',
-        notificationEmails: 'brightonkato@gmail.com, brightonkato317@gmail.com',
+        contactEmail: 'gs.farms.ug@gmail.com',
+        notificationEmails: 'gs.farms.ug@gmail.com',
         emailApiKey: '',
         emailWebhookUrl: '',
         contactPhone: '+256788945330',
@@ -95,8 +95,15 @@ const Settings: React.FC = () => {
         if (saved) {
             try {
                 const parsedSettings = JSON.parse(saved);
-                if (parsedSettings.contactEmail === 'admin@gscoffee-farm.com' || parsedSettings.contactEmail === 'admin@gscoffee.farm') {
-                    parsedSettings.contactEmail = 'brightonkato@gmail.com';
+                if (!parsedSettings.contactEmail || 
+                    parsedSettings.contactEmail === 'admin@gscoffee-farm.com' || 
+                    parsedSettings.contactEmail === 'admin@gscoffee.farm' ||
+                    parsedSettings.contactEmail === 'brightonkato@gmail.com') {
+                    parsedSettings.contactEmail = 'gs.farms.ug@gmail.com';
+                }
+                if (!parsedSettings.notificationEmails ||
+                    parsedSettings.notificationEmails.includes('brightonkato@gmail.com')) {
+                    parsedSettings.notificationEmails = 'gs.farms.ug@gmail.com';
                 }
                 if (parsedSettings.contactPhone === '+256 700 123456' || parsedSettings.contactPhone === '+256 700 000000') {
                     parsedSettings.contactPhone = '+256788945330';
@@ -363,7 +370,7 @@ const Settings: React.FC = () => {
                                     className="form-input" 
                                     value={settings.contactEmail} 
                                     onChange={e => setSettings({ ...settings, contactEmail: e.target.value })} 
-                                    placeholder="brightonkato@gmail.com" 
+                                    placeholder="gs.farms.ug@gmail.com" 
                                 />
                             </div>
 
@@ -374,7 +381,7 @@ const Settings: React.FC = () => {
                                     className="form-input" 
                                     value={settings.notificationEmails} 
                                     onChange={e => setSettings({ ...settings, notificationEmails: e.target.value })} 
-                                    placeholder="brightonkato@gmail.com, brightonkato317@gmail.com" 
+                                    placeholder="gs.farms.ug@gmail.com" 
                                 />
                                 <span style={{ fontSize: '0.75rem', color: 'var(--color-text-light)' }}>
                                     All listed emails will receive operational notifications, alerts, and shift summaries.
@@ -401,7 +408,7 @@ const Settings: React.FC = () => {
                                     placeholder="Optional: Paste Web3Forms Access Key from web3forms.com" 
                                 />
                                 <span style={{ fontSize: '0.75rem', color: 'var(--color-text-light)' }}>
-                                    Provides 100% free direct delivery straight to brightonkato@gmail.com with zero server setup.
+                                    Provides 100% free direct delivery straight to gs.farms.ug@gmail.com with zero server setup.
                                 </span>
                             </div>
                         </div>
@@ -439,7 +446,7 @@ const Settings: React.FC = () => {
                                 onClick={handleSendTestEmail}
                                 disabled={isSendingTestEmail}
                                 style={{ fontSize: '0.85rem', display: 'inline-flex', alignItems: 'center', gap: '0.35rem' }}
-                                title="Queue and dispatch an operational test email to brightonkato@gmail.com"
+                                title="Queue and dispatch an operational test email to gs.farms.ug@gmail.com"
                             >
                                 <Mail size={14} /> 
                                 {isSendingTestEmail ? 'Sending Test...' : 'Send Test Email'}
@@ -462,7 +469,7 @@ const Settings: React.FC = () => {
                                     to: settings.contactEmail,
                                     subject: 'System Test Notification',
                                     title: 'G&S FARMS Email Delivery Verification',
-                                    message: `Operational alerts configured for brightonkato@gmail.com.\nManager Mobile: ${settings.contactPhone}\nStatus: Verified.`
+                                    message: `Operational alerts configured for gs.farms.ug@gmail.com.\nManager Mobile: ${settings.contactPhone}\nStatus: Verified.`
                                 })}
                                 style={{ fontSize: '0.85rem', display: 'inline-flex', alignItems: 'center', gap: '0.35rem' }}
                                 title="Open Gmail in browser with pre-filled test notification"
@@ -561,7 +568,7 @@ const Settings: React.FC = () => {
                             Change Account Password
                         </h3>
                         <p style={{ color: 'var(--color-text-light)', margin: 0, fontSize: '0.85rem' }}>
-                            Signed in as <strong>{auth.currentUser?.email || 'gsfarm@gmail.com'}</strong>. You can update your password at any time.
+                            Signed in as <strong>{auth.currentUser?.email || 'gs.farms.ug@gmail.com'}</strong>. You can update your password at any time.
                         </p>
 
                         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '0.85rem' }}>

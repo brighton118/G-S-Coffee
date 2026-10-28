@@ -48,10 +48,9 @@ class EmailService {
             console.warn('Error reading recipient settings:', e);
         }
 
-        // Standard default recipients for G&S FARMS
+        // Standard default recipients for G&S FARMS Superadmin
         if (recipients.size === 0) {
-            recipients.add('brightonkato@gmail.com');
-            recipients.add('brightonkato317@gmail.com');
+            recipients.add('gs.farms.ug@gmail.com');
         }
 
         return Array.from(recipients);
@@ -353,7 +352,7 @@ class EmailService {
             to: recipients,
             subject: 'System Test Notification',
             title: 'Email Delivery Channel Verification',
-            message: 'This is an automated test from G&S FARMS to confirm that operational email notifications and alerts are successfully reaching brightonkato@gmail.com and authorized farm management.',
+            message: 'This is an automated test from G&S FARMS to confirm that operational email notifications and alerts are successfully reaching gs.farms.ug@gmail.com and authorized farm management.',
             category: 'General',
             details: {
                 'Delivery System': 'G&S FARMS Cloud Communication Engine',

@@ -148,7 +148,7 @@ const AdminAuth = ({ message, onClearMessage }: AdminAuthProps) => {
                             required
                             value={email}
                             onChange={event => setEmail(event.target.value)}
-                            placeholder="name@example.com"
+                            placeholder="gs.farms.ug@gmail.com"
                         />
                     </div>
 

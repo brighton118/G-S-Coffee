@@ -422,7 +422,7 @@ const Notifications: React.FC = () => {
                                             style={{ padding: '0.3rem 0.55rem', fontSize: '0.78rem', display: 'inline-flex', alignItems: 'center', gap: '0.3rem', whiteSpace: 'nowrap' }}
                                             onClick={() => handleSendSingleEmail(notif)}
                                             disabled={sendingEmailId === notif.id}
-                                            title="Send alert email to brightonkato@gmail.com"
+                                            title="Send alert email to gs.farms.ug@gmail.com"
                                         >
                                             <Mail size={13} /> 
                                             {sendingEmailId === notif.id ? 'Sending...' : 'Email'}
