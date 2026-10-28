@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useLiveQuery } from 'dexie-react-hooks';
 import { db, Worker } from '../db';
 import {
@@ -13,7 +13,9 @@ import {
     QrCode,
     Banknote,
     Trash2,
-    AlertTriangle
+    AlertTriangle,
+    ShieldCheck,
+    Lock
 } from 'lucide-react';
 import { QRCodeSVG } from 'qrcode.react';
 import { format } from 'date-fns';
@@ -50,6 +52,30 @@ const Workers: React.FC = () => {
 
     const workers = useLiveQuery(() => db.workers.toArray()) || [];
 
+    // Ensure all existing workers have their permanent card number and QR code locked in
+    useEffect(() => {
+        const ensurePermanentIdentifiers = async () => {
+            const list = await db.workers.toArray();
+            for (const w of list) {
+                let needsUpdate = false;
+                const updates: Partial<Worker> = {};
+                if (!w.qrCode) {
+                    updates.qrCode = w.workerId;
+                    needsUpdate = true;
+                }
+                if (!w.farmCardNumber) {
+                    updates.farmCardNumber = `FC-${w.workerId.replace(/\D/g, '') || '1001'}`;
+                    needsUpdate = true;
+                }
+                if (needsUpdate) {
+                    await db.workers.update(w.workerId, updates);
+                    void firestoreSyncService.saveWorker({ ...w, ...updates });
+                }
+            }
+        };
+        void ensurePermanentIdentifiers();
+    }, []);
+
     const filteredWorkers = workers.filter(w => {
         const matchesSearch =
             w.fullName.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -70,14 +96,24 @@ const Workers: React.FC = () => {
         }
 
         if (editingWorker) {
-            // Update existing worker
+            // Update existing worker - STRICTLY PRESERVE permanent card & QR identification
+            const existingRecord = await db.workers.get(editingWorker.workerId);
+            const preservedQrCode = existingRecord?.qrCode || editingWorker.qrCode || editingWorker.workerId;
+            const preservedCardNumber = existingRecord?.farmCardNumber || editingWorker.farmCardNumber || `FC-${editingWorker.workerId.replace(/\D/g, '') || '1001'}`;
+            const preservedDateJoined = existingRecord?.dateJoined || editingWorker.dateJoined;
+
             const updated: Worker = {
                 ...editingWorker,
                 fullName: formData.fullName.trim(),
                 gender: formData.gender as 'Male' | 'Female',
                 phoneNumber: formData.phoneNumber.trim() || '+256 700 000000',
                 monthlySalary: Number(formData.monthlySalary) || 0,
-                status: formData.status as 'Active' | 'Inactive'
+                status: formData.status as 'Active' | 'Inactive',
+                // Permanent identifiers strictly preserved - never changed on updates
+                workerId: editingWorker.workerId,
+                qrCode: preservedQrCode,
+                farmCardNumber: preservedCardNumber,
+                dateJoined: preservedDateJoined
             };
             await db.workers.update(editingWorker.workerId, updated);
             void firestoreSyncService.saveWorker(updated);
@@ -85,10 +121,12 @@ const Workers: React.FC = () => {
             void notificationService.notifyManagerDataEntry({
                 module: 'Workforce',
                 action: `Worker Profile Updated: ${updated.fullName}`,
-                description: `Worker ${updated.fullName} (${editingWorker.workerId}) profile was updated by management.`,
+                description: `Worker ${updated.fullName} (${editingWorker.workerId}) profile was updated. Permanent Farm Card #${preservedCardNumber} and QR Code remain unchanged.`,
                 details: {
                     'Worker ID': editingWorker.workerId,
                     'Full Name': updated.fullName,
+                    'Farm Card #': preservedCardNumber,
+                    'QR Code': 'Permanent (Preserved)',
                     'Status': updated.status,
                     'Monthly Base': `UGX ${updated.monthlySalary.toLocaleString()}`,
                     'Phone': updated.phoneNumber
@@ -98,11 +136,29 @@ const Workers: React.FC = () => {
 
             setEditingWorker(null);
         } else {
-            // Add new worker
-            const count = await db.workers.count();
-            const newId = `GSF-W-${(count + 1).toString().padStart(4, '0')}`;
+            // Add new worker - calculate next safe sequential ID & Farm Card Number (no collisions)
+            const allExisting = await db.workers.toArray();
+            let maxIdNum = 0;
+            let maxCardNum = 1000;
+            for (const w of allExisting) {
+                const idMatch = w.workerId?.match(/(\d+)$/);
+                if (idMatch) {
+                    const idNum = parseInt(idMatch[1], 10);
+                    if (idNum > maxIdNum) maxIdNum = idNum;
+                }
+                if (w.farmCardNumber) {
+                    const cardMatch = w.farmCardNumber.match(/(\d+)$/);
+                    if (cardMatch) {
+                        const cNum = parseInt(cardMatch[1], 10);
+                        if (cNum > maxCardNum) maxCardNum = cNum;
+                    }
+                }
+            }
+
+            const nextIdNum = maxIdNum + 1;
+            const newId = `GSF-W-${nextIdNum.toString().padStart(4, '0')}`;
             const todayStr = format(new Date(), 'yyyy-MM-dd');
-            const farmCardNum = `FC-${(1000 + count + 1)}`;
+            const farmCardNum = `FC-${maxCardNum + 1}`;
 
             const newWorker: Worker = {
                 workerId: newId,
@@ -127,6 +183,8 @@ const Workers: React.FC = () => {
                 details: {
                     'Worker ID': newWorker.workerId,
                     'Full Name': newWorker.fullName,
+                    'Farm Card #': newWorker.farmCardNumber || 'N/A',
+                    'QR Code': newWorker.qrCode || newWorker.workerId,
                     'Phone Number': newWorker.phoneNumber,
                     'Gender': newWorker.gender,
                     'Monthly Base': `UGX ${newWorker.monthlySalary.toLocaleString()}`,
@@ -491,6 +549,22 @@ const Workers: React.FC = () => {
                             </button>
                         </div>
 
+                        {editingWorker && (
+                            <div style={{ background: '#f0fdf4', border: '1px solid #bbf7d0', borderRadius: '8px', padding: '0.75rem 1rem', display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '0.5rem' }}>
+                                <div>
+                                    <div style={{ fontSize: '0.8rem', color: '#166534', fontWeight: 700, display: 'flex', alignItems: 'center', gap: '0.35rem' }}>
+                                        <ShieldCheck size={16} color="#16a34a" /> PERMANENT IDENTIFICATION LOCKED
+                                    </div>
+                                    <div style={{ fontSize: '0.8rem', color: '#15803d', marginTop: '0.2rem' }}>
+                                        Worker ID: <strong>{editingWorker.workerId}</strong> &bull; Farm Card: <strong>{editingWorker.farmCardNumber || `FC-${editingWorker.workerId.replace(/\D/g, '') || '1001'}`}</strong>
+                                    </div>
+                                </div>
+                                <div style={{ fontSize: '0.75rem', background: '#dcfce7', color: '#166534', padding: '0.3rem 0.55rem', borderRadius: '4px', fontWeight: 600, display: 'flex', alignItems: 'center', gap: '0.25rem' }}>
+                                    <Lock size={12} /> QR Code Preserved
+                                </div>
+                            </div>
+                        )}
+
                         <form onSubmit={handleAddOrEditWorker} style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
                             <div className="form-group">
                                 <label className="form-label">Full Name *</label>
@@ -670,7 +744,7 @@ const Workers: React.FC = () => {
                                     }}
                                 >
                                     <div style={{ backgroundColor: '#ffffff', padding: '3px', borderRadius: '4px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                                        <QRCodeSVG value={selectedWorkerForCard.workerId} size={74} fgColor="#000000" bgColor="#ffffff" />
+                                        <QRCodeSVG value={selectedWorkerForCard.qrCode || selectedWorkerForCard.workerId} size={74} fgColor="#000000" bgColor="#ffffff" />
                                     </div>
                                 </div>
 

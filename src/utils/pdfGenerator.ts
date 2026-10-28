@@ -907,7 +907,8 @@ export async function generateWorkerIdCardPDF(worker: Worker): Promise<void> {
     const qrBoxH = 27.0;
 
     try {
-        const qrDataUrl = await QRCode.toDataURL(worker.workerId, {
+        const qrPayload = worker.qrCode || worker.workerId;
+        const qrDataUrl = await QRCode.toDataURL(qrPayload, {
             margin: 1,
             width: 300,
             color: {

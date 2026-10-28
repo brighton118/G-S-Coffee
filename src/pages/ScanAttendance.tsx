@@ -156,7 +156,7 @@ const ScanAttendance = () => {
             worker = await db.workers.where('phoneNumber').equals(parsedKey).first();
         }
         if (!worker) {
-            worker = await db.workers.filter(w => w.farmCardNumber === parsedKey).first();
+            worker = await db.workers.filter(w => w.farmCardNumber === parsedKey || w.qrCode === parsedKey).first();
         }
 
         const now = format(new Date(), 'HH:mm');

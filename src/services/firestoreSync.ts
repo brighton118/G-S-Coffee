@@ -66,9 +66,16 @@ class FirestoreSyncService {
     public async saveWorker(worker: any): Promise<void> {
         try {
             if (!worker?.workerId) return;
+            const existing = await db.workers.get(worker.workerId);
+            const safeWorker = {
+                ...worker,
+                qrCode: worker.qrCode || existing?.qrCode || worker.workerId,
+                farmCardNumber: worker.farmCardNumber || existing?.farmCardNumber || `FC-${worker.workerId.replace(/\D/g, '') || '1001'}`,
+                updatedAt: serverTimestamp()
+            };
             const docRef = doc(collection(dbFirestore, 'workers'), worker.workerId);
-            await setDoc(docRef, { ...worker, updatedAt: serverTimestamp() }, { merge: true });
-            console.log(`[Cloud Sync] Worker ${worker.workerId} saved to Firestore.`);
+            await setDoc(docRef, safeWorker, { merge: true });
+            console.log(`[Cloud Sync] Worker ${worker.workerId} saved to Firestore (permanent card/QR preserved).`);
         } catch (e: any) {
             console.warn('[Cloud Sync] Live worker push note:', e?.message || e);
         }
@@ -619,7 +626,15 @@ class FirestoreSyncService {
                     const data = docSnap.data();
                     const workerId = data.workerId || docSnap.id;
                     if (!workerId) continue;
-                    await db.workers.put({ ...data, workerId } as any);
+                    const existingLocal = await db.workers.get(workerId);
+                    const safeWorker = {
+                        ...existingLocal,
+                        ...data,
+                        workerId,
+                        qrCode: data.qrCode || existingLocal?.qrCode || workerId,
+                        farmCardNumber: data.farmCardNumber || existingLocal?.farmCardNumber || `FC-${workerId.replace(/\D/g, '') || '1001'}`
+                    };
+                    await db.workers.put(safeWorker as any);
                     downloadedCount++;
                 }
             } catch (wErr) {
@@ -1130,7 +1145,15 @@ class FirestoreSyncService {
         if (Array.isArray(parsed.workers)) {
             for (const w of parsed.workers) {
                 if (w?.workerId) {
-                    await db.workers.put(w);
+                    const existingLocal = await db.workers.get(w.workerId);
+                    const safeWorker = {
+                        ...existingLocal,
+                        ...w,
+                        workerId: w.workerId,
+                        qrCode: w.qrCode || existingLocal?.qrCode || w.workerId,
+                        farmCardNumber: w.farmCardNumber || existingLocal?.farmCardNumber || `FC-${w.workerId.replace(/\D/g, '') || '1001'}`
+                    };
+                    await db.workers.put(safeWorker);
                     count++;
                 }
             }
@@ -1241,7 +1264,17 @@ class FirestoreSyncService {
                 snap.docChanges().forEach(async (change) => {
                     if (change.doc.id.startsWith('_') || change.doc.data()._isSystemSchema) return;
                     if (change.type === 'added' || change.type === 'modified') {
-                        await db.workers.put(change.doc.data() as any);
+                        const wData = change.doc.data() as any;
+                        const wId = wData.workerId || change.doc.id;
+                        const existingLocal = await db.workers.get(wId);
+                        const safeWorker = {
+                            ...existingLocal,
+                            ...wData,
+                            workerId: wId,
+                            qrCode: wData.qrCode || existingLocal?.qrCode || wId,
+                            farmCardNumber: wData.farmCardNumber || existingLocal?.farmCardNumber || `FC-${wId.replace(/\D/g, '') || '1001'}`
+                        };
+                        await db.workers.put(safeWorker as any);
                     } else if (change.type === 'removed') {
                         await db.workers.delete(change.doc.id);
                     }
