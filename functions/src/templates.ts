@@ -347,9 +347,37 @@ export function buildSalesInvoiceTemplate(data: {
     amountPaid?: number;
     location?: string;
     salesAgent?: string;
+    items?: Array<{ variety: string; quantity: number; unitPrice: number; subtotal: number }>;
 }): { html: string; text: string } {
     const title = `Official Sales Receipt / Invoice ${data.invoiceNumber}`;
     const balanceDue = Math.max(0, data.totalAmount - (data.amountPaid ?? data.totalAmount));
+    const hasMultipleItems = Array.isArray(data.items) && data.items.length > 0;
+
+    const varietiesRowsHtml = hasMultipleItems
+        ? data.items!.map((item, idx) => `
+            <tr>
+                <td class="data-label">Variety #${idx + 1}: ${escapeHtml(item.variety)}</td>
+                <td class="data-val">${Number(item.quantity).toLocaleString()} plantlets &times; ${formatUGX(item.unitPrice)} = <strong>${formatUGX(item.subtotal)}</strong></td>
+            </tr>
+        `).join('')
+        : `
+            <tr>
+                <td class="data-label">Plantlet Variety</td>
+                <td class="data-val">${escapeHtml(data.cloneType)} (Elite Certified Clones)</td>
+            </tr>
+            <tr>
+                <td class="data-label">Quantity</td>
+                <td class="data-val">${Number(data.quantity).toLocaleString()} plantlets</td>
+            </tr>
+            <tr>
+                <td class="data-label">Unit Price</td>
+                <td class="data-val">${formatUGX(data.unitPrice)}</td>
+            </tr>
+        `;
+
+    const varietiesText = hasMultipleItems
+        ? data.items!.map(i => `  * ${i.variety}: ${Number(i.quantity).toLocaleString()} x ${formatUGX(i.unitPrice)} = ${formatUGX(i.subtotal)}`).join('\n')
+        : `Variety: ${data.cloneType}\nQuantity: ${data.quantity}\nUnit Price: ${formatUGX(data.unitPrice)}`;
 
     const bodyHtml = `
         <h2 style="margin: 0 0 14px; font-size: 19px; color: #163816; font-weight: 700;">Coffee Clone Sales Invoice</h2>
@@ -376,17 +404,10 @@ export function buildSalesInvoiceTemplate(data: {
                     <td class="data-val">${escapeHtml(data.location)}</td>
                 </tr>
                 ` : ''}
+                ${varietiesRowsHtml}
                 <tr>
-                    <td class="data-label">Plantlet Variety</td>
-                    <td class="data-val">${escapeHtml(data.cloneType)} (Elite Certified Clones)</td>
-                </tr>
-                <tr>
-                    <td class="data-label">Quantity</td>
+                    <td class="data-label">Total Plantlets</td>
                     <td class="data-val">${Number(data.quantity).toLocaleString()} plantlets</td>
-                </tr>
-                <tr>
-                    <td class="data-label">Unit Price</td>
-                    <td class="data-val">${formatUGX(data.unitPrice)}</td>
                 </tr>
                 <tr style="background: #eef6ea;">
                     <td class="data-label" style="font-size: 15px;">TOTAL AMOUNT</td>
@@ -415,7 +436,7 @@ export function buildSalesInvoiceTemplate(data: {
     `;
 
     const html = wrapBaseEmail({ title, category: 'Sales Receipt' }, bodyHtml);
-    const text = `[G&S COFFEE FARMS] ${title}\nInvoice: ${data.invoiceNumber}\nDate: ${data.orderDate}\nCustomer: ${data.customerName} (${data.customerPhone})\nVariety: ${data.cloneType}\nQuantity: ${data.quantity}\nUnit Price: ${formatUGX(data.unitPrice)}\nTotal: ${formatUGX(data.totalAmount)}\nStatus: Paid in Full`;
+    const text = `[G&S COFFEE FARMS] ${title}\nInvoice: ${data.invoiceNumber}\nDate: ${data.orderDate}\nCustomer: ${data.customerName} (${data.customerPhone})\nVarieties:\n${varietiesText}\nTotal Quantity: ${data.quantity}\nTotal: ${formatUGX(data.totalAmount)}\nStatus: Paid in Full`;
 
     return { html, text };
 }

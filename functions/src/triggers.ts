@@ -43,6 +43,10 @@ export function createSalesOrderTrigger(db: admin.firestore.Firestore, processor
                 const eventId = NotificationEventProcessor.generateEventId(['sale_create', orderId, after.totalAmount]);
                 const totalFormatted = formatUGX(after.totalAmount || 0);
 
+                const varietiesBreakdown = Array.isArray(after.items) && after.items.length > 0
+                    ? after.items.map((item: any) => `${item.variety} (${Number(item.quantity || 0).toLocaleString()} @ ${formatUGX(item.unitPrice || 2500)})`).join(', ')
+                    : (after.cloneType || after.variety || 'Elite Robusta');
+
                 const template = buildManagerEntryTemplate({
                     module: 'Sales & Revenue',
                     action: 'Created',
@@ -54,8 +58,8 @@ export function createSalesOrderTrigger(db: admin.firestore.Firestore, processor
                         'Invoice / Receipt #': after.invoiceNumber || orderId,
                         'Customer Name': after.customerName || 'N/A',
                         'Customer Contact': after.customerPhone || 'N/A',
-                        'Clone Variety': after.cloneType || after.variety || 'Elite Robusta',
-                        'Quantity': `${Number(after.quantity || 0).toLocaleString()} plantlets`,
+                        'Clone Varieties': varietiesBreakdown,
+                        'Total Quantity': `${Number(after.quantity || 0).toLocaleString()} plantlets`,
                         'Total Settlement': totalFormatted,
                         'Payment Status': after.paymentStatus || 'Paid in Full'
                     },

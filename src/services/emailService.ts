@@ -352,6 +352,7 @@ class EmailService {
         totalAmount: number;
         amountPaid?: number;
         location?: string;
+        items?: Array<{ variety: string; quantity: number; unitPrice: number; subtotal: number }>;
         pdfBase64?: string;
     }): Promise<EmailDispatchResult> {
         const recipients: string[] = [];
@@ -370,6 +371,12 @@ class EmailService {
             }
         ] : undefined;
 
+        const items = data.items && data.items.length > 0
+            ? data.items
+            : [{ variety: data.cloneType, quantity: data.quantity, unitPrice: data.unitPrice, subtotal: data.totalAmount }];
+
+        const itemsSummary = items.map(i => `${i.variety}: ${Number(i.quantity).toLocaleString()} @ UGX ${Number(i.unitPrice).toLocaleString()} = UGX ${Number(i.subtotal).toLocaleString()}`).join(' | ');
+
         return this.dispatchTransactional({
             to: recipients,
             subject: `[G&S Coffee Farm Receipt] Invoice #${data.invoiceNumber} - ${data.cloneType}`,
@@ -384,7 +391,9 @@ class EmailService {
                 unitPrice: data.unitPrice,
                 totalAmount: data.totalAmount,
                 amountPaid: data.amountPaid ?? data.totalAmount,
-                location: data.location || 'Mubende District'
+                location: data.location || 'Mubende District',
+                items,
+                itemsSummary
             },
             attachments,
             category: 'Sales Invoice'

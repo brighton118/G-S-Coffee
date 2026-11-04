@@ -2,7 +2,7 @@ import jsPDF from 'jspdf';
 import autoTable, { RowInput } from 'jspdf-autotable';
 import { format } from 'date-fns';
 import QRCode from 'qrcode';
-import { Worker, AttendanceRecord, PayrollRecord, InventoryItem, InventoryTransaction, FarmExpense, SalesOrder, CloneBatch, ProductionHumidChamber, ProductionSorting, ActivityLog } from '../db';
+import { Worker, AttendanceRecord, PayrollRecord, InventoryItem, InventoryTransaction, FarmExpense, SalesOrder, SalesOrderItem, CloneBatch, ProductionHumidChamber, ProductionSorting, ActivityLog } from '../db';
 import { formatUGX } from './calculations';
 import { CARD_FRONT_TEMPLATE_DATA_URI, CARD_BACK_FULL_DATA_URI } from './idCardAssets';
 
@@ -656,6 +656,37 @@ export function generateProductionStageReportPDF(
     doc.save(`GS_Clone_Production_${format(new Date(), 'yyyy-MM-dd')}.pdf`);
 }
 
+export function getSalesOrderItems(order: SalesOrder): SalesOrderItem[] {
+    if (Array.isArray(order.items) && order.items.length > 0) {
+        return order.items
+            .filter(item => (Number(item.quantity) || 0) > 0)
+            .map(item => {
+                const quantity = Number(item.quantity) || 0;
+                const unitPrice = Number(item.unitPrice) || 2500;
+                const subtotal = Number(item.subtotal) || (quantity * unitPrice);
+                return {
+                    variety: item.variety || 'KR1',
+                    quantity,
+                    unitPrice,
+                    subtotal
+                };
+            });
+    }
+
+    const quantity = Number(order.quantity ?? order.quantityOrdered ?? 0);
+    const unitPrice = Number(order.unitPrice ?? order.pricePerClone ?? 2500);
+    const subtotal = Number(order.totalAmount) || (quantity * unitPrice);
+
+    return [
+        {
+            variety: order.variety || order.cloneType || 'KR1',
+            quantity,
+            unitPrice,
+            subtotal
+        }
+    ];
+}
+
 /**
  * 8. SALES ORDERS MASTER REPORT
  */
@@ -670,9 +701,16 @@ export function generateSalesOrdersReportPDF(
     let totalQuantity = 0;
 
     const tableData: RowInput[] = orders.map((o, index) => {
-        const total = o.totalAmount || 0;
-        const qty = o.quantity || o.quantityOrdered || 0;
-        const price = o.unitPrice || o.pricePerClone || 2500;
+        const items = getSalesOrderItems(o);
+        const qty = items.reduce((sum, item) => sum + item.quantity, 0) || o.quantity || o.quantityOrdered || 0;
+        const total = o.totalAmount || items.reduce((sum, item) => sum + item.subtotal, 0);
+        const uniquePrices = Array.from(new Set(items.map(i => i.unitPrice)));
+        const priceDisplay = uniquePrices.length === 1
+            ? formatUGX(uniquePrices[0])
+            : items.map(i => `${i.variety}: ${formatUGX(i.unitPrice)}`).join(', ');
+        const varietyDisplay = items.length > 1
+            ? items.map(i => `${i.variety} (${i.quantity.toLocaleString()})`).join(', ')
+            : (items[0]?.variety || o.variety || o.cloneType || 'KR1');
 
         totalRevenue += total;
         totalQuantity += qty;
@@ -683,9 +721,9 @@ export function generateSalesOrdersReportPDF(
             o.orderDate,
             o.customerName,
             o.customerPhone,
-            o.variety || o.cloneType || 'KR1',
+            varietyDisplay,
             qty.toLocaleString(),
-            formatUGX(price),
+            priceDisplay,
             formatUGX(total)
         ];
     });
@@ -699,22 +737,22 @@ export function generateSalesOrdersReportPDF(
         '',
         totalQuantity.toLocaleString(),
         '',
-        '',
         formatUGX(totalRevenue)
     ]);
 
     autoTable(doc, {
         startY,
-        head: [['#', 'Invoice #', 'Date', 'Customer', 'Phone', 'Variety', 'Qty', 'Unit Price', 'Cash Sale Total']],
+        head: [['#', 'Invoice #', 'Date', 'Customer', 'Phone', 'Varieties Recorded', 'Total Qty', 'Unit Price', 'Cash Sale Total']],
         body: tableData,
         headStyles: { fillColor: BRAND_PRIMARY, textColor: 255, fontStyle: 'bold' },
         styles: { fontSize: 7.5, cellPadding: 2.2 },
         alternateRowStyles: { fillColor: [248, 249, 250] },
         columnStyles: {
             0: { cellWidth: 8, halign: 'center' },
-            1: { cellWidth: 24, fontStyle: 'bold' },
-            5: { cellWidth: 14, fontStyle: 'bold', halign: 'center' },
+            1: { cellWidth: 26, fontStyle: 'bold' },
+            5: { cellWidth: 45, fontStyle: 'bold' },
             6: { halign: 'right' },
+            7: { halign: 'right' },
             8: { halign: 'right', fontStyle: 'bold' }
         },
         margin: { left: 14, right: 14 }
@@ -731,17 +769,17 @@ export function generateSalesOrdersReportPDF(
 }
 
 /**
- * 9. SALES INVOICE & RECEIPT
+ * 9. SALES INVOICE & RECEIPT (CONSOLIDATED MULTI-VARIETY RECEIPT PER INDIVIDUAL)
  */
 export function generatePlantletReceiptPDF(order: SalesOrder): void {
     const doc = new jsPDF('portrait', 'mm', 'a4');
     const pageWidth = doc.internal.pageSize.getWidth();
 
     const invNumber = order.invoiceNumber || order.orderId || 'GSF-INV-0001';
-    const variety = order.variety || order.cloneType || 'KR1';
-    const qty = order.quantity || order.quantityOrdered || 0;
-    const price = order.unitPrice || order.pricePerClone || 2500;
-    const total = order.totalAmount || (qty * price);
+    const items = getSalesOrderItems(order);
+    const totalQty = items.reduce((sum, item) => sum + item.quantity, 0) || order.quantity || order.quantityOrdered || 0;
+    const total = order.totalAmount || items.reduce((sum, item) => sum + item.subtotal, 0);
+    const varietiesList = items.map(i => i.variety).join(', ');
 
     // Outer Border
     doc.setDrawColor(BRAND_PRIMARY[0], BRAND_PRIMARY[1], BRAND_PRIMARY[2]);
@@ -764,7 +802,7 @@ export function generatePlantletReceiptPDF(order: SalesOrder): void {
 
     // Customer & Order Metadata
     doc.setTextColor(TEXT_DARK[0], TEXT_DARK[1], TEXT_DARK[2]);
-    doc.setFontSize(10);
+    doc.setFontSize(9.5);
     doc.setFont('helvetica', 'bold');
 
     doc.setFillColor(245, 247, 245);
@@ -774,39 +812,73 @@ export function generatePlantletReceiptPDF(order: SalesOrder): void {
 
     doc.text(`Customer Name:`, 18, 50);
     doc.setFont('helvetica', 'normal');
-    doc.text(order.customerName, 65, 50);
+    doc.text(order.customerName, 58, 50);
 
     doc.setFont('helvetica', 'bold');
     doc.text(`Customer Contact:`, 18, 58);
     doc.setFont('helvetica', 'normal');
-    doc.text(order.customerPhone, 65, 58);
+    doc.text(order.customerPhone, 58, 58);
 
     doc.setFont('helvetica', 'bold');
     doc.text(`Transaction Date:`, 18, 66);
     doc.setFont('helvetica', 'normal');
-    doc.text(order.orderDate, 65, 66);
+    doc.text(order.orderDate, 58, 66);
 
-    // Items Table
-    const tableRows: RowInput[] = [
-        [
-            `Certified High-Yield Coffee Clone (${variety})\nOrigin: G&S Certified Nursery Block`,
-            qty.toLocaleString(),
-            formatUGX(price),
-            formatUGX(total)
-        ]
-    ];
+    doc.setFont('helvetica', 'bold');
+    doc.text(`Location / Farm:`, 115, 50);
+    doc.setFont('helvetica', 'normal');
+    doc.text(order.customerLocation || 'Mubende District', 148, 50);
+
+    doc.setFont('helvetica', 'bold');
+    doc.text(`Varieties Recorded:`, 115, 58);
+    doc.setFont('helvetica', 'normal');
+    doc.text(`${items.length} (${varietiesList})`, 148, 58, { maxWidth: 44 });
+
+    doc.setFont('helvetica', 'bold');
+    doc.text(`Total Plantlets:`, 115, 66);
+    doc.setFont('helvetica', 'normal');
+    doc.text(`${totalQty.toLocaleString()} clones`, 148, 66);
+
+    // Items Table (All recorded varieties on one receipt)
+    const compactRows = items.length > 5;
+    const tableRows: RowInput[] = items.map((item, idx) => [
+        (idx + 1).toString(),
+        compactRows
+            ? `Certified High-Yield Coffee Clone — Variety ${item.variety} (G&S Nursery)`
+            : `Certified High-Yield Coffee Clone (${item.variety})\nOrigin: G&S Certified Nursery Block`,
+        item.quantity.toLocaleString(),
+        formatUGX(item.unitPrice),
+        formatUGX(item.subtotal)
+    ]);
+
+    tableRows.push([
+        '',
+        `TOTAL (${items.length} ${items.length === 1 ? 'Variety' : 'Varieties'} Recorded)`,
+        totalQty.toLocaleString(),
+        '',
+        formatUGX(total)
+    ]);
 
     autoTable(doc, {
-        startY: 85,
-        head: [['Item Description / Clone Variety', 'Quantity', 'Unit Price (UGX)', 'Subtotal (UGX)']],
+        startY: 84,
+        head: [['#', 'Item Description / Clone Variety', 'Quantity', 'Unit Price (UGX)', 'Subtotal (UGX)']],
         body: tableRows,
         headStyles: { fillColor: BRAND_PRIMARY, textColor: 255, fontStyle: 'bold' },
-        styles: { fontSize: 9, cellPadding: 4 },
+        styles: { fontSize: compactRows ? 8.5 : 9, cellPadding: compactRows ? 2.5 : 3.5 },
+        alternateRowStyles: { fillColor: [248, 249, 250] },
         columnStyles: {
-            0: { cellWidth: 90 },
-            1: { cellWidth: 30, halign: 'center' },
-            2: { cellWidth: 30, halign: 'right' },
-            3: { cellWidth: 32, halign: 'right', fontStyle: 'bold' }
+            0: { cellWidth: 10, halign: 'center', fontStyle: 'bold' },
+            1: { cellWidth: 82 },
+            2: { cellWidth: 28, halign: 'center', fontStyle: 'bold' },
+            3: { cellWidth: 30, halign: 'right' },
+            4: { cellWidth: 32, halign: 'right', fontStyle: 'bold' }
+        },
+        didParseCell: (data) => {
+            if (data.section === 'body' && data.row.index === tableRows.length - 1) {
+                data.cell.styles.fontStyle = 'bold';
+                data.cell.styles.fillColor = [232, 245, 233];
+                data.cell.styles.textColor = [27, 94, 32];
+            }
         },
         margin: { left: 14, right: 14 }
     });
@@ -816,22 +888,24 @@ export function generatePlantletReceiptPDF(order: SalesOrder): void {
     // Financial Summary
     doc.setFontSize(10);
     doc.setFont('helvetica', 'bold');
-    doc.text(`CASH RECEIVED IN FULL:`, 120, finalY);
+    doc.setTextColor(TEXT_DARK[0], TEXT_DARK[1], TEXT_DARK[2]);
+    doc.text(`CASH RECEIVED IN FULL:`, 115, finalY);
     doc.text(`${formatUGX(total)}`, pageWidth - 14, finalY, { align: 'right' });
 
     doc.setTextColor(TEXT_DARK[0], TEXT_DARK[1], TEXT_DARK[2]);
     doc.setFontSize(8.5);
     doc.setFont('helvetica', 'normal');
     if (order.notes) {
-        doc.text(`Notes: ${order.notes}`, 14, finalY + 15);
+        doc.text(`Notes: ${order.notes}`, 14, finalY + 12);
     }
 
+    const sigY = Math.min(268, finalY + 34);
     // Signatures
-    doc.line(14, finalY + 40, 70, finalY + 40);
-    doc.text('Issued by (G&S FARM)', 14, finalY + 44);
+    doc.line(14, sigY, 70, sigY);
+    doc.text('Issued by (G&S FARM)', 14, sigY + 4);
 
-    doc.line(pageWidth - 70, finalY + 40, pageWidth - 14, finalY + 40);
-    doc.text('Customer Received by', pageWidth - 70, finalY + 44);
+    doc.line(pageWidth - 70, sigY, pageWidth - 14, sigY);
+    doc.text('Customer Received by', pageWidth - 70, sigY + 4);
 
     doc.save(`GS_Receipt_${invNumber}.pdf`);
 }

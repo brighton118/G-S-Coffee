@@ -323,6 +323,13 @@ export interface FarmExpense {
     notes?: string;
 }
 
+export interface SalesOrderItem {
+    variety: CloneVarietyType | string;
+    quantity: number;
+    unitPrice: number;
+    subtotal: number;
+}
+
 export interface SalesOrder {
     id?: number;
     invoiceNumber?: string;
@@ -334,6 +341,7 @@ export interface SalesOrder {
     customerLocation?: string;
     variety?: CloneVarietyType | string;
     cloneType?: string;
+    items?: SalesOrderItem[];
     batchId?: string;
     quantity?: number;
     quantityOrdered?: number;
@@ -343,6 +351,8 @@ export interface SalesOrder {
     amountPaid: number;
     stockDeducted?: boolean;
     stockDeductedDate?: string;
+    receiptIssued?: boolean;
+    receiptIssuedAt?: string;
     createdAt?: string;
     soldBy?: string;
     notes?: string;
