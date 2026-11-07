@@ -8,20 +8,16 @@ import {
     CheckCircle2, 
     RefreshCw,
     Clock, 
-    Package, 
-    Sprout, 
-    Key, 
-    Eye, 
-    EyeOff, 
-    FileText, 
+    Key,
+    Eye,
+    EyeOff,
     MapPin, 
     Phone, 
     Building, 
     Navigation, 
     Globe, 
     User, 
-    ShieldCheck, 
-    DollarSign,
+    ShieldCheck,
     ChevronDown,
     Layers,
     Users,
@@ -29,7 +25,6 @@ import {
     Lock,
     Send,
     AlertCircle,
-    ExternalLink
 } from 'lucide-react';
 import { updatePassword } from 'firebase/auth';
 import { doc, getDoc, setDoc, serverTimestamp } from 'firebase/firestore';
@@ -37,7 +32,7 @@ import { auth, dbFirestore } from '../firebase';
 import { firestoreSyncService } from '../services/firestoreSync';
 import AdminInvitations from '../components/AdminInvitations';
 import { SUPER_ADMIN_EMAILS } from '../services/adminAccess';
-import { emailService, SystemEmailRecipientInfo, BrevoStatusResponse } from '../services/emailService';
+import { emailService, SystemEmailRecipientInfo } from '../services/emailService';
 import { notificationService } from '../utils/notificationService';
 import {
     DEFAULT_ATTENDANCE_SCHEDULE,
@@ -121,11 +116,9 @@ const Settings: React.FC = () => {
     // Email delivery and logged-in system recipients state
     const [systemRecipients, setSystemRecipients] = useState<SystemEmailRecipientInfo[]>([]);
     const [isLoadingRecipients, setIsLoadingRecipients] = useState<boolean>(false);
-    const [brevoStatus, setBrevoStatus] = useState<BrevoStatusResponse | null>(null);
     const [testEmailTarget, setTestEmailTarget] = useState<string>('all');
     const [isSendingTest, setIsSendingTest] = useState<boolean>(false);
     const [testEmailFeedback, setTestEmailFeedback] = useState<{ type: 'success' | 'error'; message: string } | null>(null);
-    const [showApiKey, setShowApiKey] = useState<boolean>(false);
 
     // Password change state
     const [newAdminPass, setNewAdminPass] = useState('');
@@ -215,13 +208,9 @@ const Settings: React.FC = () => {
         const loadSystemEmailData = async () => {
             setIsLoadingRecipients(true);
             try {
-                const [recipients, status] = await Promise.all([
-                    emailService.getSystemRecipientsAsync().catch(() => []),
-                    emailService.getBrevoStatus().catch(() => null)
-                ]);
+                const recipients = await emailService.getSystemRecipientsAsync().catch(() => []);
                 if (isMounted) {
                     setSystemRecipients(recipients);
-                    if (status) setBrevoStatus(status);
                 }
             } catch (err) {
                 console.warn('System email data load note:', err);
@@ -241,12 +230,8 @@ const Settings: React.FC = () => {
     const handleRefreshRecipients = async () => {
         setIsLoadingRecipients(true);
         try {
-            const [recipients, status] = await Promise.all([
-                emailService.getSystemRecipientsAsync(),
-                emailService.getBrevoStatus()
-            ]);
+            const recipients = await emailService.getSystemRecipientsAsync();
             setSystemRecipients(recipients);
-            if (status) setBrevoStatus(status);
         } catch (err) {
             console.warn('Refresh recipients error:', err);
         } finally {
@@ -278,7 +263,6 @@ const Settings: React.FC = () => {
             });
         } finally {
             setIsSendingTest(false);
-            void emailService.getBrevoStatus().then(st => setBrevoStatus(st)).catch(() => {});
         }
     };
 
@@ -863,161 +847,6 @@ const Settings: React.FC = () => {
                                                 <Smartphone size={16} color="#16a34a" /> Send SMS &amp; Mobile Alerts to {settings.contactPhone}
                                             </div>
                                         </label>
-                                    </div>
-
-                                    {/* Active Event-Driven Alert Categories */}
-                                    <div style={{ marginTop: '0.5rem', paddingTop: '0.85rem', borderTop: '1px solid var(--color-border)' }}>
-                                        <h4 style={{ margin: '0 0 0.65rem 0', fontSize: '0.95rem', color: 'var(--color-primary-dark)', display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
-                                            <FileText size={16} color="#2563eb" /> Active Event-Driven &amp; Automated Alert Categories
-                                            <span className="settings-perm-pill admin-only">Backend Enforced (Permanent)</span>
-                                        </h4>
-
-                                        <div style={{ display: 'flex', flexDirection: 'column', gap: '0.65rem', background: '#f8fafc', padding: '0.85rem 1rem', borderRadius: '8px', border: '1px solid #e2e8f0' }}>
-                                            <label style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', cursor: canEditAlertToggles ? 'pointer' : 'default', fontSize: '0.85rem' }}>
-                                                <input type="checkbox" disabled={!canEditAlertToggles} checked={settings.notifyManagerEntry !== false} onChange={e => setSettings({ ...settings, notifyManagerEntry: e.target.checked })} />
-                                                <FileText size={14} color="#2563eb" /> <strong>Automatic Manager Entry Alerts:</strong> Notifies Admin on every qualifying manager save
-                                            </label>
-
-                                            <label style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', cursor: canEditAlertToggles ? 'pointer' : 'default', fontSize: '0.85rem' }}>
-                                                <input type="checkbox" disabled={!canEditAlertToggles} checked={settings.notifyNurseryEvents !== false} onChange={e => setSettings({ ...settings, notifyNurseryEvents: e.target.checked })} />
-                                                <Sprout size={14} color="#16a34a" /> <strong>Nursery Management:</strong> Batches, Chamber Transitions, Hardening &amp; Loss Reports
-                                            </label>
-
-                                            <label style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', cursor: canEditAlertToggles ? 'pointer' : 'default', fontSize: '0.85rem' }}>
-                                                <input type="checkbox" disabled={!canEditAlertToggles} checked={settings.notifyInventoryEvents !== false} onChange={e => setSettings({ ...settings, notifyInventoryEvents: e.target.checked })} />
-                                                <Package size={14} color="#dc2626" /> <strong>Inventory Management:</strong> New Stock Items, Adjustments &amp; Expiry Warnings
-                                            </label>
-
-                                            <label style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', cursor: canEditAlertToggles ? 'pointer' : 'default', fontSize: '0.85rem' }}>
-                                                <input type="checkbox" disabled={!canEditAlertToggles} checked={settings.notifySalesEvents !== false} onChange={e => setSettings({ ...settings, notifySalesEvents: e.target.checked })} />
-                                                <DollarSign size={14} color="#16a34a" /> <strong>Sales &amp; Revenue:</strong> New Invoices, Cash Receipts &amp; Order Cancellations
-                                            </label>
-
-                                            <label style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', cursor: canEditAlertToggles ? 'pointer' : 'default', fontSize: '0.85rem' }}>
-                                                <input type="checkbox" disabled={!canEditAlertToggles} checked={settings.notifyWorkerEvents !== false} onChange={e => setSettings({ ...settings, notifyWorkerEvents: e.target.checked })} />
-                                                <FileText size={14} color="#2563eb" /> <strong>Worker Registry:</strong> New Enrolled Workers &amp; Account Deactivations
-                                            </label>
-
-                                            <label style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', cursor: canEditAlertToggles ? 'pointer' : 'default', fontSize: '0.85rem' }}>
-                                                <input type="checkbox" disabled={!canEditAlertToggles} checked={settings.notifyPayrollEvents !== false} onChange={e => setSettings({ ...settings, notifyPayrollEvents: e.target.checked })} />
-                                                <DollarSign size={14} color="#ea580c" /> <strong>Payroll &amp; Compensation:</strong> Completed Payroll Runs &amp; Approvals
-                                            </label>
-
-                                            <label style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', cursor: canEditAlertToggles ? 'pointer' : 'default', fontSize: '0.85rem' }}>
-                                                <input type="checkbox" disabled={!canEditAlertToggles} checked={settings.notifyAttendanceDeadlines !== false} onChange={e => setSettings({ ...settings, notifyAttendanceDeadlines: e.target.checked })} />
-                                                <Clock size={14} color="#ea580c" /> <strong>Automatic Attendance Monitoring:</strong> Missed Morning Clock-in Cutoff ({settings.attendanceTimeInEnd})
-                                            </label>
-
-                                            <label style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', cursor: canEditAlertToggles ? 'pointer' : 'default', fontSize: '0.85rem' }}>
-                                                <input type="checkbox" disabled={!canEditAlertToggles} checked={settings.notifyEODAttendance} onChange={e => setSettings({ ...settings, notifyEODAttendance: e.target.checked })} />
-                                                <Clock size={14} color="#2563eb" /> Daily End of Day (17:00) Attendance Summary
-                                            </label>
-
-                                            <label style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', cursor: canEditAlertToggles ? 'pointer' : 'default', fontSize: '0.85rem' }}>
-                                                <input type="checkbox" disabled={!canEditAlertToggles} checked={settings.notifyPendingOvertime} onChange={e => setSettings({ ...settings, notifyPendingOvertime: e.target.checked })} />
-                                                <Clock size={14} color="#ea580c" /> Pending Overtime Approval Alerts
-                                            </label>
-
-                                            <label style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', cursor: canEditAlertToggles ? 'pointer' : 'default', fontSize: '0.85rem' }}>
-                                                <input type="checkbox" disabled={!canEditAlertToggles} checked={settings.notifyLowStock} onChange={e => setSettings({ ...settings, notifyLowStock: e.target.checked })} />
-                                                <Package size={14} color="#dc2626" /> Critical Low Stock Threshold Warnings
-                                            </label>
-
-                                            <label style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', cursor: canEditAlertToggles ? 'pointer' : 'default', fontSize: '0.85rem' }}>
-                                                <input type="checkbox" disabled={!canEditAlertToggles} checked={settings.notifyChamberOverdue} onChange={e => setSettings({ ...settings, notifyChamberOverdue: e.target.checked })} />
-                                                <Sprout size={14} color="#16a34a" /> Humid Chamber Overdue Alerts (&gt; 30 days)
-                                            </label>
-                                        </div>
-                                    </div>
-
-                                    {/* Brevo Transactional Email Settings */}
-                                    <div style={{ marginTop: '0.85rem', paddingTop: '1rem', borderTop: '1px solid var(--color-border)' }}>
-                                        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '0.75rem', flexWrap: 'wrap', gap: '0.5rem' }}>
-                                            <h4 style={{ margin: 0, fontSize: '0.95rem', color: 'var(--color-primary-dark)', display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
-                                                <Key size={16} color="var(--color-primary)" /> Brevo Transactional Email API (SMTP v3)
-                                                {!canEditAllEmails && <span className="settings-perm-pill admin-only">Admin Managed</span>}
-                                            </h4>
-                                            {brevoStatus && (
-                                                <span className={`settings-perm-pill ${brevoStatus.isConfigured || (settings.emailApiKey && settings.emailApiKey.startsWith('xkeysib-')) ? 'manager-access' : 'admin-only'}`} style={{ fontSize: '0.78rem', padding: '0.2rem 0.6rem' }}>
-                                                    {brevoStatus.isConfigured || (settings.emailApiKey && settings.emailApiKey.startsWith('xkeysib-')) ? '● Connected to Brevo API' : '○ API Key Required for Direct Relay'}
-                                                </span>
-                                            )}
-                                        </div>
-
-                                        {!canEditAllEmails ? (
-                                            <div style={{ background: '#f0fdf4', border: '1px solid #bbf7d0', borderRadius: '8px', padding: '1rem', color: '#166534', fontSize: '0.85rem', display: 'flex', alignItems: 'center', gap: '0.75rem', margin: '0.5rem 0 1rem' }}>
-                                                <ShieldCheck size={20} color="#16a34a" />
-                                                <div>
-                                                    <strong>Brevo Transactional Email Relay (SMTP v3) is active in the backend.</strong>
-                                                    <div style={{ color: '#15803d', marginTop: '0.2rem' }}>
-                                                        Operational alerts, manager activity logs, and worker payslips are securely dispatched to administrators. API credentials and sender routing are managed securely in the backend.
-                                                    </div>
-                                                </div>
-                                            </div>
-                                        ) : (
-                                        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(260px, 1fr))', gap: '0.85rem', marginBottom: '0.85rem' }}>
-                                            <div className="form-group" style={{ margin: 0 }}>
-                                                <label className="form-label" style={{ fontSize: '0.85rem' }}>
-                                                    Brevo API Key (starts with xkeysib-...)
-                                                    {!canEditAllEmails && <span className="settings-perm-pill admin-only">Admin Managed</span>}
-                                                </label>
-                                                <div style={{ position: 'relative' }}>
-                                                    <input
-                                                        type={showApiKey ? 'text' : 'password'}
-                                                        className="form-input"
-                                                        disabled={!canEditAllEmails}
-                                                        value={settings.emailApiKey || ''}
-                                                        onChange={e => setSettings({ ...settings, emailApiKey: e.target.value })}
-                                                        placeholder="xkeysib-xxxxxxxxxxxxxxxxxxxx"
-                                                        style={{ paddingRight: '2.5rem', fontFamily: 'monospace', fontSize: '0.85rem' }}
-                                                    />
-                                                    <button
-                                                        type="button"
-                                                        onClick={() => setShowApiKey(!showApiKey)}
-                                                        style={{ position: 'absolute', right: '0.5rem', top: '50%', transform: 'translateY(-50%)', background: 'none', border: 'none', cursor: 'pointer', color: '#64748b' }}
-                                                    >
-                                                        {showApiKey ? <EyeOff size={16} /> : <Eye size={16} />}
-                                                    </button>
-                                                </div>
-                                                <span style={{ fontSize: '0.73rem', color: 'var(--color-text-light)', display: 'block', marginTop: '0.2rem' }}>
-                                                    Obtain your free API Key from <a href="https://app.brevo.com/settings/keys/api" target="_blank" rel="noreferrer" style={{ color: 'var(--color-primary)', textDecoration: 'underline' }}>Brevo API Keys <ExternalLink size={10} style={{ display: 'inline' }} /></a>
-                                                </span>
-                                            </div>
-
-                                            <div className="form-group" style={{ margin: 0 }}>
-                                                <label className="form-label" style={{ fontSize: '0.85rem' }}>
-                                                    Verified Sender Email Address
-                                                    {!canEditAllEmails && <span className="settings-perm-pill admin-only">Admin Managed</span>}
-                                                </label>
-                                                <input
-                                                    type="email"
-                                                    className="form-input"
-                                                    disabled={!canEditAllEmails}
-                                                    value={settings.brevoSenderEmail || ''}
-                                                    onChange={e => setSettings({ ...settings, brevoSenderEmail: e.target.value })}
-                                                    placeholder="gs.farms.ug@gmail.com"
-                                                />
-                                                <span style={{ fontSize: '0.73rem', color: 'var(--color-text-light)', display: 'block', marginTop: '0.2rem' }}>
-                                                    Must be an authorized or verified sender in your Brevo account (e.g. <code>gs.farms.ug@gmail.com</code>).
-                                                </span>
-                                            </div>
-
-                                            <div className="form-group" style={{ margin: 0 }}>
-                                                <label className="form-label" style={{ fontSize: '0.85rem' }}>
-                                                    Sender Display Name
-                                                    {!canEditAllEmails && <span className="settings-perm-pill admin-only">Admin Managed</span>}
-                                                </label>
-                                                <input
-                                                    type="text"
-                                                    className="form-input"
-                                                    disabled={!canEditAllEmails}
-                                                    value={settings.brevoSenderName || ''}
-                                                    onChange={e => setSettings({ ...settings, brevoSenderName: e.target.value })}
-                                                    placeholder="G&S Coffee Farm Management System"
-                                                />
-                                            </div>
-                                        </div>
-                                        )}
                                     </div>
 
                                     {/* Emails Logged In Our System - Delivery Roster */}

@@ -18,7 +18,6 @@ import {
     CheckCircle2,
     UserPlus,
     Banknote,
-    Bell
 } from 'lucide-react';
 import { formatUGX } from '../utils/calculations';
 import { useUserRole } from '../context/UserRoleContext';
@@ -295,19 +294,6 @@ const Dashboard = () => {
             {/* Alert Banner if any overdue humid chambers or low stock */}
             {(overdueChamberBatches.length > 0 || lowStockItems.length > 0 || notifications.length > 0) && (
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
-                    {notifications.length > 0 && (
-                        <div className="card" style={{ padding: '0.75rem 1rem', backgroundColor: '#f0fdf4', border: '1px solid #bbf7d0', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                            <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', color: '#166534' }}>
-                                <Bell size={18} />
-                                <span style={{ fontWeight: 600, fontSize: '0.9rem' }}>
-                                    {notifications.length} Operational Alert(s) Active in Backend: {notifications[0]?.title}
-                                </span>
-                            </div>
-                            <Link to="/notifications" style={{ fontSize: '0.85rem', fontWeight: 600, color: '#166534', display: 'flex', alignItems: 'center', gap: '0.25rem' }}>
-                                View Notifications <ArrowRight size={14} />
-                            </Link>
-                        </div>
-                    )}
                     {overdueChamberBatches.length > 0 && (
                         <div className="card" style={{ padding: '0.75rem 1rem', backgroundColor: '#fef2f2', border: '1px solid #fecaca', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                             <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', color: '#b91c1c' }}>
