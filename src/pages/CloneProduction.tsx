@@ -385,8 +385,22 @@ const CloneProduction: React.FC = () => {
         setIsDeleting(true);
         setDeleteError('');
         try {
+            const deleted = { ...batchToDelete };
             await deleteSingleCloneBatchSystemWide(batchToDelete.batchId);
             setBatchToDelete(null);
+
+            void notificationService.notifyManagerDataEntry({
+                module: 'Clone Production',
+                action: `Clone Batch Deleted: ${deleted.batchId}`,
+                description: `Clone Batch ${deleted.batchId} (${deleted.variety}, Current Stage: ${deleted.currentStage}) was removed/deleted from the nursery.`,
+                details: {
+                    'Batch ID': deleted.batchId,
+                    'Variety': deleted.variety,
+                    'Stage': deleted.currentStage,
+                    'Current Plantlets': `${(deleted.currentQuantity || 0).toLocaleString()} plants`
+                },
+                sourceUser: auth.currentUser?.email || 'Farm Operations Manager'
+            });
         } catch (err: any) {
             console.error('Failed to delete clone batch:', err);
             setDeleteError(err?.message || 'Failed to delete clone batch. Please try again.');

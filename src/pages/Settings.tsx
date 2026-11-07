@@ -38,6 +38,7 @@ import { firestoreSyncService } from '../services/firestoreSync';
 import AdminInvitations from '../components/AdminInvitations';
 import { SUPER_ADMIN_EMAILS } from '../services/adminAccess';
 import { emailService, SystemEmailRecipientInfo, BrevoStatusResponse } from '../services/emailService';
+import { notificationService } from '../utils/notificationService';
 import {
     DEFAULT_ATTENDANCE_SCHEDULE,
     normalizeAttendanceScheduleSettings
@@ -334,6 +335,20 @@ const Settings: React.FC = () => {
                     ? '✅ Operational settings, manager alerts, and attendance thresholds saved and synced across devices!'
                     : '✅ All farm settings, email API keys, phone numbers, and location saved and synced across all devices!'
             );
+
+            if (effectiveRole === 'manager') {
+                void notificationService.notifyManagerDataEntry({
+                    module: 'Settings & Farm Profile',
+                    action: 'Operational Settings Updated',
+                    description: `Farm Manager saved operational configuration settings (Shift Time-In: ${dataToSave.attendanceTimeInStart} - ${dataToSave.attendanceTimeInEnd}, Time-Out: ${dataToSave.attendanceTimeOutStart} - ${dataToSave.attendanceTimeOutEnd}).`,
+                    details: {
+                        'Time-In Window': `${dataToSave.attendanceTimeInStart} - ${dataToSave.attendanceTimeInEnd}`,
+                        'Time-Out Window': `${dataToSave.attendanceTimeOutStart} - ${dataToSave.attendanceTimeOutEnd}`,
+                        'Updated By': auth.currentUser?.email || 'Farm Manager'
+                    },
+                    sourceUser: auth.currentUser?.email || 'Farm Manager'
+                });
+            }
 
             // Re-sync local recipient roster
             void handleRefreshRecipients();

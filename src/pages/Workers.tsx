@@ -280,6 +280,20 @@ const Workers: React.FC = () => {
         });
         void firestoreSyncService.saveWorker(updated);
         setSelectedWorkerForCard(updated);
+
+        void notificationService.notifyManagerDataEntry({
+            module: 'Workforce',
+            action: `Farm Card Renewed: ${worker.fullName}`,
+            description: `Farm Card #${worker.farmCardNumber || worker.workerId} was renewed for worker "${worker.fullName}" (${worker.workerId}). New card expiration: ${cardExpiryStr}.`,
+            details: {
+                'Worker ID': worker.workerId,
+                'Full Name': worker.fullName,
+                'Farm Card #': worker.farmCardNumber || 'N/A',
+                'New Issued Date': todayStr,
+                'New Expiry Date': cardExpiryStr
+            },
+            sourceUser: auth.currentUser?.email || 'Farm Manager'
+        });
     };
 
     const handleConfirmDeleteAll = async () => {
@@ -301,8 +315,22 @@ const Workers: React.FC = () => {
         setIsDeleting(true);
         setDeleteError('');
         try {
+            const deleted = { ...workerToDelete };
             await deleteSingleWorkerSystemWide(workerToDelete.workerId);
             setWorkerToDelete(null);
+
+            void notificationService.notifyManagerDataEntry({
+                module: 'Workforce',
+                action: `Worker Record Deleted: ${deleted.fullName}`,
+                description: `Worker "${deleted.fullName}" (${deleted.workerId}, Role/Status: ${deleted.status}) was deleted from the workforce database.`,
+                details: {
+                    'Worker ID': deleted.workerId,
+                    'Full Name': deleted.fullName,
+                    'Contact': deleted.phoneNumber || 'N/A',
+                    'Monthly Base Salary': `UGX ${(deleted.monthlySalary || 0).toLocaleString()}`
+                },
+                sourceUser: auth.currentUser?.email || 'Farm Manager'
+            });
         } catch (err: any) {
             console.error('Failed to delete worker:', err);
             setDeleteError(err?.message || 'Failed to delete worker. Please try again.');

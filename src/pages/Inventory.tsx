@@ -126,8 +126,22 @@ const Inventory: React.FC = () => {
         setIsDeleting(true);
         setDeleteError('');
         try {
+            const deletedItem = { ...itemToDelete };
             await deleteSingleInventoryItemSystemWide(itemToDelete.inventoryId);
             setItemToDelete(null);
+
+            void notificationService.notifyManagerDataEntry({
+                module: 'Inventory & Supplies',
+                action: `Inventory Item Deleted: ${deletedItem.name}`,
+                description: `Inventory item "${deletedItem.name}" (ID: ${deletedItem.inventoryId}, Category: ${deletedItem.category}) was removed from inventory.`,
+                details: {
+                    'Item ID': deletedItem.inventoryId,
+                    'Item Name': deletedItem.name,
+                    'Category': deletedItem.category,
+                    'Last Balance': `${deletedItem.quantity} ${deletedItem.unit}`
+                },
+                sourceUser: auth.currentUser?.email || 'Farm Store Manager'
+            });
         } catch (err: any) {
             console.error('Failed to delete inventory item:', err);
             setDeleteError(err?.message || 'Failed to delete inventory item. Please try again.');
@@ -155,8 +169,22 @@ const Inventory: React.FC = () => {
         setIsDeleting(true);
         setDeleteError('');
         try {
+            const deletedExp = { ...expenseToDelete };
             await deleteSingleExpenseSystemWide(expenseToDelete.expenseId, expenseToDelete.id);
             setExpenseToDelete(null);
+
+            void notificationService.notifyManagerDataEntry({
+                module: 'Inventory & Expenses',
+                action: `Farm Expense Deleted: ${deletedExp.category}`,
+                description: `Farm expense of UGX ${deletedExp.amount.toLocaleString()} ("${deletedExp.description}") dated ${deletedExp.date} was deleted.`,
+                details: {
+                    'Expense ID': deletedExp.expenseId || `EXP-${deletedExp.id}`,
+                    'Category': deletedExp.category,
+                    'Amount': `UGX ${deletedExp.amount.toLocaleString()}`,
+                    'Date': deletedExp.date
+                },
+                sourceUser: auth.currentUser?.email || 'Farm Manager'
+            });
         } catch (err: any) {
             console.error('Failed to delete farm expense:', err);
             setDeleteError(err?.message || 'Failed to delete expense. Please try again.');
@@ -201,6 +229,22 @@ const Inventory: React.FC = () => {
 
         await db.farmExpenses.add(newExpense);
         void firestoreSyncService.saveFarmExpense(newExpense);
+
+        void notificationService.notifyManagerDataEntry({
+            module: 'Inventory & Expenses',
+            action: `New Farm Expense Recorded: ${newExpense.category}`,
+            description: `Farm expenditure of UGX ${newExpense.amount.toLocaleString()} was entered for "${newExpense.description || newExpense.category}". Paid to: ${newExpense.paidTo || 'N/A'}.`,
+            details: {
+                'Expense Category': newExpense.category,
+                'Amount': `UGX ${newExpense.amount.toLocaleString()}`,
+                'Description': newExpense.description || 'Operational Expense',
+                'Paid To': newExpense.paidTo || 'N/A',
+                'Expense Date': newExpense.date,
+                'Recorded By': newExpense.recordedBy || 'Farm Manager'
+            },
+            sourceUser: auth.currentUser?.email || 'Farm Manager'
+        });
+
         setShowExpenseModal(false);
         setExpenseData({
             category: 'Transport',

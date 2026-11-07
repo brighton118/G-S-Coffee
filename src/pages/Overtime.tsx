@@ -16,6 +16,7 @@ import { generateOvertimePDF } from '../utils/pdfGenerator';
 import { DEFAULT_OVERTIME_RULES, formatUGX } from '../utils/calculations';
 import { loadAttendanceScheduleSettings } from '../utils/attendanceSchedule';
 import { notificationService } from '../utils/notificationService';
+import { auth } from '../firebase';
 
 interface OvertimeProps {
     embedded?: boolean;
@@ -171,6 +172,20 @@ const Overtime: React.FC<OvertimeProps> = ({ embedded = false }) => {
             await db.overtimeRules.add({ ...configData, active: true });
         }
         setShowRulesModal(false);
+
+        void notificationService.notifyManagerDataEntry({
+            module: 'Workforce & Overtime',
+            action: 'Overtime & Shift Rules Updated',
+            description: `Overtime configuration rules updated: Multiplier: ${configData.overtimeMultiplier || 1.5}x, Hourly Base Rate: UGX ${(configData.hourlyRateUGX || 3500).toLocaleString()}/hr, Grace Period: ${configData.gracePeriodMinutes || 15} mins.`,
+            details: {
+                'Overtime Multiplier': `${configData.overtimeMultiplier || 1.5}x`,
+                'Base Hourly Rate': `UGX ${(configData.hourlyRateUGX || 3500).toLocaleString()}/hr`,
+                'Grace Period': `${configData.gracePeriodMinutes || 15} mins`,
+                'Rounding Rule': configData.roundingRule || 'Exact'
+            },
+            sourceUser: auth.currentUser?.email || 'Farm Manager'
+        });
+
         alert('Overtime & Shift rules updated successfully.');
     };
 

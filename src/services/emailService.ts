@@ -289,6 +289,66 @@ class EmailService {
         const appUrl = 'https://gs-coffee-3d022.web.app';
 
         switch (type) {
+            case 'managerAudit': {
+                const action = data.action || 'Data Entry / Modification';
+                const module = data.module || 'Farm Operations';
+                const manager = data.manager || data.sourceUser || 'Farm Manager';
+                const message = data.message || `${action} was recorded in ${module}.`;
+
+                let detailsHtml = '';
+                if (data.details && typeof data.details === 'object') {
+                    const rows = Object.entries(data.details).map(([k, v]) => `
+                        <tr>
+                            <td style="padding: 8px 12px; font-weight: bold; color: #475569; width: 38%; border-bottom: 1px solid #e2e8f0; font-size: 13px;">${k}</td>
+                            <td style="padding: 8px 12px; color: #1e293b; border-bottom: 1px solid #e2e8f0; font-size: 13px;">${String(v)}</td>
+                        </tr>
+                    `).join('');
+                    detailsHtml = `
+                        <table style="width: 100%; border-collapse: collapse; margin-bottom: 20px; background: #f8fafc; border-radius: 6px; border: 1px solid #e2e8f0;">
+                            <tbody>${rows}</tbody>
+                        </table>
+                    `;
+                }
+
+                const actionHtml = `
+                    <div style="text-align: center; margin: 24px 0 10px;">
+                        <a href="${data.actionUrl || appUrl}" style="background: #1e3a29; color: #ffffff; padding: 12px 24px; text-decoration: none; border-radius: 6px; font-weight: bold; font-size: 13px; display: inline-block;">
+                            ${data.actionLabel || 'Open Farm Portal & Audit Records'}
+                        </a>
+                    </div>
+                `;
+
+                const html = `
+                    <div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; max-width: 620px; margin: 0 auto; background: #ffffff; border: 1px solid #cbd5e1; border-radius: 8px; overflow: hidden;">
+                        <div style="background: #1e3a29; color: #ffffff; padding: 22px; text-align: center;">
+                            <h2 style="margin: 0; font-size: 20px; letter-spacing: 0.5px;">${estateName}</h2>
+                            <p style="margin: 4px 0 0; font-size: 13px; color: #a7f3d0;">Manager Operational Activity Audit</p>
+                            <div style="margin-top: 10px; display: inline-block; background: #166534; color: #ffffff; padding: 4px 12px; border-radius: 12px; font-size: 12px; font-weight: bold;">
+                                🚨 ${module} • ${action}
+                            </div>
+                        </div>
+                        <div style="padding: 24px; color: #1e293b; font-size: 14px; line-height: 1.6;">
+                            <div style="background: #f0fdf4; border: 1px solid #bbf7d0; border-left: 4px solid #16a34a; border-radius: 6px; padding: 12px 16px; margin-bottom: 18px;">
+                                <strong style="color: #166534; font-size: 14px;">Operational Data Change Recorded</strong>
+                                <p style="margin: 4px 0 0; color: #15803d; font-size: 13px;">
+                                    Farm Manager <strong>${manager}</strong> entered or updated records in the G&amp;S Coffee Farm portal.
+                                </p>
+                            </div>
+
+                            <p style="margin: 0 0 14px; font-size: 14px; color: #334155;">${message}</p>
+
+                            <h3 style="color: #0f172a; margin: 18px 0 10px; font-size: 15px;">Audit Specification &amp; Submitted Fields</h3>
+                            ${detailsHtml}
+                            ${actionHtml}
+                        </div>
+                        <div style="background: #f1f5f9; padding: 14px; text-align: center; font-size: 11px; color: #64748b; border-top: 1px solid #cbd5e1;">
+                            ${estateName} • ${location} • Confidential Farm Administration Notification
+                        </div>
+                    </div>
+                `;
+                return { html, text: `Manager Activity Audit: ${action}\n\nSubmitted by: ${manager}\nModule: ${module}\n${message}` };
+            }
+
             case 'salesInvoice': {
                 const invNum = data.invoiceNumber || 'INV-000';
                 const date = data.orderDate || new Date().toISOString().split('T')[0];
@@ -456,7 +516,7 @@ class EmailService {
     public async dispatchTransactional(data: {
         to?: string | string[];
         subject?: string;
-        templateType?: 'adminAlert' | 'missedAttendance' | 'payrollRun' | 'workerPayslip' | 'salesInvoice' | 'inventoryAlert' | 'reportDelivery';
+        templateType?: 'adminAlert' | 'missedAttendance' | 'payrollRun' | 'workerPayslip' | 'salesInvoice' | 'inventoryAlert' | 'reportDelivery' | 'managerAudit';
         templateData?: Record<string, any>;
         htmlContent?: string;
         textContent?: string;
@@ -921,6 +981,52 @@ class EmailService {
             },
             attachments,
             category: 'Farm Report'
+        });
+    }
+
+    /**
+     * Send dedicated Manager Activity Audit alert directly to Administrators.
+     * Triggered whenever the farm manager enters new operational data or modifies existing records.
+     */
+    public async sendManagerActivityAlert(params: {
+        module: string;
+        action: string;
+        description: string;
+        recordId?: string | number;
+        details?: Record<string, any>;
+        sourceUser?: string;
+    }): Promise<EmailDispatchResult> {
+        // Exclusively targeted to Administrators
+        const recipients = this.getAdminRecipients();
+        const managerActor = params.sourceUser 
+            || (auth.currentUser?.email ? `${auth.currentUser.displayName || auth.currentUser.email} (Farm Manager)` : 'Farm Manager (ophinemanigaruhanga@gmail.com)');
+
+        const actionClean = params.action.replace(/^Manager Entry:\s*/i, '');
+        const subject = `[G&S Manager Audit] ${actionClean} • ${params.module}`;
+
+        return this.dispatchTransactional({
+            to: recipients,
+            subject,
+            templateType: 'managerAudit',
+            templateData: {
+                title: `🚨 Manager Activity Audit: ${actionClean}`,
+                action: actionClean,
+                module: params.module,
+                manager: managerActor,
+                message: params.description,
+                category: `Manager Audit • ${params.module}`,
+                details: {
+                    'Operational Module': params.module,
+                    'Action Performed': actionClean,
+                    'Submitted By': managerActor,
+                    'Estate Location': 'BUBAARE, KASHARI MBARARA UGANDA',
+                    'Dispatched At': new Date().toLocaleString('en-GB', { timeZone: 'Africa/Kampala' }),
+                    ...(params.details || {})
+                },
+                actionLabel: 'Review Changes in Farm Portal',
+                actionUrl: 'https://gs-coffee-3d022.web.app'
+            },
+            category: 'Manager Entry'
         });
     }
 

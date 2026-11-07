@@ -331,6 +331,22 @@ const Payroll: React.FC = () => {
             description: `Adjusted for ${record.workerName}: Overtime Rate set to ${formatUGX(newOvertimeRate)}/hr; manual deductions set to ${formatUGX(manualDeduction)}; attendance deduction is ${formatUGX(attendanceDeduction)}; new net pay is ${formatUGX(netPay)}.`
         });
 
+        void notificationService.notifyManagerDataEntry({
+            module: 'Payroll & Finance',
+            action: `Payroll Adjusted: ${record.workerName}`,
+            description: `Payroll record adjusted for ${record.workerName} (${record.workerId}) for month ${selectedMonth}. Overtime Rate: UGX ${newOvertimeRate}/hr, Total Deductions: UGX ${newDeduction.toLocaleString()} (${combinedReason}). Net Pay: UGX ${netPay.toLocaleString()}.`,
+            details: {
+                'Worker Name': String(record.workerName || 'N/A'),
+                'Worker ID': String(record.workerId || 'N/A'),
+                'Payroll Month': selectedMonth,
+                'Overtime Rate': `UGX ${newOvertimeRate}/hr`,
+                'Deductions': `UGX ${newDeduction.toLocaleString()}`,
+                'Deduction Reason': String(combinedReason || 'Standard Deduction'),
+                'Net Take-Home': `UGX ${netPay.toLocaleString()}`
+            },
+            sourceUser: auth.currentUser?.email || 'Farm Finance Manager'
+        });
+
         setShowAdjustDeductionModal(false);
         setSelectedRecordForDeduction(null);
     };

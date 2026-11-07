@@ -24,6 +24,8 @@ import { loadAttendanceScheduleSettings } from '../utils/attendanceSchedule';
 import { calculateWorkingHours, timeToMinutes } from '../utils/calculations';
 import { syncPayrollMonth } from '../services/payrollSync';
 import { firestoreSyncService } from '../services/firestoreSync';
+import { notificationService } from '../utils/notificationService';
+import { auth } from '../firebase';
 import './ScanAttendance.css';
 
 /**
@@ -297,6 +299,21 @@ const ScanAttendance = () => {
                         record: finalRecord,
                         overtimeHours,
                         hoursWorked: actualHours
+                    });
+
+                    void notificationService.notifyManagerDataEntry({
+                        module: 'Attendance & Shifts',
+                        action: `Overtime Logged on Clock-Out: ${worker.fullName}`,
+                        description: `${worker.fullName} (${worker.workerId}) clocked out at ${now}. Shift total: ${actualHours.toFixed(1)} hrs with ${overtimeHours} hrs overtime submitted for supervisor review.`,
+                        details: {
+                            'Worker Name': worker.fullName,
+                            'Worker ID': worker.workerId,
+                            'Shift Date': today,
+                            'Clock-Out Time': now,
+                            'Total Hours Worked': `${actualHours.toFixed(1)} hrs`,
+                            'Overtime Hours': `${overtimeHours} hrs`
+                        },
+                        sourceUser: auth.currentUser?.email || 'Farm Scanner Operator'
                     });
                 } else {
                     // WITHIN THRESHOLD -> REGULAR TIME-OUT (0 OVERTIME)

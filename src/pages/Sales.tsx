@@ -501,8 +501,23 @@ const Sales: React.FC = () => {
         setDeleteError('');
         try {
             const inv = orderToDelete.invoiceNumber || orderToDelete.orderId || `SALE-${orderToDelete.id}`;
+            const deleted = { ...orderToDelete };
             await deleteSingleSalesOrderSystemWide(inv, orderToDelete.id);
             setOrderToDelete(null);
+
+            void notificationService.notifyManagerDataEntry({
+                module: 'Sales & Revenue',
+                action: `Sale Invoice Deleted: #${inv}`,
+                description: `Sales invoice #${inv} for customer "${deleted.customerName}" (Total: UGX ${(deleted.totalAmount || 0).toLocaleString()}) was deleted/voided.`,
+                details: {
+                    'Invoice #': inv,
+                    'Customer': deleted.customerName,
+                    'Customer Contact': deleted.customerPhone || 'N/A',
+                    'Total Amount': `UGX ${(deleted.totalAmount || 0).toLocaleString()}`,
+                    'Receipt Status': deleted.receiptIssued ? 'Issued' : 'Pending'
+                },
+                sourceUser: auth.currentUser?.email || 'Farm Sales Manager'
+            });
         } catch (err: any) {
             console.error('Failed to delete sale:', err);
             setDeleteError(err?.message || 'Failed to delete sale. Please try again.');

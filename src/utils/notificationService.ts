@@ -2,6 +2,7 @@ import { db, AppNotification } from '../db';
 import { format, differenceInDays, parseISO } from 'date-fns';
 import { emailService } from '../services/emailService';
 import { smsService } from '../services/smsService';
+import { auth } from '../firebase';
 
 /**
  * G&S FARM Notification & Communication Engine
@@ -81,13 +82,16 @@ class NotificationService {
             }
 
             if (shouldEmail) {
-                void emailService.sendNotificationEmail({
-                    subject: title,
-                    title,
-                    message,
-                    category: type,
-                    details
-                });
+                // For Manager Entry, notifyManagerDataEntry handles dispatching the specialized audit alert
+                if (type !== 'Manager Entry') {
+                    void emailService.sendNotificationEmail({
+                        subject: title,
+                        title,
+                        message,
+                        category: type,
+                        details
+                    });
+                }
             }
         } catch (mailErr) {
             console.warn('[Notification Engine] Auto-email dispatch note:', mailErr);
@@ -248,8 +252,8 @@ class NotificationService {
     }
 
     /**
-     * Dispatch notification when a manager enters new operational data
-     * Immediately pushes to in-app notification center and emails admin accounts
+     * Dispatch notification when a manager enters new operational data or changes any record
+     * Immediately pushes to in-app notification center and emails admin accounts via Brevo API
      */
     public async notifyManagerDataEntry(params: {
         module: string;
@@ -259,10 +263,13 @@ class NotificationService {
         sourceUser?: string;
     }): Promise<number | undefined> {
         const title = `Manager Entry: ${params.action} (${params.module})`;
-        const userLabel = params.sourceUser || 'Farm Manager';
+        const currentEmail = auth.currentUser?.email;
+        const currentName = auth.currentUser?.displayName;
+        const userLabel = params.sourceUser 
+            || (currentEmail ? (currentName ? `${currentName} (${currentEmail})` : currentEmail) : 'Farm Manager (ophinemanigaruhanga@gmail.com)');
         const message = `${params.description}\n\nEntered by: ${userLabel}`;
 
-        return this.createNotification(
+        const notifId = await this.createNotification(
             'Manager Entry',
             title,
             message,
@@ -273,9 +280,25 @@ class NotificationService {
                 'Action': params.action,
                 'Entered By': userLabel,
                 'Timestamp': new Date().toLocaleString('en-GB'),
+                'Estate Location': 'BUBAARE, KASHARI MBARARA UGANDA',
                 ...(params.details || {})
             }
         );
+
+        // Dispatches dedicated Brevo email alert to Administrators
+        try {
+            void emailService.sendManagerActivityAlert({
+                module: params.module,
+                action: params.action,
+                description: params.description,
+                details: params.details,
+                sourceUser: userLabel
+            });
+        } catch (mailErr) {
+            console.warn('[Notification Engine] Direct Brevo manager audit alert note:', mailErr);
+        }
+
+        return notifId;
     }
 }
 
