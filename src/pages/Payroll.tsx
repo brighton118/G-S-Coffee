@@ -24,11 +24,13 @@ import { firestoreSyncService } from '../services/firestoreSync';
 import { notificationService } from '../utils/notificationService';
 import { emailService } from '../services/emailService';
 import { auth } from '../firebase';
+import { useUserRole } from '../context/UserRoleContext';
 import Overtime from './Overtime';
 
 const PAYMENT_METHODS = ['Cash', 'Mobile Money', 'Bank Transfer', 'Other'];
 
 const Payroll: React.FC = () => {
+    const { canEdit } = useUserRole();
     const [activeSubTab, setActiveSubTab] = useState<'payments' | 'overtime' | 'breakdown'>('payments');
     const [selectedMonth, setSelectedMonth] = useState<string>(format(new Date(), 'yyyy-MM'));
     const [statusFilter, setStatusFilter] = useState<string>('All');
@@ -175,6 +177,10 @@ const Payroll: React.FC = () => {
 
     // Open Record Payment Modal
     const handleOpenPayment = (record: PayrollRecord) => {
+        if (!canEdit) {
+            alert('Staff members have view-only access. Only Managers and Administrators can disburse or record payments.');
+            return;
+        }
         setSelectedRecordForPayment(record);
         const currentBalance = record.balance ?? (record.netPay - (record.amountPaid || 0));
         setPaymentAmount(currentBalance > 0 ? currentBalance : 0);
@@ -188,6 +194,10 @@ const Payroll: React.FC = () => {
     // Save Payment
     const handleSavePayment = async (e: React.FormEvent) => {
         e.preventDefault();
+        if (!canEdit) {
+            alert('Permission denied. Staff accounts have view-only access.');
+            return;
+        }
         if (!selectedRecordForPayment || !selectedRecordForPayment.id || paymentAmount <= 0) {
             alert('Please enter a valid payment amount greater than zero.');
             return;
@@ -272,6 +282,10 @@ const Payroll: React.FC = () => {
 
     // Open Adjustment/Deductions Modal
     const handleOpenDeduction = (record: PayrollRecord) => {
+        if (!canEdit) {
+            alert('Staff members have view-only access. Only Managers and Administrators can adjust deductions.');
+            return;
+        }
         setSelectedRecordForDeduction(record);
         setDeductionAmount(Math.max(0, (record.deductions || 0) - (record.attendanceDeduction || 0)));
         setDeductionReason(record.manualDeductionReason || (record.attendanceDeduction ? '' : record.deductionReason || ''));
@@ -282,6 +296,10 @@ const Payroll: React.FC = () => {
     // Save Deductions & Overtime Rate
     const handleSaveDeduction = async (e: React.FormEvent) => {
         e.preventDefault();
+        if (!canEdit) {
+            alert('Permission denied. Staff accounts have view-only access.');
+            return;
+        }
         if (!selectedRecordForDeduction || !selectedRecordForDeduction.id) return;
 
         const record = selectedRecordForDeduction;
@@ -612,22 +630,26 @@ const Payroll: React.FC = () => {
                                         </td>
                                         <td style={{ textAlign: 'right' }}>
                                             <div style={{ display: 'inline-flex', gap: '0.35rem' }}>
-                                                <button 
-                                                    className="btn btn-secondary"
-                                                    style={{ padding: '0.3rem 0.55rem', fontSize: '0.8rem' }}
-                                                    onClick={() => handleOpenDeduction(record)}
-                                                    title="Adjust Deductions &amp; Overtime Rate"
-                                                >
-                                                    Adjust
-                                                </button>
-                                                <button
-                                                    className="btn btn-primary"
-                                                    style={{ padding: '0.3rem 0.55rem', fontSize: '0.8rem' }}
-                                                    onClick={() => handleOpenPayment(record)}
-                                                    title="Record Worker Payment"
-                                                >
-                                                    <CreditCard size={14} /> Pay
-                                                </button>
+                                                {canEdit && (
+                                                    <>
+                                                        <button 
+                                                            className="btn btn-secondary"
+                                                            style={{ padding: '0.3rem 0.55rem', fontSize: '0.8rem' }}
+                                                            onClick={() => handleOpenDeduction(record)}
+                                                            title="Adjust Deductions &amp; Overtime Rate"
+                                                        >
+                                                            Adjust
+                                                        </button>
+                                                        <button
+                                                            className="btn btn-primary"
+                                                            style={{ padding: '0.3rem 0.55rem', fontSize: '0.8rem' }}
+                                                            onClick={() => handleOpenPayment(record)}
+                                                            title="Record Worker Payment"
+                                                        >
+                                                            <CreditCard size={14} /> Pay
+                                                        </button>
+                                                    </>
+                                                )}
                                                 <button 
                                                     className="btn btn-secondary"
                                                     style={{ padding: '0.3rem 0.55rem', fontSize: '0.8rem' }}
@@ -699,23 +721,27 @@ const Payroll: React.FC = () => {
                                 </div>
 
                                 <div style={{ display: 'flex', gap: '0.5rem', marginTop: '0.25rem', flexWrap: 'wrap' }}>
+                                    {canEdit && (
+                                        <>
+                                            <button 
+                                                className="btn btn-secondary"
+                                                style={{ flex: 1, minWidth: '90px', padding: '0.4rem', fontSize: '0.85rem' }}
+                                                onClick={() => handleOpenDeduction(record)}
+                                            >
+                                                Adjust Pay
+                                            </button>
+                                            <button
+                                                className="btn btn-primary"
+                                                style={{ flex: 1, minWidth: '70px', padding: '0.4rem', fontSize: '0.85rem', display: 'flex', justifyContent: 'center', alignItems: 'center', gap: '0.35rem' }}
+                                                onClick={() => handleOpenPayment(record)}
+                                            >
+                                                <CreditCard size={15} /> Record Payment
+                                            </button>
+                                        </>
+                                    )}
                                     <button 
                                         className="btn btn-secondary"
-                                        style={{ flex: 1, minWidth: '90px', padding: '0.4rem', fontSize: '0.85rem' }}
-                                        onClick={() => handleOpenDeduction(record)}
-                                    >
-                                        Adjust Pay
-                                    </button>
-                                    <button
-                                        className="btn btn-primary"
-                                        style={{ flex: 1, minWidth: '70px', padding: '0.4rem', fontSize: '0.85rem', display: 'flex', justifyContent: 'center', alignItems: 'center', gap: '0.35rem' }}
-                                        onClick={() => handleOpenPayment(record)}
-                                    >
-                                        <CreditCard size={15} /> Record Payment
-                                    </button>
-                                    <button 
-                                        className="btn btn-secondary"
-                                        style={{ padding: '0.4rem 0.75rem', fontSize: '0.85rem' }}
+                                        style={{ padding: '0.4rem 0.75rem', fontSize: '0.85rem', flex: canEdit ? undefined : 1 }}
                                         onClick={() => handleOpenPayslip(record)}
                                         title="Payslip"
                                     >

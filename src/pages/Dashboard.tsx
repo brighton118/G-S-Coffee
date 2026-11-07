@@ -41,6 +41,8 @@ const Dashboard = () => {
     const inventory = useLiveQuery(() => db.inventoryItems.toArray()) || [];
     const sales = useLiveQuery(() => db.salesOrders.toArray()) || [];
     const notifications = useLiveQuery(() => db.notifications.where('read').equals(0).toArray()) || [];
+    const allNotifications = useLiveQuery(() => db.notifications.toArray()) || [];
+    const activityLogs = useLiveQuery(() => db.activityLogs.toArray()) || [];
     const payrollRecords = useLiveQuery(() => db.payrollRecords.toArray()) || [];
     const payrollPayments = useLiveQuery(() => db.payrollPayments.toArray()) || [];
 
@@ -166,6 +168,47 @@ const Dashboard = () => {
         }).slice(0, 5);
     }, [payrollPayments]);
 
+    // Real-time Manager Operational entries & updates viewed directly on Admin Dashboard
+    const recentManagerActivities = useMemo(() => {
+        const fromLogs = activityLogs.map(l => ({
+            id: `log-${l.id || Math.random()}`,
+            user: l.user || 'Farm Manager',
+            action: l.action,
+            module: l.module,
+            description: l.description,
+            date: l.date
+        }));
+
+        const fromNotifs = allNotifications
+            .filter(n => n.type === 'Manager Entry' || (n.title && n.title.includes('Manager Entry')))
+            .map(n => {
+                const details = ((n as any).details as Record<string, string | number> | undefined) || {};
+                const enteredBy = details['Entered By']?.toString() || details['sourceUser']?.toString() || 'Farm Manager';
+                const action = details['Action']?.toString() || n.title.replace('Manager Entry: ', '');
+                const moduleName = details['Module']?.toString() || 'Operations';
+                return {
+                    id: `notif-${n.id || Math.random()}`,
+                    user: enteredBy,
+                    action,
+                    module: moduleName,
+                    description: n.message,
+                    date: n.date
+                };
+            });
+
+        const combined = [...fromLogs, ...fromNotifs];
+        const uniqueMap = new Map<string, typeof combined[0]>();
+        for (const item of combined) {
+            const key = `${item.date}-${item.action}-${(item.description || '').slice(0, 30)}`;
+            if (!uniqueMap.has(key)) {
+                uniqueMap.set(key, item);
+            }
+        }
+        return Array.from(uniqueMap.values())
+            .sort((a, b) => (b.date || '').localeCompare(a.date || ''))
+            .slice(0, 8);
+    }, [activityLogs, allNotifications]);
+
     return (
         <div className="dashboard-wrapper" style={{ display: 'flex', flexDirection: 'column', gap: '1.75rem' }}>
             {/* Header */}
@@ -238,16 +281,92 @@ const Dashboard = () => {
                     <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
                         <ShieldCheck size={24} color="#854d0e" />
                         <div>
-                            <strong style={{ color: '#854d0e', fontSize: '0.95rem' }}>Administrator Master Session</strong>
+                            <strong style={{ color: '#854d0e', fontSize: '0.95rem' }}>Administrator Governance Session</strong>
                             <div style={{ color: '#713f12', fontSize: '0.82rem' }}>
-                                Full access. All records entered by Managers and Staff are synchronized live to your dashboard.
+                                Master administrative oversight. All entries and edits made by the Estate Manager stream directly to this dashboard in real time.
                             </div>
                         </div>
                     </div>
                     <span className="badge badge-warning" style={{ fontWeight: 700, padding: '0.35rem 0.75rem' }}>
-                        👑 ADMIN ACCESS
+                        👑 ADMIN OVERSIGHT
                     </span>
                 </div>
+            )}
+
+            {/* Live Manager Operations & Data Entry Feed on Admin Dashboard */}
+            {isAdmin && (
+                <section className="card" style={{ borderLeft: '4px solid #16a34a', backgroundColor: '#fafdfa' }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem', flexWrap: 'wrap', gap: '0.5rem' }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '0.6rem' }}>
+                            <div style={{ width: '10px', height: '10px', borderRadius: '50%', backgroundColor: '#22c55e', boxShadow: '0 0 0 3px rgba(34, 197, 94, 0.25)' }} />
+                            <h3 style={{ margin: 0, fontSize: '1.05rem', color: '#166534', display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
+                                Live Manager Operations & Data Entry Stream
+                            </h3>
+                        </div>
+                        <span className="badge badge-success" style={{ fontSize: '0.75rem', fontWeight: 600 }}>
+                            Direct Stream from Estate Manager
+                        </span>
+                    </div>
+
+                    {recentManagerActivities.length === 0 ? (
+                        <div style={{ padding: '1.25rem', textAlign: 'center', color: '#6b7280', fontSize: '0.9rem', background: '#f9fafb', borderRadius: '6px' }}>
+                            No manager operations logged yet. When the Estate Manager records or edits workers, clones, inventory, sales, expenses, or shifts, entries stream directly here in real time.
+                        </div>
+                    ) : (
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: '0.65rem' }}>
+                            {recentManagerActivities.map(item => (
+                                <div
+                                    key={item.id}
+                                    style={{
+                                        display: 'flex',
+                                        justifyContent: 'space-between',
+                                        alignItems: 'center',
+                                        padding: '0.75rem 1rem',
+                                        borderRadius: '6px',
+                                        border: '1px solid #e5e7eb',
+                                        background: '#ffffff',
+                                        flexWrap: 'wrap',
+                                        gap: '0.5rem'
+                                    }}
+                                >
+                                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', minWidth: '240px', flex: 1 }}>
+                                        <span
+                                            style={{
+                                                padding: '0.2rem 0.55rem',
+                                                borderRadius: '4px',
+                                                fontSize: '0.75rem',
+                                                fontWeight: 700,
+                                                textTransform: 'uppercase',
+                                                background: item.module === 'Workers' ? '#dbeafe' : item.module === 'Clones' ? '#dcfce7' : item.module === 'Inventory' ? '#fef3c7' : item.module === 'Sales' ? '#d1fae5' : '#ede9fe',
+                                                color: item.module === 'Workers' ? '#1e40af' : item.module === 'Clones' ? '#15803d' : item.module === 'Inventory' ? '#b45309' : item.module === 'Sales' ? '#065f46' : '#5b21b6'
+                                            }}
+                                        >
+                                            {item.module}
+                                        </span>
+                                        <div>
+                                            <div style={{ fontWeight: 600, fontSize: '0.88rem', color: '#1f2937' }}>
+                                                {item.action}
+                                            </div>
+                                            <div style={{ fontSize: '0.8rem', color: '#4b5563' }}>
+                                                {item.description}
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', fontSize: '0.78rem', color: '#6b7280' }}>
+                                        <span style={{ fontWeight: 500, color: '#15803d' }}>
+                                            👤 {item.user}
+                                        </span>
+                                        {item.date && (
+                                            <span>
+                                                {item.date.slice(0, 16).replace('T', ' ')}
+                                            </span>
+                                        )}
+                                    </div>
+                                </div>
+                            ))}
+                        </div>
+                    )}
+                </section>
             )}
 
             {/* Team & Staff User Management on Admin Dashboard (Super Admin only) */}
@@ -262,14 +381,14 @@ const Dashboard = () => {
                     <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
                         <Briefcase size={24} color="#15803d" />
                         <div>
-                            <strong style={{ color: '#15803d', fontSize: '0.95rem' }}>Manager Operations Mode</strong>
+                            <strong style={{ color: '#15803d', fontSize: '0.95rem' }}>Manager Operations Workspace</strong>
                             <div style={{ color: '#166534', fontSize: '0.82rem' }}>
-                                Operational data entry enabled (workers, clones, sales, stock). All entries you make are automatically visible to Administrators.
+                                You manage field workers, attendance, clone nursery stages, inventory stock, and sales. All your entries stream directly to the Administrator Dashboard.
                             </div>
                         </div>
                     </div>
                     <span className="badge badge-success" style={{ fontWeight: 700, padding: '0.35rem 0.75rem' }}>
-                        💼 MANAGER (DATA ENTRY)
+                        💼 MANAGER (OPERATIONS)
                     </span>
                 </div>
             )}
@@ -281,7 +400,7 @@ const Dashboard = () => {
                         <div>
                             <strong style={{ color: '#1d4ed8', fontSize: '0.95rem' }}>Staff View-Only Session</strong>
                             <div style={{ color: '#1e40af', fontSize: '0.82rem' }}>
-                                You have view-only access to browse farm metrics, records, and reports. Data entry and edits are reserved for Managers and Administrators.
+                                You have strictly view-only access across the entire system. Editing, saving, and deleting are disabled for this account role.
                             </div>
                         </div>
                     </div>

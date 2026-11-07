@@ -299,6 +299,20 @@ class NotificationService {
             }
         );
 
+        // Record directly to activityLogs for live display on Admin Dashboard
+        try {
+            await db.activityLogs.add({
+                user: userLabel,
+                action: params.action,
+                module: params.module,
+                recordIdentifier: params.details?.['Item ID']?.toString() || params.details?.['Worker ID']?.toString() || params.details?.['Batch ID']?.toString() || params.details?.['Invoice']?.toString() || params.module,
+                date: new Date().toISOString(),
+                description: params.description
+            });
+        } catch (logErr) {
+            console.warn('[Notification Engine] Activity log write note:', logErr);
+        }
+
         // Dispatches dedicated Brevo email alert to Administrators
         try {
             void emailService.sendManagerActivityAlert({

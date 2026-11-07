@@ -1,41 +1,41 @@
 import React, { useEffect, useState } from 'react';
-import { 
-    ShieldCheck, 
-    Users, 
-    Briefcase, 
-    Eye, 
-    Crown, 
-    RefreshCw, 
-    UserPlus, 
-    Lock, 
-    Mail, 
-    User, 
-    Copy, 
-    Check, 
-    EyeOff, 
-    Trash2, 
-    CheckCircle2, 
+import {
+    ShieldCheck,
+    Users,
+    Briefcase,
+    Eye,
+    Crown,
+    RefreshCw,
+    UserPlus,
+    Lock,
+    Mail,
+    User,
+    Copy,
+    Check,
+    EyeOff,
+    Trash2,
+    CheckCircle2,
     AlertCircle,
     Save
 } from 'lucide-react';
 import { auth } from '../firebase';
 import { useUserRole } from '../context/UserRoleContext';
-import { 
-    createAccountByAdmin, 
-    listAllFarmUsers, 
-    updateUserRoleByAdmin, 
-    toggleUserActiveByAdmin, 
+import {
+    createAccountByAdmin,
+    listAllFarmUsers,
+    updateUserRoleByAdmin,
+    toggleUserActiveByAdmin,
     deleteUserByAdmin,
-    sendPasswordResetByAdmin, 
-    type FarmUserRecord, 
-    type UserRole 
+    sendPasswordResetByAdmin,
+    type FarmUserRecord,
+    type UserRole
 } from '../services/adminAccess';
 
 const AdminInvitations: React.FC = () => {
-    const { isSuperAdmin, isAdmin, isManager } = useUserRole();
+    const { isSuperAdmin, isAdmin } = useUserRole();
 
-    // Guard: accessible to Administrators and Managers
-    if (!isSuperAdmin && !isAdmin && !isManager) return null;
+    // Guard: accessible exclusively to Administrators
+    if (!isSuperAdmin && !isAdmin) return null;
 
     // Form state for creating accounts
     const [newName, setNewName] = useState('');
@@ -172,9 +172,9 @@ const AdminInvitations: React.FC = () => {
                         Farm Administrators create and control access for Managers (data entry) and Staff members (view-only).
                     </p>
                 </div>
-                <button 
-                    type="button" 
-                    className="btn btn-secondary" 
+                <button
+                    type="button"
+                    className="btn btn-secondary"
                     onClick={refreshData}
                     disabled={isLoading}
                     style={{ fontSize: '0.8rem', padding: '0.35rem 0.75rem', display: 'inline-flex', alignItems: 'center', gap: '0.35rem' }}
@@ -355,17 +355,17 @@ const AdminInvitations: React.FC = () => {
                             const isCurrentUser = u.email === auth.currentUser?.email;
 
                             return (
-                                <div 
-                                    key={u.uid} 
-                                    style={{ 
-                                        display: 'flex', 
-                                        justifyContent: 'space-between', 
-                                        alignItems: 'center', 
-                                        flexWrap: 'wrap', 
-                                        gap: '0.75rem', 
-                                        padding: '0.75rem 1rem', 
-                                        borderRadius: '8px', 
-                                        background: u.active ? '#ffffff' : '#f8fafc', 
+                                <div
+                                    key={u.uid}
+                                    style={{
+                                        display: 'flex',
+                                        justifyContent: 'space-between',
+                                        alignItems: 'center',
+                                        flexWrap: 'wrap',
+                                        gap: '0.75rem',
+                                        padding: '0.75rem 1rem',
+                                        borderRadius: '8px',
+                                        background: u.active ? '#ffffff' : '#f8fafc',
                                         border: `1px solid ${u.active ? '#e2e8f0' : '#cbd5e1'}`,
                                         opacity: u.active ? 1 : 0.65
                                     }}

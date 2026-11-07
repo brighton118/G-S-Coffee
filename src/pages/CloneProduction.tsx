@@ -551,16 +551,16 @@ const CloneProduction: React.FC = () => {
                                                 fontWeight: 600,
                                                 backgroundColor:
                                                     batch.currentStage === 'Cutting' ? '#f1f5f9' :
-                                                    batch.currentStage === 'Humid Chamber' ? '#e0f2fe' :
-                                                    batch.currentStage === 'First Hardening' ? '#fef08a' :
-                                                    batch.currentStage === 'Second Hardening' ? '#f3e8ff' :
-                                                    batch.currentStage === 'Sorting' ? '#fed7aa' : '#dcfce7',
+                                                        batch.currentStage === 'Humid Chamber' ? '#e0f2fe' :
+                                                            batch.currentStage === 'First Hardening' ? '#fef08a' :
+                                                                batch.currentStage === 'Second Hardening' ? '#f3e8ff' :
+                                                                    batch.currentStage === 'Sorting' ? '#fed7aa' : '#dcfce7',
                                                 color:
                                                     batch.currentStage === 'Cutting' ? '#334155' :
-                                                    batch.currentStage === 'Humid Chamber' ? '#0369a1' :
-                                                    batch.currentStage === 'First Hardening' ? '#854d0e' :
-                                                    batch.currentStage === 'Second Hardening' ? '#6b21a8' :
-                                                    batch.currentStage === 'Sorting' ? '#9a3412' : '#166534'
+                                                        batch.currentStage === 'Humid Chamber' ? '#0369a1' :
+                                                            batch.currentStage === 'First Hardening' ? '#854d0e' :
+                                                                batch.currentStage === 'Second Hardening' ? '#6b21a8' :
+                                                                    batch.currentStage === 'Sorting' ? '#9a3412' : '#166534'
                                             }}>
                                                 {batch.currentStage}
                                             </span>
@@ -627,10 +627,10 @@ const CloneProduction: React.FC = () => {
                         const isOverdue = !!(chamber && chamber.status === 'In Chamber' && chamber.expectedCompletionDate && chamber.expectedCompletionDate < todayStr);
                         const stageStyle = batch.currentStage === 'Cutting' ? { backgroundColor: '#f1f5f9', color: '#334155' } :
                             batch.currentStage === 'Humid Chamber' ? { backgroundColor: '#e0f2fe', color: '#0369a1' } :
-                            batch.currentStage === 'First Hardening' ? { backgroundColor: '#fef08a', color: '#854d0e' } :
-                            batch.currentStage === 'Second Hardening' ? { backgroundColor: '#f3e8ff', color: '#6b21a8' } :
-                            batch.currentStage === 'Sorting' ? { backgroundColor: '#fed7aa', color: '#9a3412' } :
-                            { backgroundColor: '#dcfce7', color: '#166534' };
+                                batch.currentStage === 'First Hardening' ? { backgroundColor: '#fef08a', color: '#854d0e' } :
+                                    batch.currentStage === 'Second Hardening' ? { backgroundColor: '#f3e8ff', color: '#6b21a8' } :
+                                        batch.currentStage === 'Sorting' ? { backgroundColor: '#fed7aa', color: '#9a3412' } :
+                                            { backgroundColor: '#dcfce7', color: '#166534' };
 
                         return (
                             <article key={batch.batchId} className="card clone-batch-card">

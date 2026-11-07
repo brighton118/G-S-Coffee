@@ -53,14 +53,17 @@ const Settings: React.FC = () => {
         ? 'manager' 
         : 'staff';
 
-    // Role-specific access permissions: Both Admin and Manager have full configuration and editing privileges
-    const canEditFarmInfo = effectiveRole === 'admin' || effectiveRole === 'manager';
-    const canEditAllEmails = effectiveRole === 'admin' || effectiveRole === 'manager';
-    const canEditManagerEmails = effectiveRole === 'admin' || effectiveRole === 'manager';
-    const canEditAlertToggles = effectiveRole === 'admin' || effectiveRole === 'manager';
-    const canEditThresholds = effectiveRole === 'admin' || effectiveRole === 'manager';
+    // Role-specific access permissions strictly separated according to operational purviews:
+    // Admin: Farm Entity Profile, Official Reporting Emails, Emergency Routing, Team Management
+    // Manager: Operational & Attendance Thresholds, Shift Hours, Late Penalties, Manager Alerts
+    // Staff: Strictly View-Only (cannot edit anything in the system)
+    const canEditFarmInfo = effectiveRole === 'admin';
+    const canEditAllEmails = effectiveRole === 'admin';
+    const canEditManagerEmails = effectiveRole === 'manager';
+    const canEditAlertToggles = effectiveRole === 'admin';
+    const canEditThresholds = effectiveRole === 'manager';
     const canSaveFarmSettings = effectiveRole === 'admin' || effectiveRole === 'manager';
-    const canManageTeam = effectiveRole === 'admin' || effectiveRole === 'manager';
+    const canManageTeam = effectiveRole === 'admin';
 
 
     // Dropdown section navigation & accordion collapse states
@@ -71,6 +74,13 @@ const Settings: React.FC = () => {
         }
         return 'all';
     });
+
+    // Ensure Manager and Staff never stay on Admin-only sections (Notifications & Invitations)
+    useEffect(() => {
+        if (effectiveRole !== 'admin' && (activeSection === 'notifications' || activeSection === 'invitations')) {
+            setActiveSection('thresholds');
+        }
+    }, [effectiveRole, activeSection]);
     const [collapsedSections, setCollapsedSections] = useState<Record<string, boolean>>({});
 
     const [settings, setSettings] = useState({
@@ -216,7 +226,53 @@ const Settings: React.FC = () => {
 
         setIsSaving(true);
         try {
-            const dataToSave = { ...settings };
+            let dataToSave = { ...settings };
+
+            // If Admin is saving, preserve Manager's operational shift thresholds from cloud so Admin cannot change manager's dashboard/settings
+            if (effectiveRole === 'admin') {
+                try {
+                    const docRef = doc(dbFirestore, 'settings', 'general');
+                    const snap = await getDoc(docRef);
+                    if (snap.exists()) {
+                        const cloudData = snap.data();
+                        dataToSave = {
+                            ...dataToSave,
+                            attendanceTimeInStart: cloudData.attendanceTimeInStart || settings.attendanceTimeInStart,
+                            attendanceTimeInEnd: cloudData.attendanceTimeInEnd || settings.attendanceTimeInEnd,
+                            attendanceTimeOutStart: cloudData.attendanceTimeOutStart || settings.attendanceTimeOutStart,
+                            attendanceTimeOutEnd: cloudData.attendanceTimeOutEnd || settings.attendanceTimeOutEnd,
+                            attendanceLockoutHours: cloudData.attendanceLockoutHours || settings.attendanceLockoutHours,
+                            managerNotificationEmails: cloudData.managerNotificationEmails || settings.managerNotificationEmails
+                        };
+                    }
+                } catch (_) {}
+            }
+
+            // If Manager is saving, preserve Admin's official farm identity, contact emails, and team configurations
+            if (effectiveRole === 'manager') {
+                try {
+                    const docRef = doc(dbFirestore, 'settings', 'general');
+                    const snap = await getDoc(docRef);
+                    if (snap.exists()) {
+                        const cloudData = snap.data();
+                        dataToSave = {
+                            ...dataToSave,
+                            farmName: cloudData.farmName || settings.farmName,
+                            farmLocation: cloudData.farmLocation || settings.farmLocation,
+                            farmRegion: cloudData.farmRegion || settings.farmRegion,
+                            farmLandmark: cloudData.farmLandmark || settings.farmLandmark,
+                            contactEmail: cloudData.contactEmail || settings.contactEmail,
+                            notificationEmails: cloudData.notificationEmails || settings.notificationEmails,
+                            contactPhone: cloudData.contactPhone || settings.contactPhone,
+                            secondaryPhone: cloudData.secondaryPhone || settings.secondaryPhone,
+                            emailApiKey: cloudData.emailApiKey || settings.emailApiKey,
+                            brevoSenderEmail: cloudData.brevoSenderEmail || settings.brevoSenderEmail,
+                            brevoSenderName: cloudData.brevoSenderName || settings.brevoSenderName,
+                            enableEmailAlerts: true
+                        };
+                    }
+                } catch (_) {}
+            }
 
             localStorage.setItem('gs_farm_settings', JSON.stringify(dataToSave));
             await firestoreSyncService.saveSettings(dataToSave);
@@ -228,22 +284,21 @@ const Settings: React.FC = () => {
                 updatedRole: effectiveRole
             }, { merge: true });
 
-            setSaveNotice('✅ Settings and configurations successfully saved and synced across all devices!');
+            setSaveNotice(
+                effectiveRole === 'manager'
+                    ? '✅ Operational thresholds and shift settings saved! Live update sent to Admin Dashboard.'
+                    : '✅ Global farm identity and communication parameters saved and synced across all devices!'
+            );
 
             if (effectiveRole === 'manager') {
                 void notificationService.notifyManagerDataEntry({
-                    module: 'Settings & Farm Profile',
-                    action: 'Farm Settings & Profile Updated',
-                    description: `Farm Manager saved settings and configuration (Farm Name: "${dataToSave.farmName}", Location: "${dataToSave.farmLocation}", Phone: "${dataToSave.contactPhone}", Emergency Email: "${dataToSave.notificationEmails}", Shift Time-In: ${dataToSave.attendanceTimeInStart} - ${dataToSave.attendanceTimeInEnd}, Shift Time-Out: ${dataToSave.attendanceTimeOutStart} - ${dataToSave.attendanceTimeOutEnd}).`,
+                    module: 'Settings & Operations',
+                    action: 'Operational Thresholds Updated',
+                    description: `Farm Manager updated operational shift thresholds (Shift Time-In: ${dataToSave.attendanceTimeInStart} - ${dataToSave.attendanceTimeInEnd}, Shift Time-Out: ${dataToSave.attendanceTimeOutStart} - ${dataToSave.attendanceTimeOutEnd}, Lockout: ${dataToSave.attendanceLockoutHours} hrs).`,
                     details: {
-                        'Farm Name': dataToSave.farmName,
-                        'Location': dataToSave.farmLocation,
-                        'Contact Phone': dataToSave.contactPhone,
-                        'Contact Email': dataToSave.contactEmail,
-                        'Emergency Dispatch Email': dataToSave.notificationEmails,
-                        'Shift Time-In': `${dataToSave.attendanceTimeInStart} - ${dataToSave.attendanceTimeInEnd}`,
-                        'Shift Time-Out': `${dataToSave.attendanceTimeOutStart} - ${dataToSave.attendanceTimeOutEnd}`,
-                        'Cutoff Hours': `${dataToSave.attendanceLockoutHours} hrs`,
+                        'Shift Time-In Window': `${dataToSave.attendanceTimeInStart} - ${dataToSave.attendanceTimeInEnd}`,
+                        'Shift Time-Out Window': `${dataToSave.attendanceTimeOutStart} - ${dataToSave.attendanceTimeOutEnd}`,
+                        'Lockout Hours': `${dataToSave.attendanceLockoutHours} hrs`,
                         'Updated By': auth.currentUser?.email || 'Farm Manager'
                     },
                     sourceUser: auth.currentUser?.email || 'Farm Manager'
@@ -347,7 +402,9 @@ const Settings: React.FC = () => {
                             >
                                 <option value="all">📂 All Pages (Full Settings Overview)</option>
                                 <option value="farm_info">🏢 Farm Info, Location &amp; Contacts</option>
-                                <option value="notifications">🔔 Notifications &amp; Alert Routing</option>
+                                {effectiveRole === 'admin' && (
+                                    <option value="notifications">🔔 Notifications &amp; Alert Routing</option>
+                                )}
                                 <option value="thresholds">⏰ Operational &amp; Attendance Thresholds</option>
                                 {canManageTeam && (
                                     <option value="invitations">👥 Team Access &amp; Staff Invitations</option>
@@ -398,13 +455,15 @@ const Settings: React.FC = () => {
                     >
                         <Building size={13} /> Farm Info &amp; Contacts
                     </button>
-                    <button
-                        type="button"
-                        className={`settings-pill-btn ${activeSection === 'notifications' ? 'active' : ''}`}
-                        onClick={() => handleSelectSection('notifications')}
-                    >
-                        <Bell size={13} /> Notifications
-                    </button>
+                    {effectiveRole === 'admin' && (
+                        <button
+                            type="button"
+                            className={`settings-pill-btn ${activeSection === 'notifications' ? 'active' : ''}`}
+                            onClick={() => handleSelectSection('notifications')}
+                        >
+                            <Bell size={13} /> Notifications
+                        </button>
+                    )}
                     <button
                         type="button"
                         className={`settings-pill-btn ${activeSection === 'thresholds' ? 'active' : ''}`}
@@ -596,7 +655,7 @@ const Settings: React.FC = () => {
                                     <div className="form-group">
                                         <label className="form-label" style={{ display: 'flex', alignItems: 'center', gap: '0.35rem' }}>
                                             <Mail size={14} color="var(--color-primary)" /> Primary Contact Email (System Reports)
-                                            <span className="settings-perm-pill manager-access">Manager &amp; Admin</span>
+                                            <span className="settings-perm-pill admin-only">Admin Managed</span>
                                         </label>
                                         <input 
                                             type="email" 
@@ -609,24 +668,30 @@ const Settings: React.FC = () => {
                                     </div>
 
                                     {/* Action Save Button for Section 1 */}
-                                    <div style={{ marginTop: '1.25rem', paddingTop: '1rem', borderTop: '1px solid var(--color-border)', display: 'flex', justifyContent: 'flex-end' }}>
-                                        <button
-                                            type="button"
-                                            className="btn btn-primary"
-                                            onClick={handleSave}
-                                            disabled={isSaving || !canSaveFarmSettings}
-                                            style={{ display: 'inline-flex', alignItems: 'center', gap: '0.45rem', padding: '0.55rem 1.25rem', fontWeight: 600 }}
-                                        >
-                                            <Save size={16} /> {isSaving ? 'Saving...' : 'Save Farm Profile'}
-                                        </button>
+                                    <div style={{ marginTop: '1.25rem', paddingTop: '1rem', borderTop: '1px solid var(--color-border)', display: 'flex', justifyContent: 'flex-end', alignItems: 'center' }}>
+                                        {canEditFarmInfo ? (
+                                            <button
+                                                type="button"
+                                                className="btn btn-primary"
+                                                onClick={handleSave}
+                                                disabled={isSaving || !canSaveFarmSettings}
+                                                style={{ display: 'inline-flex', alignItems: 'center', gap: '0.45rem', padding: '0.55rem 1.25rem', fontWeight: 600 }}
+                                            >
+                                                <Save size={16} /> {isSaving ? 'Saving...' : 'Save Farm Profile'}
+                                            </button>
+                                        ) : (
+                                            <span style={{ fontSize: '0.82rem', color: '#64748b', fontStyle: 'italic' }}>
+                                                Farm identity and legal profile are managed exclusively by Administrators.
+                                            </span>
+                                        )}
                                     </div>
                                 </div>
                             )}
                         </div>
                     )}
 
-                    {/* Section 2: Notification Routing & Delivery */}
-                    {shouldRender('notifications') && (
+                    {/* Section 2: Notification Routing & Delivery (Admin Only) */}
+                    {effectiveRole === 'admin' && shouldRender('notifications') && (
                         <div className="settings-accordion-card">
                             <button
                                 type="button"
@@ -650,15 +715,9 @@ const Settings: React.FC = () => {
 
                             {!isCollapsed('notifications') && (
                                 <div className="settings-accordion-body">
-                                    {effectiveRole === 'staff' ? (
-                                        <div className="settings-role-badge staff" style={{ margin: '0.25rem 0 0.5rem 0', width: '100%' }}>
-                                            <Lock size={14} /> Notification routing and alerts are configured by Administrators and Managers.
-                                        </div>
-                                    ) : effectiveRole === 'manager' ? (
-                                        <div className="settings-role-badge manager" style={{ margin: '0.25rem 0 0.5rem 0', width: '100%' }}>
-                                            <UserCheck size={14} /> Manager Alert Routing: Configure your manager email recipient and operational alert subscriptions.
-                                        </div>
-                                    ) : null}
+                                    <div className="settings-role-badge admin" style={{ margin: '0.25rem 0 0.5rem 0', width: '100%' }}>
+                                        <ShieldCheck size={14} /> Administrator Governance: Configure automated email delivery, recipient routing, and emergency contacts.
+                                    </div>
 
                                     <div style={{ display: 'flex', flexDirection: 'column', gap: '0.85rem', marginTop: '0.25rem' }}>
                                         <label style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', cursor: canEditAlertToggles ? 'pointer' : 'default', fontSize: '0.9rem' }}>
@@ -901,16 +960,22 @@ const Settings: React.FC = () => {
                                     </div>
 
                                     {/* Action Save Button for Section 3 */}
-                                    <div style={{ marginTop: '1.25rem', paddingTop: '1rem', borderTop: '1px solid var(--color-border)', display: 'flex', justifyContent: 'flex-end' }}>
-                                        <button
-                                            type="button"
-                                            className="btn btn-primary"
-                                            onClick={handleSave}
-                                            disabled={isSaving || !canSaveFarmSettings}
-                                            style={{ display: 'inline-flex', alignItems: 'center', gap: '0.45rem', padding: '0.55rem 1.25rem', fontWeight: 600 }}
-                                        >
-                                            <Save size={16} /> {isSaving ? 'Saving...' : 'Save Operational Thresholds'}
-                                        </button>
+                                    <div style={{ marginTop: '1.25rem', paddingTop: '1rem', borderTop: '1px solid var(--color-border)', display: 'flex', justifyContent: 'flex-end', alignItems: 'center' }}>
+                                        {canEditThresholds ? (
+                                            <button
+                                                type="button"
+                                                className="btn btn-primary"
+                                                onClick={handleSave}
+                                                disabled={isSaving || !canSaveFarmSettings}
+                                                style={{ display: 'inline-flex', alignItems: 'center', gap: '0.45rem', padding: '0.55rem 1.25rem', fontWeight: 600 }}
+                                            >
+                                                <Save size={16} /> {isSaving ? 'Saving...' : 'Save Operational Thresholds'}
+                                            </button>
+                                        ) : (
+                                            <span style={{ fontSize: '0.82rem', color: '#166534', background: '#f0fdf4', border: '1px solid #bbf7d0', padding: '0.45rem 0.75rem', borderRadius: '6px' }}>
+                                                Shift thresholds and daily work windows are maintained by the Estate Manager. Changes made by the Manager appear directly on your Admin Dashboard.
+                                            </span>
+                                        )}
                                     </div>
                                 </div>
                             )}
@@ -972,9 +1037,42 @@ const Settings: React.FC = () => {
                             </button>
 
                             {!isCollapsed('security') && (
-                                <div className="settings-accordion-body">
+                                <div className="settings-accordion-body" style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+                                    {/* Active System User Session (Single Logged-in Account View) */}
+                                    <div style={{ padding: '0.85rem 1rem', background: '#f8fafc', border: '1px solid #e2e8f0', borderRadius: '8px', display: 'flex', flexDirection: 'column', gap: '0.6rem' }}>
+                                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '0.5rem' }}>
+                                            <strong style={{ fontSize: '0.92rem', color: '#0f172a', display: 'flex', alignItems: 'center', gap: '0.45rem' }}>
+                                                <User size={17} color="var(--color-primary)" /> Active System User (Current Session)
+                                            </strong>
+                                            <span style={{ fontSize: '0.72rem', padding: '0.18rem 0.55rem', borderRadius: '4px', background: '#dcfce7', color: '#166534', fontWeight: 700, border: '1px solid #86efac' }}>
+                                                ● LOGGED IN &amp; ACTIVE
+                                            </span>
+                                        </div>
+                                        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '0.6rem', fontSize: '0.83rem', color: '#334155' }}>
+                                            <div>
+                                                <span style={{ color: '#64748b' }}>Account Email:</span> <strong style={{ color: '#0f172a' }}>{auth.currentUser?.email || 'manager@gsfarms.farm'}</strong>
+                                            </div>
+                                            <div>
+                                                <span style={{ color: '#64748b' }}>System Role:</span> <strong style={{ color: effectiveRole === 'admin' ? '#854d0e' : effectiveRole === 'manager' ? '#15803d' : '#1d4ed8' }}>
+                                                    {effectiveRole === 'admin' ? '👑 Administrator (Full Governance)' : effectiveRole === 'manager' ? '💼 Estate Manager (Data Entry & Operations)' : '👁️ Staff Member (View-Only)'}
+                                                </strong>
+                                            </div>
+                                            <div>
+                                                <span style={{ color: '#64748b' }}>Assigned Estate:</span> <strong>{settings.farmName || 'G&S FARMS'}</strong>
+                                            </div>
+                                            <div>
+                                                <span style={{ color: '#64748b' }}>Location:</span> <strong>{settings.farmLocation}</strong>
+                                            </div>
+                                        </div>
+                                        {effectiveRole === 'manager' && (
+                                            <div style={{ fontSize: '0.78rem', color: '#15803d', background: '#f0fdf4', padding: '0.45rem 0.75rem', borderRadius: '6px', border: '1px solid #bbf7d0' }}>
+                                                💼 <strong>Manager Operational Purview:</strong> You are actively managing Field Workers, QR Attendance, Clone Nursery, Stock &amp; Inventory, Sales Orders, and Shift Cutoff Thresholds. All your entries stream directly to the Administrator Dashboard.
+                                            </div>
+                                        )}
+                                    </div>
+
                                     <p style={{ color: 'var(--color-text-light)', margin: 0, fontSize: '0.85rem' }}>
-                                        Signed in as <strong>{auth.currentUser?.email || 'gs.farms.ug@gmail.com'}</strong> ({effectiveRole.toUpperCase()}). You can update your login password at any time.
+                                        Signed in as <strong>{auth.currentUser?.email || 'gs.farms.ug@gmail.com'}</strong> ({effectiveRole.toUpperCase()}). You can update your login password below.
                                     </p>
 
                                     <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '0.85rem' }}>
@@ -1045,7 +1143,7 @@ const Settings: React.FC = () => {
                                 disabled={isSaving}
                                 style={{ padding: '0.6rem 1.6rem', fontSize: '0.95rem', display: 'inline-flex', alignItems: 'center', gap: '0.5rem', fontWeight: 600 }}
                             >
-                                <Save size={17} /> {isSaving ? 'Saving Configurations...' : 'Save All Configurations'}
+                                <Save size={17} /> {isSaving ? 'Saving Configurations...' : effectiveRole === 'admin' ? 'Save Farm Identity & Global Config' : 'Save Operational Thresholds'}
                             </button>
                         ) : (
                             <div style={{ background: '#f8fafc', border: '1px solid #cbd5e1', color: '#334155', padding: '0.5rem 1rem', borderRadius: '6px', fontSize: '0.85rem', display: 'inline-flex', alignItems: 'center', gap: '0.45rem' }}>

@@ -17,12 +17,14 @@ import { DEFAULT_OVERTIME_RULES, formatUGX } from '../utils/calculations';
 import { loadAttendanceScheduleSettings } from '../utils/attendanceSchedule';
 import { notificationService } from '../utils/notificationService';
 import { auth } from '../firebase';
+import { useUserRole } from '../context/UserRoleContext';
 
 interface OvertimeProps {
     embedded?: boolean;
 }
 
 const Overtime: React.FC<OvertimeProps> = ({ embedded = false }) => {
+    const { canEdit } = useUserRole();
     const [selectedMonth, setSelectedMonth] = useState<string>(format(new Date(), 'yyyy-MM'));
     const [statusFilter, setStatusFilter] = useState<string>('All');
     const [searchTerm, setSearchTerm] = useState<string>('');
@@ -77,6 +79,10 @@ const Overtime: React.FC<OvertimeProps> = ({ embedded = false }) => {
     }, 0);
 
     const handleOpenApproval = (record: AttendanceRecord, action: 'Approve' | 'Reject') => {
+        if (!canEdit) {
+            alert('Staff members have view-only access. Overtime approvals require Manager or Administrator authorization.');
+            return;
+        }
         setApprovalModalRecord(record);
         setApprovalAction(action);
         setApprovedHoursInput(record.overtimeHours || 0);
@@ -85,6 +91,10 @@ const Overtime: React.FC<OvertimeProps> = ({ embedded = false }) => {
 
     const handleSaveApproval = async (e: React.FormEvent) => {
         e.preventDefault();
+        if (!canEdit) {
+            alert('Permission denied. Staff members have view-only access.');
+            return;
+        }
         if (!approvalModalRecord || !approvalModalRecord.id) return;
 
         const isApproved = approvalAction === 'Approve';
@@ -165,6 +175,10 @@ const Overtime: React.FC<OvertimeProps> = ({ embedded = false }) => {
 
     const handleSaveRulesConfig = async (e: React.FormEvent) => {
         e.preventDefault();
+        if (!canEdit) {
+            alert('Permission denied. Staff members have view-only access.');
+            return;
+        }
         const existing = await db.overtimeRules.toCollection().first();
         if (existing?.id) {
             await db.overtimeRules.update(existing.id, { ...configData, active: true });
@@ -202,15 +216,17 @@ const Overtime: React.FC<OvertimeProps> = ({ embedded = false }) => {
                         </p>
                     </div>
                     <div style={{ display: 'flex', gap: '0.75rem', flexWrap: 'wrap' }}>
-                        <button 
-                            className="btn btn-secondary"
-                            onClick={() => {
-                                setConfigData({ ...rulesConfig });
-                                setShowRulesModal(true);
-                            }}
-                        >
-                            <SettingsIcon size={16} /> Configure Shift Rules
-                        </button>
+                        {canEdit && (
+                            <button 
+                                className="btn btn-secondary"
+                                onClick={() => {
+                                    setConfigData({ ...rulesConfig });
+                                    setShowRulesModal(true);
+                                }}
+                            >
+                                <SettingsIcon size={16} /> Configure Shift Rules
+                            </button>
+                        )}
                         <button 
                             className="btn btn-secondary"
                             onClick={() => {
@@ -397,24 +413,28 @@ const Overtime: React.FC<OvertimeProps> = ({ embedded = false }) => {
                                             )}
                                         </td>
                                         <td style={{ textAlign: 'right' }}>
-                                            <div style={{ display: 'inline-flex', gap: '0.35rem' }}>
-                                                <button 
-                                                    className="btn btn-secondary"
-                                                    style={{ padding: '0.3rem 0.6rem', fontSize: '0.8rem', color: '#16a34a', borderColor: '#bbf7d0' }}
-                                                    onClick={() => handleOpenApproval(record, 'Approve')}
-                                                    title="Approve Overtime Hours"
-                                                >
-                                                    <CheckCircle2 size={14} /> Approve
-                                                </button>
-                                                <button 
-                                                    className="btn btn-secondary"
-                                                    style={{ padding: '0.3rem 0.6rem', fontSize: '0.8rem', color: '#dc2626', borderColor: '#fecaca' }}
-                                                    onClick={() => handleOpenApproval(record, 'Reject')}
-                                                    title="Reject Overtime Claim"
-                                                >
-                                                    <XCircle size={14} /> Reject
-                                                </button>
-                                            </div>
+                                            {canEdit ? (
+                                                <div style={{ display: 'inline-flex', gap: '0.35rem' }}>
+                                                    <button 
+                                                        className="btn btn-secondary"
+                                                        style={{ padding: '0.3rem 0.6rem', fontSize: '0.8rem', color: '#16a34a', borderColor: '#bbf7d0' }}
+                                                        onClick={() => handleOpenApproval(record, 'Approve')}
+                                                        title="Approve Overtime Hours"
+                                                    >
+                                                        <CheckCircle2 size={14} /> Approve
+                                                    </button>
+                                                    <button 
+                                                        className="btn btn-secondary"
+                                                        style={{ padding: '0.3rem 0.6rem', fontSize: '0.8rem', color: '#dc2626', borderColor: '#fecaca' }}
+                                                        onClick={() => handleOpenApproval(record, 'Reject')}
+                                                        title="Reject Overtime Claim"
+                                                    >
+                                                        <XCircle size={14} /> Reject
+                                                    </button>
+                                                </div>
+                                            ) : (
+                                                <span className="text-light" style={{ fontSize: '0.8rem' }}>View Only</span>
+                                            )}
                                         </td>
                                     </tr>
                                 );
