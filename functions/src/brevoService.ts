@@ -4,6 +4,8 @@
  * Documentation: https://developers.brevo.com/docs/send-a-transactional-email
  */
 
+import * as admin from 'firebase-admin';
+
 export interface BrevoRecipient {
     email: string;
     name?: string;
@@ -38,6 +40,7 @@ export interface BrevoConfigOptions {
     apiKey?: string;
     senderEmail?: string;
     senderName?: string;
+    db?: admin.firestore.Firestore;
 }
 
 const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
@@ -46,15 +49,47 @@ export class BrevoService {
     private apiKey: string;
     private senderEmail: string;
     private senderName: string;
+    private db?: admin.firestore.Firestore;
 
     constructor(options?: BrevoConfigOptions) {
         this.apiKey = options?.apiKey ?? process.env.BREVO_API_KEY ?? '';
-        this.senderEmail = options?.senderEmail ?? process.env.BREVO_SENDER_EMAIL ?? 'notifications@gsfarm.farm';
+        this.senderEmail = options?.senderEmail ?? process.env.BREVO_SENDER_EMAIL ?? 'gs.farms.ug@gmail.com';
         this.senderName = options?.senderName ?? process.env.BREVO_SENDER_NAME ?? 'G&S Coffee Farm Management System';
+        this.db = options?.db;
+    }
+
+    /**
+     * Dynamically loads API key and verified sender credentials from Firestore settings/general if not in process.env
+     */
+    public async ensureConfigured(customDb?: admin.firestore.Firestore): Promise<boolean> {
+        const firestore = customDb || this.db;
+        if (firestore) {
+            try {
+                const settingsDoc = await firestore.collection('settings').doc('general').get();
+                if (settingsDoc.exists) {
+                    const data = settingsDoc.data() || {};
+                    const cloudKey = data.emailApiKey || data.brevoApiKey;
+                    if (cloudKey && typeof cloudKey === 'string' && cloudKey.trim().length > 10) {
+                        this.apiKey = cloudKey.trim();
+                    }
+                    if (data.brevoSenderEmail && typeof data.brevoSenderEmail === 'string' && data.brevoSenderEmail.includes('@')) {
+                        this.senderEmail = data.brevoSenderEmail.trim();
+                    } else if (data.contactEmail && typeof data.contactEmail === 'string' && data.contactEmail.includes('@')) {
+                        this.senderEmail = data.contactEmail.trim();
+                    }
+                    if (data.brevoSenderName && typeof data.brevoSenderName === 'string' && data.brevoSenderName.trim()) {
+                        this.senderName = data.brevoSenderName.trim();
+                    }
+                }
+            } catch (err) {
+                console.warn('[BrevoService] Note loading settings/general for Brevo credentials:', err);
+            }
+        }
+        return this.isConfigured();
     }
 
     public isConfigured(): boolean {
-        return Boolean(this.apiKey && this.apiKey.trim().length > 10);
+        return Boolean(this.apiKey && this.apiKey.trim().length > 10 && !this.apiKey.includes('your_brevo_v3_api_key_here'));
     }
 
     public getStatus() {
@@ -73,12 +108,14 @@ export class BrevoService {
         };
     }
 
-    public async sendEmail(request: BrevoEmailRequest): Promise<BrevoDispatchResult> {
+    public async sendEmail(request: BrevoEmailRequest, customDb?: admin.firestore.Firestore): Promise<BrevoDispatchResult> {
+        await this.ensureConfigured(customDb);
+
         if (!this.isConfigured()) {
             return {
                 success: false,
                 code: 'MISSING_API_KEY',
-                error: 'Brevo API key is not configured in environment variables (BREVO_API_KEY).'
+                error: 'Brevo API key is not configured. Please enter your Brevo API key in System Settings > Notifications.'
             };
         }
 

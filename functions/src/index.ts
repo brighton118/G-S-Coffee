@@ -1,6 +1,7 @@
 import * as functions from 'firebase-functions';
 import * as admin from 'firebase-admin';
 import { BrevoService, BrevoEmailRequest, BrevoAttachment } from './brevoService';
+import { getAllSystemRecipients } from './roles';
 import {
     buildAdminAlertTemplate,
     buildMissedAttendanceTemplate,
@@ -14,7 +15,7 @@ import {
 admin.initializeApp();
 const db = admin.firestore();
 
-const brevoService = new BrevoService();
+const brevoService = new BrevoService({ db });
 
 /**
  * 1. HTTPS Callable Function: sendBrevoEmail
@@ -28,6 +29,8 @@ export const sendBrevoEmail = functions.https.onCall(async (data: any, context: 
             'Authentication required to dispatch transactional emails.'
         );
     }
+
+    await brevoService.ensureConfigured(db);
 
     const {
         templateType,
@@ -189,6 +192,8 @@ export const processMailQueue = functions.firestore
         console.log(`[Brevo Queue] Processing mail document: ${mailId}`);
 
         try {
+            await brevoService.ensureConfigured(db);
+
             let recipients: { email: string; name?: string }[] = [];
             if (Array.isArray(data.to)) {
                 recipients = data.to.map((r: any) => typeof r === 'string' ? { email: r } : r);
@@ -196,9 +201,66 @@ export const processMailQueue = functions.firestore
                 recipients = [{ email: data.to }];
             }
 
-            const subject = data.message?.subject || data.subject || 'G&S Coffee Farm Alert';
-            const htmlContent = data.message?.html || data.html;
-            const textContent = data.message?.text || data.text;
+            let subject = data.message?.subject || data.subject || 'G&S Coffee Farm Alert';
+            let htmlContent = data.message?.html || data.html || data.htmlContent;
+            let textContent = data.message?.text || data.text || data.textContent;
+
+            // Template rendering fallback for queued documents
+            if (!htmlContent && data.templateType && data.templateData) {
+                switch (data.templateType) {
+                    case 'adminAlert': {
+                        const built = buildAdminAlertTemplate(data.templateData);
+                        htmlContent = built.html;
+                        textContent = built.text;
+                        subject = subject || data.templateData.title;
+                        break;
+                    }
+                    case 'missedAttendance': {
+                        const built = buildMissedAttendanceTemplate(data.templateData);
+                        htmlContent = built.html;
+                        textContent = built.text;
+                        subject = subject || `[G&S FARMS Alert] Missed Attendance - ${data.templateData.workerName}`;
+                        break;
+                    }
+                    case 'payrollRun': {
+                        const built = buildPayrollRunTemplate(data.templateData);
+                        htmlContent = built.html;
+                        textContent = built.text;
+                        subject = subject || `[G&S FARMS Payroll] ${data.templateData.payrollMonth} Summary`;
+                        break;
+                    }
+                    case 'workerPayslip': {
+                        const built = buildWorkerPayslipTemplate(data.templateData);
+                        htmlContent = built.html;
+                        textContent = built.text;
+                        subject = subject || `[G&S FARMS] Payslip for ${data.templateData.payrollMonth}`;
+                        break;
+                    }
+                    case 'salesInvoice': {
+                        const built = buildSalesInvoiceTemplate(data.templateData);
+                        htmlContent = built.html;
+                        textContent = built.text;
+                        subject = subject || `[G&S FARMS Invoice] Receipt #${data.templateData.invoiceNumber}`;
+                        break;
+                    }
+                    case 'inventoryAlert': {
+                        const built = buildInventoryAlertTemplate(data.templateData);
+                        htmlContent = built.html;
+                        textContent = built.text;
+                        subject = subject || `[G&S FARMS Alert] ${data.templateData.alertType} - ${data.templateData.itemName}`;
+                        break;
+                    }
+                    case 'reportDelivery': {
+                        const built = buildReportDeliveryTemplate(data.templateData);
+                        htmlContent = built.html;
+                        textContent = built.text;
+                        subject = subject || `[G&S FARMS Report] ${data.templateData.reportName}`;
+                        break;
+                    }
+                    default:
+                        break;
+                }
+            }
 
             if (!htmlContent) {
                 await snap.ref.update({
@@ -255,6 +317,7 @@ export const getBrevoServiceStatus = functions.https.onCall(async (_data, contex
         throw new functions.https.HttpsError('unauthenticated', 'Authentication required.');
     }
 
+    await brevoService.ensureConfigured(db);
     const info = brevoService.getSenderInfo();
     return {
         isConfigured: info.isConfigured,
@@ -262,6 +325,22 @@ export const getBrevoServiceStatus = functions.https.onCall(async (_data, contex
         senderName: info.name,
         adminEmail: process.env.ADMIN_NOTIFICATION_EMAIL || 'gs.farms.ug@gmail.com',
         provider: 'Brevo (Sendinblue) Transactional SMTP API v3'
+    };
+});
+
+/**
+ * 4. HTTPS Callable Function: getSystemEmailRecipients
+ * Returns all system users and recipients registered to receive notifications
+ */
+export const getSystemEmailRecipients = functions.https.onCall(async (_data, context) => {
+    if (!context.auth) {
+        throw new functions.https.HttpsError('unauthenticated', 'Authentication required.');
+    }
+
+    const recipients = await getAllSystemRecipients(db);
+    return {
+        recipients,
+        count: recipients.length
     };
 });
 

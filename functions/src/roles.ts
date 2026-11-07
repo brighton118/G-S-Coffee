@@ -82,27 +82,25 @@ export async function getAdminRecipients(db: admin.firestore.Firestore): Promise
             }
         }
 
-        // 2. Query users collection for active admins
-        const usersSnap = await db.collection('users')
-            .where('role', '==', 'admin')
-            .where('active', '==', true)
-            .get();
-
+        // 2. Query users collection for active admins (case-insensitive role check)
+        const usersSnap = await db.collection('users').get();
         usersSnap.forEach(docSnap => {
             const u = docSnap.data();
-            const email = sanitizeEmail(u.email);
-            if (email) {
-                recipientsMap.set(email, u.name || 'Farm Admin');
+            if (u.active === false) return;
+            const role = (u.role || '').toString().toLowerCase().trim();
+            if (role === 'admin' || role === 'administrator' || role === 'super_admin' || role === 'owner') {
+                const email = sanitizeEmail(u.email);
+                if (email) {
+                    recipientsMap.set(email, u.name || 'Farm Admin');
+                }
             }
         });
 
         // 3. Query admins collection
-        const adminsSnap = await db.collection('admins')
-            .where('active', '==', true)
-            .get();
-
+        const adminsSnap = await db.collection('admins').get();
         adminsSnap.forEach(docSnap => {
             const a = docSnap.data();
+            if (a.active === false) return;
             const email = sanitizeEmail(a.email);
             if (email) {
                 recipientsMap.set(email, a.name || 'System Administrator');
@@ -112,16 +110,17 @@ export async function getAdminRecipients(db: admin.firestore.Firestore): Promise
         console.warn('[Roles] Error querying admin recipients from Firestore:', err);
     }
 
-    // 4. Fallback: Environment variable or default Super Admins
-    if (recipientsMap.size === 0) {
-        const envAdmin = sanitizeEmail(process.env.ADMIN_NOTIFICATION_EMAIL);
-        if (envAdmin) {
-            recipientsMap.set(envAdmin, 'Farm Administrator');
-        } else {
-            for (const superEmail of SUPER_ADMIN_EMAILS) {
-                recipientsMap.set(superEmail, 'Super Administrator');
-            }
+    // 4. Always ensure Super Admins are included
+    for (const superEmail of SUPER_ADMIN_EMAILS) {
+        if (!recipientsMap.has(superEmail)) {
+            recipientsMap.set(superEmail, 'Super Administrator');
         }
+    }
+
+    // 5. Environment variable fallback
+    const envAdmin = sanitizeEmail(process.env.ADMIN_NOTIFICATION_EMAIL);
+    if (envAdmin && !recipientsMap.has(envAdmin)) {
+        recipientsMap.set(envAdmin, 'Farm Administrator');
     }
 
     return Array.from(recipientsMap.entries()).map(([email, name]) => ({ email, name }));
@@ -145,26 +144,24 @@ export async function getManagerRecipients(db: admin.firestore.Firestore): Promi
         }
 
         // 2. Query users collection for active managers
-        const usersSnap = await db.collection('users')
-            .where('role', '==', 'manager')
-            .where('active', '==', true)
-            .get();
-
+        const usersSnap = await db.collection('users').get();
         usersSnap.forEach(docSnap => {
             const u = docSnap.data();
-            const email = sanitizeEmail(u.email);
-            if (email) {
-                recipientsMap.set(email, u.name || 'Farm Manager');
+            if (u.active === false) return;
+            const role = (u.role || '').toString().toLowerCase().trim();
+            if (role.includes('manager') || role === 'supervisor' || role === 'clerk') {
+                const email = sanitizeEmail(u.email);
+                if (email) {
+                    recipientsMap.set(email, u.name || 'Farm Manager');
+                }
             }
         });
 
         // 3. Query managers collection
-        const managersSnap = await db.collection('managers')
-            .where('active', '==', true)
-            .get();
-
+        const managersSnap = await db.collection('managers').get();
         managersSnap.forEach(docSnap => {
             const m = docSnap.data();
+            if (m.active === false) return;
             const email = sanitizeEmail(m.email);
             if (email) {
                 recipientsMap.set(email, m.name || 'Operations Manager');
@@ -172,6 +169,82 @@ export async function getManagerRecipients(db: admin.firestore.Firestore): Promi
         });
     } catch (err) {
         console.warn('[Roles] Error querying manager recipients from Firestore:', err);
+    }
+
+    // Fallback: If no managers found, route to admins
+    if (recipientsMap.size === 0) {
+        return getAdminRecipients(db);
+    }
+
+    return Array.from(recipientsMap.entries()).map(([email, name]) => ({ email, name }));
+}
+
+/**
+ * Retrieve all registered and active system recipients (Admins, Managers, Staff, Super Admins)
+ * logged in or registered in our system.
+ */
+export async function getAllSystemRecipients(db: admin.firestore.Firestore): Promise<RecipientInfo[]> {
+    const recipientsMap = new Map<string, string>(); // email -> name
+
+    try {
+        // 1. All active registered users in Firestore
+        const usersSnap = await db.collection('users').get();
+        usersSnap.forEach(docSnap => {
+            const u = docSnap.data();
+            if (u.active === false) return;
+            const email = sanitizeEmail(u.email);
+            if (email) {
+                recipientsMap.set(email, u.name || u.displayName || 'System User');
+            }
+        });
+
+        // 2. Users in admins collection
+        const adminsSnap = await db.collection('admins').get();
+        adminsSnap.forEach(docSnap => {
+            const a = docSnap.data();
+            if (a.active === false) return;
+            const email = sanitizeEmail(a.email);
+            if (email) {
+                recipientsMap.set(email, a.name || 'Administrator');
+            }
+        });
+
+        // 3. Users in managers collection
+        const managersSnap = await db.collection('managers').get();
+        managersSnap.forEach(docSnap => {
+            const m = docSnap.data();
+            if (m.active === false) return;
+            const email = sanitizeEmail(m.email);
+            if (email) {
+                recipientsMap.set(email, m.name || 'Manager');
+            }
+        });
+
+        // 4. Configured emails in settings/general
+        const settingsSnap = await db.collection('settings').doc('general').get();
+        if (settingsSnap.exists) {
+            const data = settingsSnap.data() || {};
+            const configuredList = [
+                ...parseEmailList(data.notificationEmails),
+                ...parseEmailList(data.contactEmail),
+                ...parseEmailList(data.adminEmail),
+                ...parseEmailList(data.managerNotificationEmails)
+            ];
+            for (const email of configuredList) {
+                if (!recipientsMap.has(email)) {
+                    recipientsMap.set(email, data.contactPerson || 'Farm Management');
+                }
+            }
+        }
+    } catch (err) {
+        console.warn('[Roles] Error querying all system recipients:', err);
+    }
+
+    // 5. Always include Super Admin emails
+    for (const superEmail of SUPER_ADMIN_EMAILS) {
+        if (!recipientsMap.has(superEmail)) {
+            recipientsMap.set(superEmail, 'Super Administrator');
+        }
     }
 
     return Array.from(recipientsMap.entries()).map(([email, name]) => ({ email, name }));
