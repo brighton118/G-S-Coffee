@@ -53,8 +53,8 @@ export class BrevoService {
 
     constructor(options?: BrevoConfigOptions) {
         this.apiKey = options?.apiKey ?? process.env.BREVO_API_KEY ?? '';
-        this.senderEmail = options?.senderEmail ?? process.env.BREVO_SENDER_EMAIL ?? 'gs.farms.ug@gmail.com';
-        this.senderName = options?.senderName ?? process.env.BREVO_SENDER_NAME ?? 'G&S Coffee Farm Management System';
+        this.senderEmail = options?.senderEmail ?? process.env.BREVO_SENDER_EMAIL ?? 'brightonkato317@gmail.com';
+        this.senderName = options?.senderName ?? process.env.BREVO_SENDER_NAME ?? 'GS FARM Management';
         this.db = options?.db;
     }
 

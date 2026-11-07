@@ -189,8 +189,8 @@ class EmailService {
      * Sender identity configuration
      */
     public getSenderConfig(): { email: string; name: string } {
-        let senderEmail = 'gs.farms.ug@gmail.com';
-        let senderName = 'G&S Coffee Farm Management System';
+        let senderEmail = 'brightonkato317@gmail.com';
+        let senderName = 'GS FARM Management';
         try {
             const saved = localStorage.getItem('gs_farm_settings');
             if (saved) {
