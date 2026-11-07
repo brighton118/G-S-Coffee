@@ -189,7 +189,7 @@ test('Templates render valid HTML and text structures', () => {
         unitPrice: 2500,
         totalAmount: 1250000,
         amountPaid: 1250000,
-        location: 'Mubende District'
+        location: 'BUBAARE, KASHARI MBARARA UGANDA'
     });
     assert.ok(salesTpl.html.includes('INV-2026-001'));
     assert.ok(salesTpl.html.includes('1,250,000'));
@@ -243,7 +243,7 @@ test('Templates render valid HTML and text structures', () => {
         currentQuantity: 1.2,
         threshold: 5.0,
         unit: 'kg',
-        recommendedAction: 'Reorder immediately from agro-dealer in Mubende.'
+        recommendedAction: 'Reorder immediately from agro-dealer in Mbarara.'
     });
     assert.ok(invTpl.html.includes('Rooting Hormone Powder'));
     assert.ok(invTpl.text.includes('Low Stock'));

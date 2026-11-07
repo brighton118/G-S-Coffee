@@ -67,7 +67,7 @@ function wrapBaseEmail(options: BaseTemplateOptions, bodyHtml: string): string {
                 <td class="header">
                     <div class="brand-badge">☕ G&amp;S COFFEE FARMS</div>
                     <h1 style="margin: 0; font-size: 21px; font-weight: 700; color: #ffffff;">Farm Management &amp; Operations</h1>
-                    <div style="font-size: 13px; color: #d6e8c7; margin-top: 6px;">Mubende District, Uganda &bull; Elite Robusta Clone Propagation</div>
+                    <div style="font-size: 13px; color: #d6e8c7; margin-top: 6px;">BUBAARE, KASHARI MBARARA UGANDA &bull; Elite Robusta Clone Propagation</div>
                 </td>
             </tr>
             <tr>
@@ -80,7 +80,7 @@ function wrapBaseEmail(options: BaseTemplateOptions, bodyHtml: string): string {
                     ${bodyHtml}
                     <div style="margin-top: 26px; padding-top: 18px; border-top: 1px dashed #e2e8dc; font-size: 12px; color: #73826e;">
                         <span><strong>Timestamp:</strong> ${timestamp}</span> &bull; 
-                        <span><strong>Estate Location:</strong> Mubende, Uganda</span>
+                        <span><strong>Estate Location:</strong> BUBAARE, KASHARI MBARARA UGANDA</span>
                     </div>
                 </td>
             </tr>

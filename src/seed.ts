@@ -216,7 +216,7 @@ export async function seedDemoData() {
             quantity: 18,
             minStockLevel: 5,
             purchasePrice: 85000,
-            supplier: 'Mubende Quarry Supplies',
+            supplier: 'Mbarara Quarry Supplies',
             dateReceived: '2026-09-01',
             status: 'Active'
         },
@@ -229,7 +229,7 @@ export async function seedDemoData() {
             quantity: 12,
             minStockLevel: 4,
             purchasePrice: 70000,
-            supplier: 'Mubende Quarry Supplies',
+            supplier: 'Mbarara Quarry Supplies',
             dateReceived: '2026-09-02',
             status: 'Active'
         },

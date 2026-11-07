@@ -46,7 +46,7 @@ function applyHeaderAndFooter(
 
             doc.setFontSize(9);
             doc.setFont('helvetica', 'normal');
-            doc.text('High-Yield Clonal Coffee Nursery & Commercial Farm | Mubende, Uganda', 14, 21);
+            doc.text('High-Yield Clonal Coffee Nursery & Commercial Farm | BUBAARE, KASHARI MBARARA UGANDA', 14, 21);
 
             // Report Meta Box
             doc.setTextColor(TEXT_DARK[0], TEXT_DARK[1], TEXT_DARK[2]);
@@ -827,7 +827,7 @@ export function generatePlantletReceiptPDF(order: SalesOrder): void {
     doc.setFont('helvetica', 'bold');
     doc.text(`Location / Farm:`, 115, 50);
     doc.setFont('helvetica', 'normal');
-    doc.text(order.customerLocation || 'Mubende District', 148, 50);
+    doc.text(order.customerLocation || 'BUBAARE, KASHARI MBARARA UGANDA', 148, 50);
 
     doc.setFont('helvetica', 'bold');
     doc.text(`Varieties Recorded:`, 115, 58);

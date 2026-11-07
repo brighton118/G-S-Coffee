@@ -296,7 +296,7 @@ const Sales: React.FC = () => {
                 unitPrice: unitPrice,
                 totalAmount: order.totalAmount,
                 amountPaid: order.amountPaid ?? order.totalAmount,
-                location: order.customerLocation || 'Mubende District',
+                location: order.customerLocation || 'Bubaare, Kashari, Mbarara, Uganda',
                 items
             });
 
@@ -436,7 +436,7 @@ const Sales: React.FC = () => {
                 unitPrice: primaryUnitPrice,
                 totalAmount,
                 amountPaid: totalAmount,
-                location: savedOrder.customerLocation || 'Mubende District',
+                location: savedOrder.customerLocation || 'Bubaare, Kashari, Mbarara, Uganda',
                 items: finalItems
             }).then(res => {
                 if (res.success) {

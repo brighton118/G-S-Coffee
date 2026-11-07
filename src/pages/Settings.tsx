@@ -85,9 +85,9 @@ const Settings: React.FC = () => {
 
     const [settings, setSettings] = useState({
         farmName: 'G&S FARMS',
-        farmLocation: 'Mubende District, Uganda',
-        farmRegion: 'Central Region, Mubende District',
-        farmLandmark: 'Main Farm Gate, G&S Coffee Estate',
+        farmLocation: 'BUBAARE, KASHARI MBARARA UGANDA',
+        farmRegion: 'Kashari, Mbarara District, Western Region',
+        farmLandmark: 'Main Farm Gate, G&S Coffee Estate, Bubaare',
         contactPerson: 'Farm Administrator',
         contactEmail: 'gs.farms.ug@gmail.com',
         notificationEmails: 'brightonkato317@gmail.com',
@@ -98,8 +98,8 @@ const Settings: React.FC = () => {
         timezone: 'Africa/Kampala',
         managerNotificationEmails: '',
         emailApiKey: '',
-        brevoSenderEmail: 'gs.farms.ug@gmail.com',
-        brevoSenderName: 'G&S Coffee Farm Management System',
+        brevoSenderEmail: 'brightonkato317@gmail.com',
+        brevoSenderName: 'GS FARM Management',
         enableSMSAlerts: true,
         enableEmailAlerts: true,
         notifyLowStock: true,
@@ -582,7 +582,7 @@ const Settings: React.FC = () => {
                                             disabled={!canEditFarmInfo}
                                             value={settings.farmLocation} 
                                             onChange={e => setSettings({ ...settings, farmLocation: e.target.value })} 
-                                            placeholder="Mubende District, Uganda"
+                                            placeholder="BUBAARE, KASHARI MBARARA UGANDA"
                                         />
                                     </div>
 
@@ -598,7 +598,7 @@ const Settings: React.FC = () => {
                                                 disabled={!canEditFarmInfo}
                                                 value={settings.farmRegion || ''} 
                                                 onChange={e => setSettings({ ...settings, farmRegion: e.target.value })} 
-                                                placeholder="Central Region, Mubende"
+                                                placeholder="Kashari, Mbarara"
                                             />
                                         </div>
 
