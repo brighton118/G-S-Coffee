@@ -68,7 +68,7 @@ const Settings: React.FC = () => {
     const canEditFarmInfo = effectiveRole === 'admin' || effectiveRole === 'manager';
     const canEditAllEmails = effectiveRole === 'admin';
     const canEditManagerEmails = effectiveRole === 'admin' || effectiveRole === 'manager';
-    const canEditAlertToggles = effectiveRole === 'admin' || effectiveRole === 'manager';
+    const canEditAlertToggles = effectiveRole === 'admin';
     const canEditThresholds = effectiveRole === 'admin' || effectiveRole === 'manager';
     const canSaveFarmSettings = effectiveRole === 'admin' || effectiveRole === 'manager';
     const canManageTeam = effectiveRole === 'admin';
@@ -308,13 +308,25 @@ const Settings: React.FC = () => {
                     if (snap.exists()) {
                         const existingCloud = snap.data();
                         dataToSave = {
-                            ...existingCloud,
                             ...settings,
+                            ...existingCloud,
                             contactEmail: existingCloud.contactEmail || settings.contactEmail,
                             notificationEmails: existingCloud.notificationEmails || settings.notificationEmails,
                             emailApiKey: existingCloud.emailApiKey || settings.emailApiKey,
                             brevoSenderEmail: existingCloud.brevoSenderEmail || settings.brevoSenderEmail,
-                            brevoSenderName: existingCloud.brevoSenderName || settings.brevoSenderName
+                            brevoSenderName: existingCloud.brevoSenderName || settings.brevoSenderName,
+                            enableEmailAlerts: true,
+                            notifyManagerEntry: true,
+                            notifyNurseryEvents: true,
+                            notifyInventoryEvents: true,
+                            notifySalesEvents: true,
+                            notifyWorkerEvents: true,
+                            notifyPayrollEvents: true,
+                            notifyAttendanceDeadlines: true,
+                            notifyEODAttendance: true,
+                            notifyPendingOvertime: true,
+                            notifyLowStock: true,
+                            notifyChamberOverdue: true
                         };
                     }
                 } catch (_) {}
@@ -857,11 +869,7 @@ const Settings: React.FC = () => {
                                     <div style={{ marginTop: '0.5rem', paddingTop: '0.85rem', borderTop: '1px solid var(--color-border)' }}>
                                         <h4 style={{ margin: '0 0 0.65rem 0', fontSize: '0.95rem', color: 'var(--color-primary-dark)', display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
                                             <FileText size={16} color="#2563eb" /> Active Event-Driven &amp; Automated Alert Categories
-                                            {canEditAlertToggles ? (
-                                                <span className="settings-perm-pill manager-access">Manager &amp; Admin</span>
-                                            ) : (
-                                                <span className="settings-perm-pill staff-view">Staff View</span>
-                                            )}
+                                            <span className="settings-perm-pill admin-only">Backend Enforced (Permanent)</span>
                                         </h4>
 
                                         <div style={{ display: 'flex', flexDirection: 'column', gap: '0.65rem', background: '#f8fafc', padding: '0.85rem 1rem', borderRadius: '8px', border: '1px solid #e2e8f0' }}>
@@ -936,6 +944,17 @@ const Settings: React.FC = () => {
                                             )}
                                         </div>
 
+                                        {!canEditAllEmails ? (
+                                            <div style={{ background: '#f0fdf4', border: '1px solid #bbf7d0', borderRadius: '8px', padding: '1rem', color: '#166534', fontSize: '0.85rem', display: 'flex', alignItems: 'center', gap: '0.75rem', margin: '0.5rem 0 1rem' }}>
+                                                <ShieldCheck size={20} color="#16a34a" />
+                                                <div>
+                                                    <strong>Brevo Transactional Email Relay (SMTP v3) is active in the backend.</strong>
+                                                    <div style={{ color: '#15803d', marginTop: '0.2rem' }}>
+                                                        Operational alerts, manager activity logs, and worker payslips are securely dispatched to administrators. API credentials and sender routing are managed securely in the backend.
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        ) : (
                                         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(260px, 1fr))', gap: '0.85rem', marginBottom: '0.85rem' }}>
                                             <div className="form-group" style={{ margin: 0 }}>
                                                 <label className="form-label" style={{ fontSize: '0.85rem' }}>
@@ -998,6 +1017,7 @@ const Settings: React.FC = () => {
                                                 />
                                             </div>
                                         </div>
+                                        )}
                                     </div>
 
                                     {/* Emails Logged In Our System - Delivery Roster */}

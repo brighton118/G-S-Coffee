@@ -3,6 +3,7 @@ import { format, differenceInDays, parseISO } from 'date-fns';
 import { emailService } from '../services/emailService';
 import { smsService } from '../services/smsService';
 import { auth } from '../firebase';
+import { firestoreSyncService } from '../services/firestoreSync';
 
 /**
  * G&S FARM Notification & Communication Engine
@@ -43,7 +44,7 @@ class NotificationService {
             }
         }
 
-        // Save in-app notification
+        // Save in-app notification locally
         const notifId = await db.notifications.add({
             type,
             title,
@@ -52,6 +53,19 @@ class NotificationService {
             read: 0,
             channel,
             recipient: recipient || 'Farm Manager'
+        });
+
+        // Persist to Cloud Firestore backend so it remains on everyone's dashboard
+        void firestoreSyncService.saveNotification({
+            id: notifId,
+            type,
+            title,
+            message,
+            date: today,
+            read: 0,
+            channel,
+            recipient: recipient || 'Farm Management',
+            createdAt: new Date().toISOString()
         });
 
         // Record communication audit log
