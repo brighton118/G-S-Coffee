@@ -48,21 +48,12 @@ export const SUPER_ADMIN_EMAILS: string[] = [
 
 class EmailService {
     /**
-     * Retrieve recipient email addresses from local settings, cloud settings,
-     * authenticated user session, and super admin accounts.
+     * Retrieve verified Administrator recipients (Super Admins, Estate Admins, Primary Reporting)
+     * Receives: Sales Invoices, Cash Receipts, Payroll Wage Bill, Manager Activity Audits, System Reports
      */
-    public getRecipients(): string[] {
+    public getAdminRecipients(): string[] {
         const recipients: Set<string> = new Set();
         try {
-            // 1. Current authenticated / logged-in user
-            if (auth.currentUser?.email) {
-                const currentEmail = auth.currentUser.email.trim().toLowerCase();
-                if (/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(currentEmail)) {
-                    recipients.add(currentEmail);
-                }
-            }
-
-            // 2. Settings saved locally / synced
             const saved = localStorage.getItem('gs_farm_settings');
             if (saved) {
                 const parsed = JSON.parse(saved);
@@ -79,6 +70,29 @@ class EmailService {
                         .filter((e: string) => e && /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(e))
                         .forEach((e: string) => recipients.add(e));
                 }
+            }
+        } catch (e) {
+            console.warn('[EmailService] Error reading admin recipients:', e);
+        }
+
+        // Always include Super Admins
+        for (const superEmail of SUPER_ADMIN_EMAILS) {
+            recipients.add(superEmail.toLowerCase());
+        }
+
+        return Array.from(recipients);
+    }
+
+    /**
+     * Retrieve Farm Manager recipients
+     * Receives: Missed Attendance Cutoffs, Overtime Verifications, Nursery Alerts, Worker Payslips
+     */
+    public getManagerRecipients(): string[] {
+        const recipients: Set<string> = new Set();
+        try {
+            const saved = localStorage.getItem('gs_farm_settings');
+            if (saved) {
+                const parsed = JSON.parse(saved);
                 if (parsed.managerNotificationEmails && typeof parsed.managerNotificationEmails === 'string') {
                     parsed.managerNotificationEmails
                         .split(/[,;\s]+/)
@@ -88,15 +102,30 @@ class EmailService {
                 }
             }
         } catch (e) {
-            console.warn('[EmailService] Error reading recipient settings:', e);
+            console.warn('[EmailService] Error reading manager recipients:', e);
         }
 
-        // 3. Always include Super Admins
-        for (const superEmail of SUPER_ADMIN_EMAILS) {
-            recipients.add(superEmail.toLowerCase());
+        // Default to registered farm manager in the database
+        if (recipients.size === 0) {
+            recipients.add('ophinemanigaruhanga@gmail.com');
         }
 
         return Array.from(recipients);
+    }
+
+    /**
+     * Retrieve all farm stakeholders (Union of Admins & Managers)
+     */
+    public getAllRecipients(): string[] {
+        const set = new Set([...this.getAdminRecipients(), ...this.getManagerRecipients()]);
+        return Array.from(set);
+    }
+
+    /**
+     * Backward-compatible default recipient retriever
+     */
+    public getRecipients(): string[] {
+        return this.getAllRecipients();
     }
 
     /**
@@ -673,7 +702,7 @@ class EmailService {
     }
 
     /**
-     * Send Sales Invoice & Receipt Email to customer and all system recipients
+     * Send Sales Invoice & Receipt Email to customer and Farm Administrators
      */
     public async sendSalesInvoiceEmail(data: {
         invoiceNumber: string;
@@ -694,8 +723,8 @@ class EmailService {
         if (data.customerEmail && data.customerEmail.includes('@')) {
             recipients.push(data.customerEmail.trim().toLowerCase());
         }
-        // Always include all system emails logged in our system
-        this.getRecipients().forEach(r => {
+        // Route specifically to Administrators for financial oversight and treasury audits
+        this.getAdminRecipients().forEach(r => {
             const clean = r.trim().toLowerCase();
             if (!recipients.includes(clean)) recipients.push(clean);
         });
@@ -737,7 +766,7 @@ class EmailService {
     }
 
     /**
-     * Send Payroll Run Completion Summary to Management
+     * Send Payroll Run Completion Summary to Administrators for authorization
      */
     public async sendPayrollCompletionEmail(data: {
         payrollMonth: string;
@@ -757,8 +786,9 @@ class EmailService {
             }
         ] : undefined;
 
+        // Route specifically to Administrators for wage bill oversight
         return this.dispatchTransactional({
-            to: this.getRecipients(),
+            to: this.getAdminRecipients(),
             subject: `[G&S Coffee Farm Payroll] ${data.payrollMonth} Run Summary`,
             templateType: 'payrollRun',
             templateData: data,
@@ -768,7 +798,7 @@ class EmailService {
     }
 
     /**
-     * Send Individual Worker Payslip
+     * Send Individual Worker Payslip to Worker and Farm Manager
      */
     public async sendWorkerPayslipEmail(data: {
         workerName: string;
@@ -789,8 +819,8 @@ class EmailService {
         if (data.workerEmail && data.workerEmail.includes('@')) {
             recipients.push(data.workerEmail.trim().toLowerCase());
         }
-        // Always send copy to system recipients logged in our system
-        this.getRecipients().forEach(r => {
+        // Route specifically to Farm Manager for on-site payout and worker personnel files
+        this.getManagerRecipients().forEach(r => {
             const clean = r.trim().toLowerCase();
             if (!recipients.includes(clean)) recipients.push(clean);
         });
@@ -813,7 +843,7 @@ class EmailService {
     }
 
     /**
-     * Send Worker Missed Attendance Alert
+     * Send Worker Missed Attendance Alert to Farm Manager
      */
     public async sendMissedAttendanceEmail(data: {
         workerId: string;
@@ -823,8 +853,9 @@ class EmailService {
         timeInWindow?: string;
         notes?: string;
     }): Promise<EmailDispatchResult> {
+        // Route specifically to Farm Manager for morning shift action on the ground
         return this.dispatchTransactional({
-            to: this.getRecipients(),
+            to: this.getManagerRecipients(),
             subject: `[G&S Coffee Farm Alert] Missed Attendance - ${data.workerName} (${data.workerId})`,
             templateType: 'missedAttendance',
             templateData: data,
@@ -833,7 +864,7 @@ class EmailService {
     }
 
     /**
-     * Send Inventory & Nursery Alert (Low Stock, Expiry, Chamber Overdue)
+     * Send Inventory & Nursery Alert (Low Stock, Expiry, Chamber Overdue) to Managers & Admins
      */
     public async sendInventoryAlertEmail(data: {
         alertType: 'Low Stock' | 'Expiring Soon' | 'Chamber Overdue' | string;
@@ -845,8 +876,9 @@ class EmailService {
         expiryDate?: string;
         recommendedAction?: string;
     }): Promise<EmailDispatchResult> {
+        // Route to both Managers & Admins for supply replenishment and nursery transitions
         return this.dispatchTransactional({
-            to: this.getRecipients(),
+            to: this.getAllRecipients(),
             subject: `[G&S Coffee Farm Alert] ${data.alertType}: ${data.itemName}`,
             templateType: 'inventoryAlert',
             templateData: data,
@@ -893,11 +925,26 @@ class EmailService {
     }
 
     /**
-     * Backward-compatible General Notification Method
+     * Backward-compatible General Notification Method with intelligent role targeting
      */
     public async sendNotificationEmail(payload: EmailNotificationPayload): Promise<EmailDispatchResult> {
+        let targets = payload.to;
+        if (!targets) {
+            // Role targeting based on operational category
+            if (payload.category === 'Manager Entry') {
+                // Manager actions audited exclusively by Administrators
+                targets = this.getAdminRecipients();
+            } else if (payload.category === 'Missing Attendance' || payload.category === 'Pending Overtime') {
+                // Shift & attendance operations routed to Farm Managers
+                targets = this.getManagerRecipients();
+            } else {
+                // Critical shortages & chamber alerts routed to both Managers & Admins
+                targets = this.getAllRecipients();
+            }
+        }
+
         return this.dispatchTransactional({
-            to: payload.to,
+            to: targets,
             subject: payload.subject.startsWith('[G&S') ? payload.subject : `[G&S Coffee Farm] ${payload.subject}`,
             templateType: 'adminAlert',
             templateData: {
