@@ -23,8 +23,6 @@ import {
     Users,
     UserCheck,
     Lock,
-    Send,
-    AlertCircle,
 } from 'lucide-react';
 import { updatePassword } from 'firebase/auth';
 import { doc, getDoc, setDoc, serverTimestamp } from 'firebase/firestore';
@@ -32,7 +30,6 @@ import { auth, dbFirestore } from '../firebase';
 import { firestoreSyncService } from '../services/firestoreSync';
 import AdminInvitations from '../components/AdminInvitations';
 import { SUPER_ADMIN_EMAILS } from '../services/adminAccess';
-import { emailService, SystemEmailRecipientInfo } from '../services/emailService';
 import { notificationService } from '../utils/notificationService';
 import {
     DEFAULT_ATTENDANCE_SCHEDULE,
@@ -112,13 +109,6 @@ const Settings: React.FC = () => {
     });
     const [isSaving, setIsSaving] = useState<boolean>(false);
     const [saveNotice, setSaveNotice] = useState<string | null>(null);
-
-    // Email delivery and logged-in system recipients state
-    const [systemRecipients, setSystemRecipients] = useState<SystemEmailRecipientInfo[]>([]);
-    const [isLoadingRecipients, setIsLoadingRecipients] = useState<boolean>(false);
-    const [testEmailTarget, setTestEmailTarget] = useState<string>('all');
-    const [isSendingTest, setIsSendingTest] = useState<boolean>(false);
-    const [testEmailFeedback, setTestEmailFeedback] = useState<{ type: 'success' | 'error'; message: string } | null>(null);
 
     // Password change state
     const [newAdminPass, setNewAdminPass] = useState('');
@@ -205,66 +195,12 @@ const Settings: React.FC = () => {
             }
         };
 
-        const loadSystemEmailData = async () => {
-            setIsLoadingRecipients(true);
-            try {
-                const recipients = await emailService.getSystemRecipientsAsync().catch(() => []);
-                if (isMounted) {
-                    setSystemRecipients(recipients);
-                }
-            } catch (err) {
-                console.warn('System email data load note:', err);
-            } finally {
-                if (isMounted) setIsLoadingRecipients(false);
-            }
-        };
-
         void loadCloudSettings();
-        void loadSystemEmailData();
 
         return () => {
             isMounted = false;
         };
     }, []);
-
-    const handleRefreshRecipients = async () => {
-        setIsLoadingRecipients(true);
-        try {
-            const recipients = await emailService.getSystemRecipientsAsync();
-            setSystemRecipients(recipients);
-        } catch (err) {
-            console.warn('Refresh recipients error:', err);
-        } finally {
-            setIsLoadingRecipients(false);
-        }
-    };
-
-    const handleSendTestEmail = async () => {
-        setIsSendingTest(true);
-        setTestEmailFeedback(null);
-        try {
-            const target = testEmailTarget === 'all' ? undefined : testEmailTarget;
-            const res = await emailService.sendTestEmail(target);
-            if (res.success) {
-                setTestEmailFeedback({
-                    type: 'success',
-                    message: res.message || `Test email successfully delivered to ${res.recipients.join(', ')}!`
-                });
-            } else {
-                setTestEmailFeedback({
-                    type: 'error',
-                    message: res.error || 'Failed to dispatch test email. Please check your Brevo API key configuration.'
-                });
-            }
-        } catch (err: any) {
-            setTestEmailFeedback({
-                type: 'error',
-                message: err.message || 'An unexpected error occurred while sending test email.'
-            });
-        } finally {
-            setIsSendingTest(false);
-        }
-    };
 
     const handleSave = async (e: React.FormEvent) => {
         e.preventDefault();
@@ -345,9 +281,6 @@ const Settings: React.FC = () => {
                     sourceUser: auth.currentUser?.email || 'Farm Manager'
                 });
             }
-
-            // Re-sync local recipient roster
-            void handleRefreshRecipients();
         } catch (err: any) {
             console.error('Error saving settings to cloud:', err);
             setSaveNotice('✅ Settings saved locally (Cloud sync will update when reconnected).');
@@ -847,162 +780,6 @@ const Settings: React.FC = () => {
                                                 <Smartphone size={16} color="#16a34a" /> Send SMS &amp; Mobile Alerts to {settings.contactPhone}
                                             </div>
                                         </label>
-                                    </div>
-
-                                    {/* Emails Logged In Our System - Delivery Roster */}
-                                    <div style={{ marginTop: '0.85rem', paddingTop: '1rem', borderTop: '1px solid var(--color-border)' }}>
-                                        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '0.75rem', flexWrap: 'wrap', gap: '0.5rem' }}>
-                                            <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                                                <Users size={18} color="var(--color-primary)" />
-                                                <h4 style={{ margin: 0, fontSize: '0.95rem', color: 'var(--color-primary-dark)' }}>
-                                                    Emails Logged In Our System (Delivery Roster)
-                                                </h4>
-                                                <span style={{ background: '#dcfce7', color: '#166534', padding: '0.15rem 0.5rem', borderRadius: '12px', fontSize: '0.75rem', fontWeight: 700 }}>
-                                                    {systemRecipients.length} Recipient{systemRecipients.length === 1 ? '' : 's'} Ready
-                                                </span>
-                                            </div>
-                                            <button
-                                                type="button"
-                                                onClick={handleRefreshRecipients}
-                                                disabled={isLoadingRecipients}
-                                                style={{ display: 'inline-flex', alignItems: 'center', gap: '0.35rem', background: '#f1f5f9', border: '1px solid #cbd5e1', padding: '0.35rem 0.75rem', borderRadius: '6px', fontSize: '0.8rem', cursor: 'pointer', color: '#334155' }}
-                                            >
-                                                <RefreshCw size={12} className={isLoadingRecipients ? 'spin' : ''} />
-                                                Refresh Roster
-                                            </button>
-                                        </div>
-
-                                        <p style={{ margin: '0 0 0.75rem 0', fontSize: '0.82rem', color: 'var(--color-text-light)' }}>
-                                            All transactional emails (sales receipts, worker payslips, payroll summaries, and attendance alerts) are routed to these registered system addresses.
-                                        </p>
-
-                                        <div style={{ background: '#ffffff', border: '1px solid #e2e8f0', borderRadius: '8px', overflowX: 'auto', marginBottom: '1rem' }}>
-                                            <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.85rem' }}>
-                                                <thead>
-                                                    <tr style={{ background: '#f8fafc', borderBottom: '1px solid #e2e8f0', textAlign: 'left' }}>
-                                                        <th style={{ padding: '0.5rem 0.75rem', fontWeight: 600, color: '#475569' }}>Email Address</th>
-                                                        <th style={{ padding: '0.5rem 0.75rem', fontWeight: 600, color: '#475569' }}>Name / Identity</th>
-                                                        <th style={{ padding: '0.5rem 0.75rem', fontWeight: 600, color: '#475569' }}>Role</th>
-                                                        <th style={{ padding: '0.5rem 0.75rem', fontWeight: 600, color: '#475569' }}>Source</th>
-                                                    </tr>
-                                                </thead>
-                                                <tbody>
-                                                    {systemRecipients.length === 0 ? (
-                                                        <tr>
-                                                            <td colSpan={4} style={{ padding: '1rem', textAlign: 'center', color: '#64748b' }}>
-                                                                {isLoadingRecipients ? 'Scanning logged-in and registered system emails...' : 'No system recipients registered yet.'}
-                                                            </td>
-                                                        </tr>
-                                                    ) : (
-                                                        systemRecipients.map((rec, idx) => (
-                                                            <tr key={`${rec.email}-${idx}`} style={{ borderBottom: '1px solid #f1f5f9' }}>
-                                                                <td style={{ padding: '0.55rem 0.75rem', fontWeight: 600, color: '#1e293b' }}>
-                                                                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
-                                                                        <Mail size={13} color="var(--color-primary)" />
-                                                                        <span>{rec.email}</span>
-                                                                        {auth.currentUser?.email?.toLowerCase() === rec.email.toLowerCase() && (
-                                                                            <span style={{ background: '#dcfce7', color: '#166534', fontSize: '0.68rem', padding: '0.1rem 0.4rem', borderRadius: '4px', fontWeight: 700 }}>
-                                                                                You
-                                                                            </span>
-                                                                        )}
-                                                                    </div>
-                                                                </td>
-                                                                <td style={{ padding: '0.55rem 0.75rem', color: '#475569' }}>{rec.name || 'Farm User'}</td>
-                                                                <td style={{ padding: '0.55rem 0.75rem' }}>
-                                                                    <span style={{
-                                                                        display: 'inline-block',
-                                                                        fontSize: '0.72rem',
-                                                                        fontWeight: 700,
-                                                                        padding: '0.15rem 0.5rem',
-                                                                        borderRadius: '4px',
-                                                                        background: rec.role === 'Active Session' ? '#e0e7ff' : rec.role === 'Super Admin' ? '#fef3c7' : rec.role === 'Estate Admin' || rec.role === 'Admin' ? '#dcfce7' : '#f1f5f9',
-                                                                        color: rec.role === 'Active Session' ? '#3730a3' : rec.role === 'Super Admin' ? '#92400e' : rec.role === 'Estate Admin' || rec.role === 'Admin' ? '#166534' : '#334155'
-                                                                    }}>
-                                                                        {rec.role || 'Staff'}
-                                                                    </span>
-                                                                </td>
-                                                                <td style={{ padding: '0.55rem 0.75rem', fontSize: '0.78rem', color: '#64748b' }}>{rec.source}</td>
-                                                            </tr>
-                                                        ))
-                                                    )}
-                                                </tbody>
-                                            </table>
-                                        </div>
-
-                                        {/* Send Test Email Tool */}
-                                        <div style={{ background: '#f8fafc', border: '1px solid #cbd5e1', borderRadius: '8px', padding: '0.85rem 1rem' }}>
-                                            <h5 style={{ margin: '0 0 0.5rem 0', fontSize: '0.88rem', color: 'var(--color-primary-dark)', display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
-                                                <Send size={14} color="var(--color-primary)" /> Send Test Email to Logged-in Emails
-                                            </h5>
-                                            <div style={{ display: 'flex', gap: '0.65rem', flexWrap: 'wrap', alignItems: 'center' }}>
-                                                <select
-                                                    className="form-input"
-                                                    value={testEmailTarget}
-                                                    onChange={e => setTestEmailTarget(e.target.value)}
-                                                    style={{ maxWidth: '320px', fontSize: '0.85rem', margin: 0 }}
-                                                >
-                                                    <option value="all">Broadcast to All Logged-In System Emails ({systemRecipients.length})</option>
-                                                    {systemRecipients.map((r, i) => (
-                                                        <option key={i} value={r.email}>
-                                                            {r.email} ({r.name || r.role || 'System'})
-                                                        </option>
-                                                    ))}
-                                                </select>
-
-                                                <button
-                                                    type="button"
-                                                    onClick={handleSendTestEmail}
-                                                    disabled={isSendingTest}
-                                                    style={{
-                                                        display: 'inline-flex',
-                                                        alignItems: 'center',
-                                                        gap: '0.4rem',
-                                                        background: 'var(--color-primary)',
-                                                        color: '#ffffff',
-                                                        border: 'none',
-                                                        padding: '0.5rem 1rem',
-                                                        borderRadius: '6px',
-                                                        fontSize: '0.85rem',
-                                                        fontWeight: 600,
-                                                        cursor: isSendingTest ? 'not-allowed' : 'pointer'
-                                                    }}
-                                                >
-                                                    {isSendingTest ? (
-                                                        <>
-                                                            <RefreshCw size={14} className="spin" />
-                                                            Sending Test Email...
-                                                        </>
-                                                    ) : (
-                                                        <>
-                                                            <Send size={14} />
-                                                            Send Test Email
-                                                        </>
-                                                    )}
-                                                </button>
-                                            </div>
-
-                                            {testEmailFeedback && (
-                                                <div style={{
-                                                    marginTop: '0.65rem',
-                                                    padding: '0.65rem 0.85rem',
-                                                    borderRadius: '6px',
-                                                    fontSize: '0.82rem',
-                                                    display: 'flex',
-                                                    alignItems: 'flex-start',
-                                                    gap: '0.5rem',
-                                                    background: testEmailFeedback.type === 'success' ? '#f0fdf4' : '#fef2f2',
-                                                    border: `1px solid ${testEmailFeedback.type === 'success' ? '#86efac' : '#fecaca'}`,
-                                                    color: testEmailFeedback.type === 'success' ? '#166534' : '#991b1b'
-                                                }}>
-                                                    {testEmailFeedback.type === 'success' ? (
-                                                        <CheckCircle2 size={16} style={{ flexShrink: 0, marginTop: '2px' }} />
-                                                    ) : (
-                                                        <AlertCircle size={16} style={{ flexShrink: 0, marginTop: '2px' }} />
-                                                    )}
-                                                    <div>{testEmailFeedback.message}</div>
-                                                </div>
-                                            )}
-                                        </div>
                                     </div>
                                 </div>
                             )}
