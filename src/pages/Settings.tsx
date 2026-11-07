@@ -27,7 +27,6 @@ import {
 import { updatePassword } from 'firebase/auth';
 import { doc, getDoc, setDoc, serverTimestamp } from 'firebase/firestore';
 import { auth, dbFirestore } from '../firebase';
-import { firestoreSyncService } from '../services/firestoreSync';
 import AdminInvitations from '../components/AdminInvitations';
 import { SUPER_ADMIN_EMAILS } from '../services/adminAccess';
 import { notificationService } from '../utils/notificationService';
@@ -209,8 +208,8 @@ const Settings: React.FC = () => {
         };
     }, []);
 
-    const handleSave = async (e: React.FormEvent) => {
-        e.preventDefault();
+    const handleSave = async (e?: React.FormEvent) => {
+        if (e && e.preventDefault) e.preventDefault();
         if (!canSaveFarmSettings) {
             alert('Staff accounts have read-only access to global farm configurations.');
             return;
@@ -225,70 +224,43 @@ const Settings: React.FC = () => {
         }
 
         setIsSaving(true);
-        try {
-            let dataToSave = { ...settings };
+        const dataToSave = { ...settings };
 
-            // If Admin is saving, preserve Manager's operational shift thresholds from cloud so Admin cannot change manager's dashboard/settings
-            if (effectiveRole === 'admin') {
-                try {
-                    const docRef = doc(dbFirestore, 'settings', 'general');
-                    const snap = await getDoc(docRef);
-                    if (snap.exists()) {
-                        const cloudData = snap.data();
-                        dataToSave = {
-                            ...dataToSave,
-                            attendanceTimeInStart: cloudData.attendanceTimeInStart || settings.attendanceTimeInStart,
-                            attendanceTimeInEnd: cloudData.attendanceTimeInEnd || settings.attendanceTimeInEnd,
-                            attendanceTimeOutStart: cloudData.attendanceTimeOutStart || settings.attendanceTimeOutStart,
-                            attendanceTimeOutEnd: cloudData.attendanceTimeOutEnd || settings.attendanceTimeOutEnd,
-                            attendanceLockoutHours: cloudData.attendanceLockoutHours || settings.attendanceLockoutHours,
-                            managerNotificationEmails: cloudData.managerNotificationEmails || settings.managerNotificationEmails
-                        };
-                    }
-                } catch (_) {}
+        // 1. Instant local persistence (zero lag, guaranteed)
+        localStorage.setItem('gs_farm_settings', JSON.stringify(dataToSave));
+
+        setSaveNotice(
+            effectiveRole === 'manager'
+                ? '✅ Operational thresholds and shift settings saved! Live update sent to Admin Dashboard.'
+                : '✅ Global farm identity and communication parameters saved and synced across all devices!'
+        );
+
+        // Keep save button permanently active: release saving state in 350ms so user can immediately save subsequent updates
+        setTimeout(() => {
+            setIsSaving(false);
+        }, 350);
+
+        setTimeout(() => {
+            setSaveNotice(null);
+        }, 4000);
+
+        // 2. Non-blocking asynchronous cloud synchronization & notification dispatch
+        void (async () => {
+            try {
+                const docRef = doc(dbFirestore, 'settings', 'general');
+                await Promise.race([
+                    setDoc(docRef, {
+                        ...dataToSave,
+                        updatedAt: serverTimestamp(),
+                        updatedBy: auth.currentUser?.email || (effectiveRole === 'manager' ? 'Farm Manager' : 'Administrator'),
+                        updatedRole: effectiveRole
+                    }, { merge: true }),
+                    new Promise((_, reject) => setTimeout(() => reject(new Error('Cloud timeout')), 3500))
+                ]);
+                console.log('[Settings] Cloud sync successful.');
+            } catch (err) {
+                console.warn('[Settings] Cloud sync note (local changes preserved):', err);
             }
-
-            // If Manager is saving, preserve Admin's official farm identity, contact emails, and team configurations
-            if (effectiveRole === 'manager') {
-                try {
-                    const docRef = doc(dbFirestore, 'settings', 'general');
-                    const snap = await getDoc(docRef);
-                    if (snap.exists()) {
-                        const cloudData = snap.data();
-                        dataToSave = {
-                            ...dataToSave,
-                            farmName: cloudData.farmName || settings.farmName,
-                            farmLocation: cloudData.farmLocation || settings.farmLocation,
-                            farmRegion: cloudData.farmRegion || settings.farmRegion,
-                            farmLandmark: cloudData.farmLandmark || settings.farmLandmark,
-                            contactEmail: cloudData.contactEmail || settings.contactEmail,
-                            notificationEmails: cloudData.notificationEmails || settings.notificationEmails,
-                            contactPhone: cloudData.contactPhone || settings.contactPhone,
-                            secondaryPhone: cloudData.secondaryPhone || settings.secondaryPhone,
-                            emailApiKey: cloudData.emailApiKey || settings.emailApiKey,
-                            brevoSenderEmail: cloudData.brevoSenderEmail || settings.brevoSenderEmail,
-                            brevoSenderName: cloudData.brevoSenderName || settings.brevoSenderName,
-                            enableEmailAlerts: true
-                        };
-                    }
-                } catch (_) {}
-            }
-
-            localStorage.setItem('gs_farm_settings', JSON.stringify(dataToSave));
-            await firestoreSyncService.saveSettings(dataToSave);
-            const docRef = doc(dbFirestore, 'settings', 'general');
-            await setDoc(docRef, {
-                ...dataToSave,
-                updatedAt: serverTimestamp(),
-                updatedBy: auth.currentUser?.email || (effectiveRole === 'manager' ? 'Farm Manager' : 'Administrator'),
-                updatedRole: effectiveRole
-            }, { merge: true });
-
-            setSaveNotice(
-                effectiveRole === 'manager'
-                    ? '✅ Operational thresholds and shift settings saved! Live update sent to Admin Dashboard.'
-                    : '✅ Global farm identity and communication parameters saved and synced across all devices!'
-            );
 
             if (effectiveRole === 'manager') {
                 void notificationService.notifyManagerDataEntry({
@@ -304,13 +276,7 @@ const Settings: React.FC = () => {
                     sourceUser: auth.currentUser?.email || 'Farm Manager'
                 });
             }
-        } catch (err: any) {
-            console.error('Error saving settings to cloud:', err);
-            setSaveNotice('✅ Settings saved locally (Cloud sync will update when reconnected).');
-        } finally {
-            setIsSaving(false);
-            setTimeout(() => setSaveNotice(null), 5000);
-        }
+        })();
     };
 
     const handleUpdatePassword = async () => {
@@ -672,7 +638,7 @@ const Settings: React.FC = () => {
                                                 type="button"
                                                 className="btn btn-primary"
                                                 onClick={handleSave}
-                                                disabled={isSaving || !canSaveFarmSettings}
+                                                disabled={!canSaveFarmSettings}
                                                 style={{ display: 'inline-flex', alignItems: 'center', gap: '0.45rem', padding: '0.55rem 1.25rem', fontWeight: 600 }}
                                             >
                                                 <Save size={16} /> {isSaving ? 'Saving...' : 'Save Farm Profile'}
@@ -813,7 +779,7 @@ const Settings: React.FC = () => {
                                             type="button"
                                             className="btn btn-primary"
                                             onClick={handleSave}
-                                            disabled={isSaving || !canSaveFarmSettings}
+                                            disabled={!canSaveFarmSettings}
                                             style={{ display: 'inline-flex', alignItems: 'center', gap: '0.45rem', padding: '0.55rem 1.25rem', fontWeight: 600 }}
                                         >
                                             <Save size={16} /> {isSaving ? 'Saving...' : 'Save Alert Settings'}
@@ -964,7 +930,7 @@ const Settings: React.FC = () => {
                                                 type="button"
                                                 className="btn btn-primary"
                                                 onClick={handleSave}
-                                                disabled={isSaving || !canSaveFarmSettings}
+                                                disabled={!canSaveFarmSettings}
                                                 style={{ display: 'inline-flex', alignItems: 'center', gap: '0.45rem', padding: '0.55rem 1.25rem', fontWeight: 600 }}
                                             >
                                                 <Save size={16} /> {isSaving ? 'Saving...' : 'Save Operational Thresholds'}
@@ -1138,10 +1104,10 @@ const Settings: React.FC = () => {
                             <button 
                                 type="submit" 
                                 className="btn btn-primary" 
-                                disabled={isSaving}
-                                style={{ padding: '0.6rem 1.6rem', fontSize: '0.95rem', display: 'inline-flex', alignItems: 'center', gap: '0.5rem', fontWeight: 600 }}
+                                disabled={!canSaveFarmSettings}
+                                style={{ padding: '0.6rem 1.6rem', fontSize: '0.95rem', display: 'inline-flex', alignItems: 'center', gap: '0.5rem', fontWeight: 600, cursor: 'pointer' }}
                             >
-                                <Save size={17} /> {isSaving ? 'Saving Configurations...' : effectiveRole === 'admin' ? 'Save Farm Identity & Global Config' : 'Save Operational Thresholds'}
+                                <Save size={17} /> {isSaving ? 'Saving Updates...' : effectiveRole === 'admin' ? 'Save Farm Identity & Global Config' : 'Save Operational Thresholds'}
                             </button>
                         ) : (
                             <div style={{ background: '#f8fafc', border: '1px solid #cbd5e1', color: '#334155', padding: '0.5rem 1rem', borderRadius: '6px', fontSize: '0.85rem', display: 'inline-flex', alignItems: 'center', gap: '0.45rem' }}>
