@@ -57,7 +57,7 @@ const Payroll: React.FC = () => {
 
     const [deductionAmount, setDeductionAmount] = useState<number>(0);
     const [deductionReason, setDeductionReason] = useState<string>('');
-    const [adjustOvertimeRate, setAdjustOvertimeRate] = useState<number>(3500);
+    const [adjustOvertimeRate, setAdjustOvertimeRate] = useState<number>(10000);
 
     const [isEmailingSummary, setIsEmailingSummary] = useState<boolean>(false);
     const [isEmailingPayslip, setIsEmailingPayslip] = useState<boolean>(false);
@@ -289,7 +289,9 @@ const Payroll: React.FC = () => {
         setSelectedRecordForDeduction(record);
         setDeductionAmount(Math.max(0, (record.deductions || 0) - (record.attendanceDeduction || 0)));
         setDeductionReason(record.manualDeductionReason || (record.attendanceDeduction ? '' : record.deductionReason || ''));
-        setAdjustOvertimeRate(record.overtimeRate || 3500);
+        const defaultDaily = record.monthlySalary ? Math.round(record.monthlySalary / 30) : 10000;
+        const initialDaily = record.overtimeRate ? (record.overtimeRate >= 5000 ? record.overtimeRate : record.overtimeRate * 8) : defaultDaily;
+        setAdjustOvertimeRate(initialDaily);
         setShowAdjustDeductionModal(true);
     };
 
@@ -314,7 +316,8 @@ const Payroll: React.FC = () => {
         
         const newOvertimeRate = Math.max(0, Number(adjustOvertimeRate) || 0);
         const approvedHours = record.approvedOvertimeHours || record.overtimeHours || 0;
-        const newOvertimeEarnings = Math.round(approvedHours * newOvertimeRate);
+        const approvedDays = approvedHours / 8;
+        const newOvertimeEarnings = Math.round(approvedDays * newOvertimeRate);
 
         const netPay = Math.max(0, record.monthlySalary + newOvertimeEarnings - newDeduction);
         const amountPaid = record.amountPaid || 0;
@@ -347,18 +350,18 @@ const Payroll: React.FC = () => {
             module: 'Payroll Management',
             recordIdentifier: `${record.workerId} (${selectedMonth})`,
             date: new Date().toISOString(),
-            description: `Adjusted for ${record.workerName}: Overtime Rate set to ${formatUGX(newOvertimeRate)}/hr; manual deductions set to ${formatUGX(manualDeduction)}; attendance deduction is ${formatUGX(attendanceDeduction)}; new net pay is ${formatUGX(netPay)}.`
+            description: `Adjusted for ${record.workerName}: Daily Rate set to ${formatUGX(newOvertimeRate)}/day; manual deductions set to ${formatUGX(manualDeduction)}; attendance deduction is ${formatUGX(attendanceDeduction)}; new net pay is ${formatUGX(netPay)}.`
         });
 
         void notificationService.notifyManagerDataEntry({
             module: 'Payroll & Finance',
             action: `Payroll Adjusted: ${record.workerName}`,
-            description: `Payroll record adjusted for ${record.workerName} (${record.workerId}) for month ${selectedMonth}. Overtime Rate: UGX ${newOvertimeRate}/hr, Total Deductions: UGX ${newDeduction.toLocaleString()} (${combinedReason}). Net Pay: UGX ${netPay.toLocaleString()}.`,
+            description: `Payroll record adjusted for ${record.workerName} (${record.workerId}) for month ${selectedMonth}. Daily Rate: UGX ${newOvertimeRate}/day, Total Deductions: UGX ${newDeduction.toLocaleString()} (${combinedReason}). Net Pay: UGX ${netPay.toLocaleString()}.`,
             details: {
                 'Worker Name': String(record.workerName || 'N/A'),
                 'Worker ID': String(record.workerId || 'N/A'),
                 'Payroll Month': selectedMonth,
-                'Overtime Rate': `UGX ${newOvertimeRate}/hr`,
+                'Daily Rate': `UGX ${newOvertimeRate}/day`,
                 'Deductions': `UGX ${newDeduction.toLocaleString()}`,
                 'Deduction Reason': String(combinedReason || 'Standard Deduction'),
                 'Net Take-Home': `UGX ${netPay.toLocaleString()}`
@@ -579,7 +582,7 @@ const Payroll: React.FC = () => {
                         <tr>
                             <th style={{ width: '70px' }}>Number</th>
                             <th>Name</th>
-                            <th>Monthly Salary</th>
+                            <th>Monthly Salary (Rate / Day)</th>
                             <th>Overtime</th>
                             <th>Deductions</th>
                             <th>Net Pay</th>
@@ -606,13 +609,18 @@ const Payroll: React.FC = () => {
                                                 {record.workerId} {record.farmCardNumber && `• ${record.farmCardNumber}`}
                                             </div>
                                         </td>
-                                        <td>{formatUGX(record.monthlySalary)}</td>
+                                        <td>
+                                            <strong>{formatUGX(record.monthlySalary)}</strong>
+                                            <div className="text-light" style={{ fontSize: '0.75rem' }}>
+                                                {formatUGX(Math.round(record.monthlySalary / 30))}/day
+                                            </div>
+                                        </td>
                                         <td>
                                             <div style={{ color: (record.overtimeEarnings || 0) > 0 ? '#ea580c' : 'var(--color-text)' }}>
                                                 <strong>{formatUGX(record.overtimeEarnings || 0)}</strong>
                                             </div>
                                             <div className="text-light" style={{ fontSize: '0.75rem' }}>
-                                                {(record.approvedOvertimeHours || 0).toFixed(1)} hrs @ {formatUGX(record.overtimeRate || 3500)}/hr
+                                                {((record.approvedOvertimeHours || 0) / 8).toFixed(2)} days @ {formatUGX(record.overtimeRate || Math.round(record.monthlySalary / 30))}/day
                                             </div>
                                         </td>
                                         <td>
@@ -698,15 +706,15 @@ const Payroll: React.FC = () => {
 
                                 <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.5rem', background: 'var(--color-background)', padding: '0.75rem', borderRadius: '6px', fontSize: '0.85rem' }}>
                                     <div>
-                                        <span className="text-light">Monthly Salary:</span>
-                                        <div><strong>{formatUGX(record.monthlySalary)}</strong></div>
+                                        <span className="text-light">Daily Rate &amp; Salary:</span>
+                                        <div><strong>{formatUGX(record.monthlySalary)}</strong> <span style={{ fontSize: '0.8rem', color: '#64748b' }}>({formatUGX(Math.round(record.monthlySalary / 30))}/day)</span></div>
                                     </div>
                                     <div>
                                         <span className="text-light">Overtime (Approved):</span>
                                         <div style={{ color: '#ea580c' }}>
                                             <strong>{formatUGX(record.overtimeEarnings || 0)}</strong>
                                             <div style={{ fontSize: '0.75rem', color: '#64748b' }}>
-                                                {(record.approvedOvertimeHours || 0).toFixed(1)} hrs @ {formatUGX(record.overtimeRate || 3500)}/hr
+                                                {((record.approvedOvertimeHours || 0) / 8).toFixed(2)} days @ {formatUGX(record.overtimeRate || Math.round(record.monthlySalary / 30))}/day
                                             </div>
                                         </div>
                                     </div>
@@ -966,18 +974,18 @@ const Payroll: React.FC = () => {
                             </div>
 
                             <div className="form-group">
-                                <label className="form-label">Worker Overtime Rate (UGX / Hour) *</label>
+                                <label className="form-label">Worker Daily Wage / Overtime Rate (UGX / Day) *</label>
                                 <input 
                                     type="number" 
                                     required 
                                     min="0"
-                                    step="100"
+                                    step="500"
                                     className="form-input" 
                                     value={adjustOvertimeRate}
                                     onChange={e => setAdjustOvertimeRate(Number(e.target.value))}
                                 />
                                 <span className="text-light" style={{ fontSize: '0.75rem', marginTop: '0.2rem' }}>
-                                    Current OT Earnings: {formatUGX(((selectedRecordForDeduction.approvedOvertimeHours || 0) * (adjustOvertimeRate || 0)))}
+                                    Extra Work: {((selectedRecordForDeduction.approvedOvertimeHours || 0) / 8).toFixed(2)} days ({(selectedRecordForDeduction.approvedOvertimeHours || 0).toFixed(1)} hrs) • OT Earnings: {formatUGX(Math.round(((selectedRecordForDeduction.approvedOvertimeHours || 0) / 8) * (adjustOvertimeRate || 0)))}
                                 </span>
                             </div>
 
@@ -1057,7 +1065,7 @@ const Payroll: React.FC = () => {
                                     </tr>
                                     <tr style={{ borderBottom: '1px solid #f1f5f9' }}>
                                         <td style={{ padding: '0.4rem' }}>
-                                            Approved Overtime ({(selectedRecordForPayslip.approvedOvertimeHours || 0).toFixed(1)} hrs @ {formatUGX(selectedRecordForPayslip.overtimeRate || 3500)}/hr)
+                                            Approved Overtime ({((selectedRecordForPayslip.approvedOvertimeHours || 0) / 8).toFixed(2)} days @ {formatUGX(selectedRecordForPayslip.overtimeRate || Math.round(selectedRecordForPayslip.monthlySalary / 30))}/day)
                                         </td>
                                         <td style={{ textAlign: 'right', padding: '0.4rem', color: '#ea580c' }}>{formatUGX(selectedRecordForPayslip.overtimeEarnings || 0)}</td>
                                     </tr>

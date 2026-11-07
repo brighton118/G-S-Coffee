@@ -381,7 +381,7 @@ export function generateIndividualPayslipPDF(payroll: PayrollRecord): void {
     // Earnings Table
     const earningsBody: RowInput[] = [
         ['Monthly Base Salary', formatUGX(payroll.monthlySalary)],
-        [`Approved Overtime (${payroll.approvedOvertimeHours.toFixed(1)} hrs @ ${formatUGX(payroll.overtimeRate || 3500)}/hr)`, formatUGX(payroll.overtimeEarnings)],
+        [`Approved Overtime (${(payroll.approvedOvertimeHours / 8).toFixed(2)} days @ ${formatUGX(payroll.overtimeRate || Math.round(payroll.monthlySalary / 30))}/day)`, formatUGX(payroll.overtimeEarnings)],
         ['Total Gross Earnings', formatUGX(payroll.monthlySalary + payroll.overtimeEarnings)]
     ];
 

@@ -75,9 +75,9 @@ const Settings: React.FC = () => {
         return 'all';
     });
 
-    // Ensure Manager and Staff never stay on Admin-only sections (Notifications & Invitations)
+    // Ensure Manager and Staff never access Admin-only sections (Farm Info, Notifications & Invitations)
     useEffect(() => {
-        if (effectiveRole !== 'admin' && (activeSection === 'notifications' || activeSection === 'invitations')) {
+        if (effectiveRole !== 'admin' && (activeSection === 'farm_info' || activeSection === 'notifications' || activeSection === 'invitations')) {
             setActiveSection('thresholds');
         }
     }, [effectiveRole, activeSection]);
@@ -401,7 +401,9 @@ const Settings: React.FC = () => {
                                 onChange={e => handleSelectSection(e.target.value as SettingsSectionKey)}
                             >
                                 <option value="all">📂 All Pages (Full Settings Overview)</option>
-                                <option value="farm_info">🏢 Farm Info, Location &amp; Contacts</option>
+                                {effectiveRole === 'admin' && (
+                                    <option value="farm_info">🏢 Farm Info, Location &amp; Contacts</option>
+                                )}
                                 {effectiveRole === 'admin' && (
                                     <option value="notifications">🔔 Notifications &amp; Alert Routing</option>
                                 )}
@@ -448,13 +450,15 @@ const Settings: React.FC = () => {
                     >
                         All Pages
                     </button>
-                    <button
-                        type="button"
-                        className={`settings-pill-btn ${activeSection === 'farm_info' ? 'active' : ''}`}
-                        onClick={() => handleSelectSection('farm_info')}
-                    >
-                        <Building size={13} /> Farm Info &amp; Contacts
-                    </button>
+                    {effectiveRole === 'admin' && (
+                        <button
+                            type="button"
+                            className={`settings-pill-btn ${activeSection === 'farm_info' ? 'active' : ''}`}
+                            onClick={() => handleSelectSection('farm_info')}
+                        >
+                            <Building size={13} /> Farm Info &amp; Contacts
+                        </button>
+                    )}
                     {effectiveRole === 'admin' && (
                         <button
                             type="button"
@@ -493,8 +497,8 @@ const Settings: React.FC = () => {
             <form onSubmit={handleSave}>
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
 
-                    {/* Section 1: General Farm Info, Location & Contacts */}
-                    {shouldRender('farm_info') && (
+                    {/* Section 1: General Farm Info, Location & Contacts (Admin Only) */}
+                    {effectiveRole === 'admin' && shouldRender('farm_info') && (
                         <div className="settings-accordion-card">
                             <button
                                 type="button"
@@ -517,15 +521,9 @@ const Settings: React.FC = () => {
 
                             {!isCollapsed('farm_info') && (
                                 <div className="settings-accordion-body">
-                                    {effectiveRole === 'staff' ? (
-                                        <div className="settings-role-badge staff" style={{ margin: '0.25rem 0 0.5rem 0', width: '100%' }}>
-                                            <Lock size={14} /> Official estate details (Read-only reference for Staff accounts).
-                                        </div>
-                                    ) : effectiveRole === 'manager' ? (
-                                        <div className="settings-role-badge manager" style={{ margin: '0.25rem 0 0.5rem 0', width: '100%' }}>
-                                            <UserCheck size={14} /> Manager Edit Mode: Update contact person, operational phones, landmark, and estate location.
-                                        </div>
-                                    ) : null}
+                                    <div className="settings-role-badge admin" style={{ margin: '0.25rem 0 0.5rem 0', width: '100%' }}>
+                                        <ShieldCheck size={14} /> Administrator Governance: Manage official farm identity, physical location, and legal contacts.
+                                    </div>
 
                                     <div className="form-group" style={{ marginTop: '0.25rem' }}>
                                         <label className="form-label" style={{ display: 'flex', alignItems: 'center', gap: '0.35rem' }}>

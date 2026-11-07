@@ -73,9 +73,10 @@ const Overtime: React.FC<OvertimeProps> = ({ embedded = false }) => {
     
     const totalEstimatedEarnings = approvedRecords.reduce((sum, r) => {
         const worker = workers.find(w => w.workerId === r.workerId);
-        const rate = worker?.overtimeRate || rulesConfig.hourlyRateUGX || 3500;
+        const baseDaily = worker?.monthlySalary ? Math.round(worker.monthlySalary / 30) : 10000;
+        const rate = worker?.overtimeRate && worker.overtimeRate >= 5000 ? worker.overtimeRate : baseDaily;
         const hours = r.overtimeApprovedHours || r.overtimeHours || 0;
-        return sum + (hours * rate);
+        return sum + Math.round((hours / 8) * rate);
     }, 0);
 
     const handleOpenApproval = (record: AttendanceRecord, action: 'Approve' | 'Reject') => {
@@ -155,8 +156,9 @@ const Overtime: React.FC<OvertimeProps> = ({ embedded = false }) => {
             }, 0);
 
             const worker = await db.workers.get(approvalModalRecord.workerId);
-            const otRate = worker?.overtimeRate || payrollRec.overtimeRate || 3500;
-            const otEarnings = Math.round(sumApprovedOT * otRate);
+            const baseDaily = worker?.monthlySalary ? Math.round(worker.monthlySalary / 30) : 10000;
+            const otRate = worker?.overtimeRate && worker.overtimeRate >= 5000 ? worker.overtimeRate : baseDaily;
+            const otEarnings = Math.round((sumApprovedOT / 8) * otRate);
             const netPay = Math.round(payrollRec.monthlySalary + otEarnings - payrollRec.deductions);
             const balance = Math.max(0, netPay - (payrollRec.amountPaid || 0));
             const paymentStatus = (payrollRec.amountPaid || 0) >= netPay && netPay > 0 ? 'Paid' : (payrollRec.amountPaid || 0) > 0 ? 'Partially Paid' : 'Pending';
@@ -357,16 +359,17 @@ const Overtime: React.FC<OvertimeProps> = ({ embedded = false }) => {
                         ) : (
                             overtimeRecords.map(record => {
                                 const worker = workers.find(w => w.workerId === record.workerId);
-                                const otRate = worker?.overtimeRate || rulesConfig.hourlyRateUGX || 3500;
+                                const baseDaily = worker?.monthlySalary ? Math.round(worker.monthlySalary / 30) : 10000;
+                                const otRate = worker?.overtimeRate && worker.overtimeRate >= 5000 ? worker.overtimeRate : baseDaily;
                                 const approvedHours = record.overtimeApprovedHours || (record.overtimeStatus === 'Approved' ? record.overtimeHours : 0) || 0;
-                                const earnings = Math.round(approvedHours * otRate);
+                                const earnings = Math.round((approvedHours / 8) * otRate);
 
                                 return (
                                     <tr key={record.id}>
                                         <td><strong>{record.date}</strong></td>
                                         <td>
                                             <div><strong>{record.workerName || worker?.fullName || record.workerId}</strong></div>
-                                            <div className="text-light" style={{ fontSize: '0.8rem' }}>{record.workerId} • Rate: {formatUGX(otRate)}/hr</div>
+                                            <div className="text-light" style={{ fontSize: '0.8rem' }}>{record.workerId} • Rate: {formatUGX(otRate)}/day</div>
                                         </td>
                                         <td>
                                             <div style={{ fontSize: '0.85rem' }}>
