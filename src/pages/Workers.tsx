@@ -16,7 +16,8 @@ import {
     AlertTriangle,
     ShieldCheck,
     Lock,
-    RefreshCw
+    RefreshCw,
+    Save
 } from 'lucide-react';
 import { QRCodeSVG } from 'qrcode.react';
 import { format } from 'date-fns';
@@ -728,8 +729,8 @@ const Workers: React.FC = () => {
                                 >
                                     Cancel
                                 </button>
-                                <button type="submit" className="btn btn-primary">
-                                    {editingWorker ? 'Update Worker' : 'Save Worker'}
+                                <button type="submit" className="btn btn-primary" style={{ display: 'inline-flex', alignItems: 'center', gap: '0.4rem' }}>
+                                    <Save size={16} /> {editingWorker ? 'Save Changes' : 'Save Worker'}
                                 </button>
                             </div>
                         </form>

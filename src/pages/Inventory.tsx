@@ -15,7 +15,9 @@ import {
     Bug,
     Sparkles,
     Sprout,
-    Trash2
+    Trash2,
+    Edit3,
+    Save
 } from 'lucide-react';
 import { generateFarmExpensesPDF, generateInventoryPDF } from '../utils/pdfGenerator';
 import { isStockLow, calculateInventoryValuation } from '../utils/calculations';
@@ -54,7 +56,9 @@ const Inventory: React.FC = () => {
     const [selectedCategory, setSelectedCategory] = useState<string>('All');
     const [searchTerm, setSearchTerm] = useState('');
     const [showAddModal, setShowAddModal] = useState(false);
+    const [editingItem, setEditingItem] = useState<InventoryItem | null>(null);
     const [showExpenseModal, setShowExpenseModal] = useState(false);
+    const [editingExpense, setEditingExpense] = useState<FarmExpense | null>(null);
     const [showStockModal, setShowStockModal] = useState(false);
     const [showDeleteAllModal, setShowDeleteAllModal] = useState(false);
     const [showDeleteAllExpensesModal, setShowDeleteAllExpensesModal] = useState(false);
@@ -209,10 +213,68 @@ const Inventory: React.FC = () => {
     const totalActiveItems = items.filter(i => i.status === 'Active').length;
     const totalMiscExpenses = expenses.reduce((sum, expense) => sum + expense.amount, 0);
 
+    const handleOpenEditExpense = (expense: FarmExpense) => {
+        setEditingExpense(expense);
+        setExpenseData({
+            category: expense.category,
+            description: expense.description,
+            amount: expense.amount,
+            date: expense.date,
+            paidTo: expense.paidTo || '',
+            recordedBy: expense.recordedBy || '',
+            notes: expense.notes || ''
+        });
+        setShowExpenseModal(true);
+    };
+
     const handleCreateExpense = async (e: React.FormEvent) => {
         e.preventDefault();
         if (!expenseData.description.trim() || !Number.isFinite(expenseData.amount) || expenseData.amount <= 0) {
             alert('Enter an expense description and an amount greater than zero.');
+            return;
+        }
+
+        if (editingExpense) {
+            const updatedExpense: FarmExpense = {
+                ...editingExpense,
+                category: expenseData.category,
+                description: expenseData.description.trim(),
+                amount: Number(expenseData.amount),
+                date: expenseData.date,
+                paidTo: expenseData.paidTo.trim() || undefined,
+                recordedBy: expenseData.recordedBy.trim() || 'Farm Manager',
+                notes: expenseData.notes.trim() || undefined
+            };
+
+            await db.farmExpenses.put(updatedExpense);
+            void firestoreSyncService.saveFarmExpense(updatedExpense);
+
+            void notificationService.notifyManagerDataEntry({
+                module: 'Inventory & Expenses',
+                action: `Farm Expense Updated: ${updatedExpense.category}`,
+                description: `Farm expenditure #${updatedExpense.expenseId} was updated: "${updatedExpense.description}" totaling UGX ${updatedExpense.amount.toLocaleString()}. Paid to: ${updatedExpense.paidTo || 'N/A'}.`,
+                details: {
+                    'Expense Category': updatedExpense.category,
+                    'Amount': `UGX ${updatedExpense.amount.toLocaleString()}`,
+                    'Description': updatedExpense.description,
+                    'Paid To': updatedExpense.paidTo || 'N/A',
+                    'Date': updatedExpense.date,
+                    'Updated By': auth.currentUser?.email || 'Farm Manager'
+                },
+                sourceUser: auth.currentUser?.email || 'Farm Manager'
+            });
+
+            setEditingExpense(null);
+            setShowExpenseModal(false);
+            setExpenseData({
+                category: 'Transport',
+                description: '',
+                amount: 0,
+                date: new Date().toISOString().slice(0, 10),
+                paidTo: '',
+                recordedBy: '',
+                notes: ''
+            });
             return;
         }
 
@@ -257,10 +319,66 @@ const Inventory: React.FC = () => {
         });
     };
 
+    const handleOpenEditItem = (item: InventoryItem) => {
+        setEditingItem(item);
+        setFormData({
+            name: item.name,
+            category: item.category,
+            type: item.type || '',
+            unit: item.unit,
+            quantity: item.quantity,
+            minStockLevel: item.minStockLevel,
+            supplier: item.supplier || '',
+            purchasePrice: item.purchasePrice,
+            location: item.location || '',
+            condition: (item.condition as string) || 'New',
+            notes: item.notes || ''
+        });
+        setShowAddModal(true);
+    };
+
     const handleCreateItem = async (e: React.FormEvent) => {
         e.preventDefault();
         if (!formData.name.trim()) {
             alert('Please specify an item name.');
+            return;
+        }
+
+        if (editingItem) {
+            const updatedItem: InventoryItem = {
+                ...editingItem,
+                name: formData.name.trim(),
+                category: formData.category,
+                type: formData.type || undefined,
+                unit: formData.unit,
+                minStockLevel: Number(formData.minStockLevel) || 5,
+                supplier: formData.supplier || 'Direct Farm Purchase',
+                purchasePrice: Number(formData.purchasePrice) || 0,
+                condition: formData.category === 'Farm Tools' ? (formData.condition as any) : undefined,
+                location: formData.location || 'Central Store',
+                notes: formData.notes
+            };
+
+            await db.inventoryItems.put(updatedItem);
+            void firestoreSyncService.saveInventoryItem(updatedItem);
+
+            void notificationService.notifyManagerDataEntry({
+                module: 'Inventory & Supplies',
+                action: 'Inventory Item Details Updated',
+                description: `Inventory item "${updatedItem.name}" (${updatedItem.inventoryId}) was updated. Purchase price: UGX ${updatedItem.purchasePrice.toLocaleString()}, Min Level: ${updatedItem.minStockLevel} ${updatedItem.unit}, Location: ${updatedItem.location}.`,
+                details: {
+                    'Item ID': updatedItem.inventoryId,
+                    'Item Name': updatedItem.name,
+                    'Unit': updatedItem.unit,
+                    'Purchase Price': `UGX ${updatedItem.purchasePrice.toLocaleString()}`,
+                    'Location': updatedItem.location || 'Central Store',
+                    'Updated By': auth.currentUser?.email || 'Farm Manager'
+                },
+                sourceUser: auth.currentUser?.email || 'Farm Manager'
+            });
+
+            setEditingItem(null);
+            setShowAddModal(false);
             return;
         }
 
@@ -545,22 +663,33 @@ const Inventory: React.FC = () => {
                                         <td>{expense.recordedBy}</td>
                                         <td style={{ textAlign: 'right' }}><strong>UGX {expense.amount.toLocaleString()}</strong></td>
                                         <td style={{ textAlign: 'center' }}>
-                                            {isAdmin ? (
-                                                <button
-                                                    className="btn btn-outline-danger"
-                                                    style={{ padding: '0.3rem 0.5rem', fontSize: '0.8rem' }}
-                                                    onClick={() => {
-                                                        setDeleteError('');
-                                                        setExpenseToDelete(expense);
-                                                    }}
-                                                    title="Delete Expense"
-                                                    aria-label={`Delete expense ${expense.description}`}
-                                                >
-                                                    <Trash2 size={13} />
-                                                </button>
-                                            ) : (
-                                                <span className="text-light" style={{ fontSize: '0.75rem' }}>-</span>
-                                            )}
+                                            <div style={{ display: 'inline-flex', gap: '0.35rem', alignItems: 'center' }}>
+                                                {canEdit && (
+                                                    <button
+                                                        className="btn btn-secondary"
+                                                        style={{ padding: '0.3rem 0.5rem', fontSize: '0.8rem' }}
+                                                        onClick={() => handleOpenEditExpense(expense)}
+                                                        title="Edit Expense"
+                                                        aria-label={`Edit expense ${expense.description}`}
+                                                    >
+                                                        <Edit3 size={13} />
+                                                    </button>
+                                                )}
+                                                {isAdmin && (
+                                                    <button
+                                                        className="btn btn-outline-danger"
+                                                        style={{ padding: '0.3rem 0.5rem', fontSize: '0.8rem' }}
+                                                        onClick={() => {
+                                                            setDeleteError('');
+                                                            setExpenseToDelete(expense);
+                                                        }}
+                                                        title="Delete Expense"
+                                                        aria-label={`Delete expense ${expense.description}`}
+                                                    >
+                                                        <Trash2 size={13} />
+                                                    </button>
+                                                )}
+                                            </div>
                                         </td>
                                     </tr>
                                 ))}
@@ -712,6 +841,17 @@ const Inventory: React.FC = () => {
                                                 {canEdit && (
                                                     <button
                                                         className="btn btn-secondary"
+                                                        style={{ padding: '0.3rem 0.55rem', fontSize: '0.8rem' }}
+                                                        onClick={() => handleOpenEditItem(item)}
+                                                        title="Edit Item Details"
+                                                        aria-label={`Edit ${item.name}`}
+                                                    >
+                                                        <Edit3 size={13} /> Edit
+                                                    </button>
+                                                )}
+                                                {canEdit && (
+                                                    <button
+                                                        className="btn btn-secondary"
                                                         style={{ padding: '0.3rem 0.6rem', fontSize: '0.8rem' }}
                                                         onClick={() => {
                                                             setSelectedItemForStock(item);
@@ -757,8 +897,8 @@ const Inventory: React.FC = () => {
                 <div className="modal-overlay">
                     <div className="modal-content card" style={{ maxWidth: '600px', width: '100%' }}>
                         <div className="modal-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.25rem' }}>
-                            <h2 style={{ margin: 0 }}>Register New Inventory Item</h2>
-                            <button className="btn btn-secondary" style={{ padding: '0.25rem', border: 'none' }} onClick={() => setShowAddModal(false)}>
+                            <h2 style={{ margin: 0 }}>{editingItem ? `Edit Inventory Item: ${editingItem.name}` : 'Register New Inventory Item'}</h2>
+                            <button className="btn btn-secondary" style={{ padding: '0.25rem', border: 'none' }} onClick={() => { setShowAddModal(false); setEditingItem(null); }}>
                                 <X size={18} />
                             </button>
                         </div>
@@ -907,11 +1047,11 @@ const Inventory: React.FC = () => {
                             </div>
 
                             <div style={{ display: 'flex', gap: '1rem', marginTop: '0.5rem' }}>
-                                <button type="button" className="btn btn-secondary" style={{ flex: 1 }} onClick={() => setShowAddModal(false)}>
+                                <button type="button" className="btn btn-secondary" style={{ flex: 1 }} onClick={() => { setShowAddModal(false); setEditingItem(null); }}>
                                     Cancel
                                 </button>
-                                <button type="submit" className="btn btn-primary" style={{ flex: 1 }}>
-                                    Save Inventory Item
+                                <button type="submit" className="btn btn-primary" style={{ flex: 1, display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: '0.4rem' }}>
+                                    <Save size={16} /> {editingItem ? 'Save Changes' : 'Save Inventory Item'}
                                 </button>
                             </div>
                         </form>
@@ -988,8 +1128,8 @@ const Inventory: React.FC = () => {
                                 <button type="button" className="btn btn-secondary" style={{ flex: 1 }} onClick={() => setShowStockModal(false)}>
                                     Cancel
                                 </button>
-                                <button type="submit" className="btn btn-primary" style={{ flex: 1 }}>
-                                    Commit Movement
+                                <button type="submit" className="btn btn-primary" style={{ flex: 1, display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: '0.4rem' }}>
+                                    <Save size={16} /> Save Stock Adjustment
                                 </button>
                             </div>
                         </form>
@@ -1003,8 +1143,8 @@ const Inventory: React.FC = () => {
                 <div className="modal-overlay">
                     <div className="modal-content card" style={{ maxWidth: '560px', width: '100%' }}>
                         <div className="modal-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.25rem' }}>
-                            <h2 style={{ margin: 0 }}>Record Miscellaneous Farm Expense</h2>
-                            <button type="button" className="btn btn-secondary" style={{ padding: '0.25rem', border: 'none' }} onClick={() => setShowExpenseModal(false)} aria-label="Close">
+                            <h2 style={{ margin: 0 }}>{editingExpense ? 'Edit Farm Expense' : 'Record Miscellaneous Farm Expense'}</h2>
+                            <button type="button" className="btn btn-secondary" style={{ padding: '0.25rem', border: 'none' }} onClick={() => { setShowExpenseModal(false); setEditingExpense(null); }} aria-label="Close">
                                 <X size={18} />
                             </button>
                         </div>
@@ -1044,8 +1184,10 @@ const Inventory: React.FC = () => {
                                 <textarea className="form-input" rows={2} value={expenseData.notes} onChange={e => setExpenseData({ ...expenseData, notes: e.target.value })} />
                             </div>
                             <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '0.75rem' }}>
-                                <button type="button" className="btn btn-secondary" onClick={() => setShowExpenseModal(false)}>Cancel</button>
-                                <button type="submit" className="btn btn-primary">Save Expense</button>
+                                <button type="button" className="btn btn-secondary" onClick={() => { setShowExpenseModal(false); setEditingExpense(null); }}>Cancel</button>
+                                <button type="submit" className="btn btn-primary" style={{ display: 'inline-flex', alignItems: 'center', gap: '0.4rem' }}>
+                                    <Save size={16} /> {editingExpense ? 'Save Changes' : 'Save Expense'}
+                                </button>
                             </div>
                         </form>
                     </div>

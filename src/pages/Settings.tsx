@@ -53,17 +53,14 @@ const Settings: React.FC = () => {
         ? 'manager' 
         : 'staff';
 
-    // Role-specific access permissions
-    // Admin: Full configuration privileges
-    // Manager: Operational settings, manager notifications, shift thresholds, and password
-    // Staff: Read-only farm reference & personal password management
+    // Role-specific access permissions: Both Admin and Manager have full configuration and editing privileges
     const canEditFarmInfo = effectiveRole === 'admin' || effectiveRole === 'manager';
-    const canEditAllEmails = effectiveRole === 'admin';
+    const canEditAllEmails = effectiveRole === 'admin' || effectiveRole === 'manager';
     const canEditManagerEmails = effectiveRole === 'admin' || effectiveRole === 'manager';
-    const canEditAlertToggles = effectiveRole === 'admin';
+    const canEditAlertToggles = effectiveRole === 'admin' || effectiveRole === 'manager';
     const canEditThresholds = effectiveRole === 'admin' || effectiveRole === 'manager';
     const canSaveFarmSettings = effectiveRole === 'admin' || effectiveRole === 'manager';
-    const canManageTeam = effectiveRole === 'admin';
+    const canManageTeam = effectiveRole === 'admin' || effectiveRole === 'manager';
 
 
     // Dropdown section navigation & accordion collapse states
@@ -219,38 +216,7 @@ const Settings: React.FC = () => {
 
         setIsSaving(true);
         try {
-            // If manager is saving, preserve admin-only notification emails & API key
-            let dataToSave = { ...settings };
-            if (effectiveRole === 'manager') {
-                try {
-                    const docRef = doc(dbFirestore, 'settings', 'general');
-                    const snap = await getDoc(docRef);
-                    if (snap.exists()) {
-                        const existingCloud = snap.data();
-                        dataToSave = {
-                            ...settings,
-                            ...existingCloud,
-                            contactEmail: existingCloud.contactEmail || settings.contactEmail,
-                            notificationEmails: existingCloud.notificationEmails || settings.notificationEmails,
-                            emailApiKey: existingCloud.emailApiKey || settings.emailApiKey,
-                            brevoSenderEmail: existingCloud.brevoSenderEmail || settings.brevoSenderEmail,
-                            brevoSenderName: existingCloud.brevoSenderName || settings.brevoSenderName,
-                            enableEmailAlerts: true,
-                            notifyManagerEntry: true,
-                            notifyNurseryEvents: true,
-                            notifyInventoryEvents: true,
-                            notifySalesEvents: true,
-                            notifyWorkerEvents: true,
-                            notifyPayrollEvents: true,
-                            notifyAttendanceDeadlines: true,
-                            notifyEODAttendance: true,
-                            notifyPendingOvertime: true,
-                            notifyLowStock: true,
-                            notifyChamberOverdue: true
-                        };
-                    }
-                } catch (_) {}
-            }
+            const dataToSave = { ...settings };
 
             localStorage.setItem('gs_farm_settings', JSON.stringify(dataToSave));
             await firestoreSyncService.saveSettings(dataToSave);
@@ -262,20 +228,22 @@ const Settings: React.FC = () => {
                 updatedRole: effectiveRole
             }, { merge: true });
 
-            setSaveNotice(
-                effectiveRole === 'manager'
-                    ? '✅ Operational settings, manager alerts, and attendance thresholds saved and synced across devices!'
-                    : '✅ All farm settings, email API keys, phone numbers, and location saved and synced across all devices!'
-            );
+            setSaveNotice('✅ Settings and configurations successfully saved and synced across all devices!');
 
             if (effectiveRole === 'manager') {
                 void notificationService.notifyManagerDataEntry({
                     module: 'Settings & Farm Profile',
-                    action: 'Operational Settings Updated',
-                    description: `Farm Manager saved operational configuration settings (Shift Time-In: ${dataToSave.attendanceTimeInStart} - ${dataToSave.attendanceTimeInEnd}, Time-Out: ${dataToSave.attendanceTimeOutStart} - ${dataToSave.attendanceTimeOutEnd}).`,
+                    action: 'Farm Settings & Profile Updated',
+                    description: `Farm Manager saved settings and configuration (Farm Name: "${dataToSave.farmName}", Location: "${dataToSave.farmLocation}", Phone: "${dataToSave.contactPhone}", Emergency Email: "${dataToSave.notificationEmails}", Shift Time-In: ${dataToSave.attendanceTimeInStart} - ${dataToSave.attendanceTimeInEnd}, Shift Time-Out: ${dataToSave.attendanceTimeOutStart} - ${dataToSave.attendanceTimeOutEnd}).`,
                     details: {
-                        'Time-In Window': `${dataToSave.attendanceTimeInStart} - ${dataToSave.attendanceTimeInEnd}`,
-                        'Time-Out Window': `${dataToSave.attendanceTimeOutStart} - ${dataToSave.attendanceTimeOutEnd}`,
+                        'Farm Name': dataToSave.farmName,
+                        'Location': dataToSave.farmLocation,
+                        'Contact Phone': dataToSave.contactPhone,
+                        'Contact Email': dataToSave.contactEmail,
+                        'Emergency Dispatch Email': dataToSave.notificationEmails,
+                        'Shift Time-In': `${dataToSave.attendanceTimeInStart} - ${dataToSave.attendanceTimeInEnd}`,
+                        'Shift Time-Out': `${dataToSave.attendanceTimeOutStart} - ${dataToSave.attendanceTimeOutEnd}`,
+                        'Cutoff Hours': `${dataToSave.attendanceLockoutHours} hrs`,
                         'Updated By': auth.currentUser?.email || 'Farm Manager'
                     },
                     sourceUser: auth.currentUser?.email || 'Farm Manager'
@@ -628,11 +596,7 @@ const Settings: React.FC = () => {
                                     <div className="form-group">
                                         <label className="form-label" style={{ display: 'flex', alignItems: 'center', gap: '0.35rem' }}>
                                             <Mail size={14} color="var(--color-primary)" /> Primary Contact Email (System Reports)
-                                            {!canEditAllEmails ? (
-                                                <span className="settings-perm-pill admin-only">Admin Managed</span>
-                                            ) : (
-                                                <span className="settings-perm-pill admin-only">Admin Only</span>
-                                            )}
+                                            <span className="settings-perm-pill manager-access">Manager &amp; Admin</span>
                                         </label>
                                         <input 
                                             type="email" 
@@ -642,11 +606,19 @@ const Settings: React.FC = () => {
                                             onChange={e => setSettings({ ...settings, contactEmail: e.target.value })} 
                                             placeholder="gs.farms.ug@gmail.com"
                                         />
-                                        {!canEditAllEmails && (
-                                            <span style={{ fontSize: '0.74rem', color: 'var(--color-text-light)' }}>
-                                                Primary farm entity reporting email is managed by the Administrator.
-                                            </span>
-                                        )}
+                                    </div>
+
+                                    {/* Action Save Button for Section 1 */}
+                                    <div style={{ marginTop: '1.25rem', paddingTop: '1rem', borderTop: '1px solid var(--color-border)', display: 'flex', justifyContent: 'flex-end' }}>
+                                        <button
+                                            type="button"
+                                            className="btn btn-primary"
+                                            onClick={handleSave}
+                                            disabled={isSaving || !canSaveFarmSettings}
+                                            style={{ display: 'inline-flex', alignItems: 'center', gap: '0.45rem', padding: '0.55rem 1.25rem', fontWeight: 600 }}
+                                        >
+                                            <Save size={16} /> {isSaving ? 'Saving...' : 'Save Farm Profile'}
+                                        </button>
                                     </div>
                                 </div>
                             )}
@@ -704,7 +676,7 @@ const Settings: React.FC = () => {
                                         <div className="form-group" style={{ marginBottom: '0.25rem' }}>
                                             <label className="form-label" style={{ fontSize: '0.85rem' }}>
                                                 Primary Recipient Email
-                                                {!canEditAllEmails && <span className="settings-perm-pill admin-only">Admin Managed</span>}
+                                                <span className="settings-perm-pill manager-access">Manager &amp; Admin</span>
                                             </label>
                                             <input 
                                                 type="email" 
@@ -719,7 +691,7 @@ const Settings: React.FC = () => {
                                         <div className="form-group" style={{ marginBottom: '0.25rem' }}>
                                             <label className="form-label" style={{ fontSize: '0.85rem' }}>
                                                 Additional Admin Emails (Comma-separated)
-                                                {!canEditAllEmails && <span className="settings-perm-pill admin-only">Admin Managed</span>}
+                                                <span className="settings-perm-pill manager-access">Manager &amp; Admin</span>
                                             </label>
                                             <input 
                                                 type="text" 
@@ -737,11 +709,7 @@ const Settings: React.FC = () => {
                                         <div className="form-group" style={{ marginBottom: '0.25rem' }}>
                                             <label className="form-label" style={{ fontSize: '0.85rem' }}>
                                                 Manager Notification Emails (Comma-separated)
-                                                {canEditManagerEmails ? (
-                                                    <span className="settings-perm-pill manager-access">Editable by Manager &amp; Admin</span>
-                                                ) : (
-                                                    <span className="settings-perm-pill staff-view">Staff View</span>
-                                                )}
+                                                <span className="settings-perm-pill manager-access">Manager &amp; Admin</span>
                                             </label>
                                             <input 
                                                 type="text" 
@@ -759,7 +727,7 @@ const Settings: React.FC = () => {
                                         <div className="form-group" style={{ marginBottom: '0.25rem' }}>
                                             <label className="form-label" style={{ fontSize: '0.85rem' }}>
                                                 Estate Timezone (for Attendance Deadlines &amp; Scheduled Monitors)
-                                                {!canEditThresholds && <span className="settings-perm-pill staff-view">Staff View</span>}
+                                                <span className="settings-perm-pill manager-access">Manager &amp; Admin</span>
                                             </label>
                                             <select 
                                                 className="form-input"
@@ -780,6 +748,19 @@ const Settings: React.FC = () => {
                                                 <Smartphone size={16} color="#16a34a" /> Send SMS &amp; Mobile Alerts to {settings.contactPhone}
                                             </div>
                                         </label>
+                                    </div>
+
+                                    {/* Action Save Button for Section 2 */}
+                                    <div style={{ marginTop: '1.25rem', paddingTop: '1rem', borderTop: '1px solid var(--color-border)', display: 'flex', justifyContent: 'flex-end' }}>
+                                        <button
+                                            type="button"
+                                            className="btn btn-primary"
+                                            onClick={handleSave}
+                                            disabled={isSaving || !canSaveFarmSettings}
+                                            style={{ display: 'inline-flex', alignItems: 'center', gap: '0.45rem', padding: '0.55rem 1.25rem', fontWeight: 600 }}
+                                        >
+                                            <Save size={16} /> {isSaving ? 'Saving...' : 'Save Alert Settings'}
+                                        </button>
                                     </div>
                                 </div>
                             )}
@@ -918,12 +899,25 @@ const Settings: React.FC = () => {
                                             onChange={e => setSettings({ ...settings, attendanceLockoutHours: e.target.value })} 
                                         />
                                     </div>
+
+                                    {/* Action Save Button for Section 3 */}
+                                    <div style={{ marginTop: '1.25rem', paddingTop: '1rem', borderTop: '1px solid var(--color-border)', display: 'flex', justifyContent: 'flex-end' }}>
+                                        <button
+                                            type="button"
+                                            className="btn btn-primary"
+                                            onClick={handleSave}
+                                            disabled={isSaving || !canSaveFarmSettings}
+                                            style={{ display: 'inline-flex', alignItems: 'center', gap: '0.45rem', padding: '0.55rem 1.25rem', fontWeight: 600 }}
+                                        >
+                                            <Save size={16} /> {isSaving ? 'Saving...' : 'Save Operational Thresholds'}
+                                        </button>
+                                    </div>
                                 </div>
                             )}
                         </div>
                     )}
 
-                    {/* Section 4: Security and Cloud Sync (Team Access & Admin Invitations - Admin Only) */}
+                    {/* Section 4: Security and Cloud Sync (Team Access & User Management) */}
                     {canManageTeam && shouldRender('invitations') && (
                         <div className="settings-accordion-card" style={{ borderLeft: '4px solid #16a34a' }}>
                             <button
@@ -940,7 +934,7 @@ const Settings: React.FC = () => {
                                 </div>
                                 <div className="settings-accordion-meta">
                                     <span className="settings-accordion-badge" style={{ background: '#dcfce7', color: '#166534', border: '1px solid #86efac' }}>
-                                        Administrator Control
+                                        Admin &amp; Manager Control
                                     </span>
                                     <ChevronDown size={18} className={`settings-chevron-icon ${!isCollapsed('invitations') ? 'rotated' : ''}`} />
                                 </div>
@@ -1051,7 +1045,7 @@ const Settings: React.FC = () => {
                                 disabled={isSaving}
                                 style={{ padding: '0.6rem 1.6rem', fontSize: '0.95rem', display: 'inline-flex', alignItems: 'center', gap: '0.5rem', fontWeight: 600 }}
                             >
-                                <Save size={17} /> {isSaving ? 'Saving Configurations...' : effectiveRole === 'manager' ? 'Save Operational Settings' : 'Save All Configurations'}
+                                <Save size={17} /> {isSaving ? 'Saving Configurations...' : 'Save All Configurations'}
                             </button>
                         ) : (
                             <div style={{ background: '#f8fafc', border: '1px solid #cbd5e1', color: '#334155', padding: '0.5rem 1rem', borderRadius: '6px', fontSize: '0.85rem', display: 'inline-flex', alignItems: 'center', gap: '0.45rem' }}>

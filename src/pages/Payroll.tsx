@@ -13,7 +13,8 @@ import {
     History,
     ShieldCheck,
     Mail,
-    CheckCircle2
+    CheckCircle2,
+    Save
 } from 'lucide-react';
 import { format } from 'date-fns';
 import { generatePayrollMasterPDF, generatePayslipPDF } from '../utils/pdfGenerator';
@@ -853,8 +854,8 @@ const Payroll: React.FC = () => {
                                 <button type="button" className="btn btn-secondary" style={{ flex: 1 }} onClick={() => setShowPaymentModal(false)}>
                                     Cancel
                                 </button>
-                                <button type="submit" className="btn btn-primary" style={{ flex: 1 }}>
-                                    Confirm Payment
+                                <button type="submit" className="btn btn-primary" style={{ flex: 1, display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: '0.4rem' }}>
+                                    <Save size={16} /> Save Payment Record
                                 </button>
                             </div>
                         </form>
@@ -981,8 +982,8 @@ const Payroll: React.FC = () => {
                                 <button type="button" className="btn btn-secondary" style={{ flex: 1 }} onClick={() => setShowAdjustDeductionModal(false)}>
                                     Cancel
                                 </button>
-                                <button type="submit" className="btn btn-primary" style={{ flex: 1 }}>
-                                    Save Adjustments
+                                <button type="submit" className="btn btn-primary" style={{ flex: 1, display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: '0.4rem' }}>
+                                    <Save size={16} /> Save Adjustments
                                 </button>
                             </div>
                         </form>

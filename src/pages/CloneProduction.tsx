@@ -15,7 +15,8 @@ import {
     X,
     Layers,
     ChevronRight,
-    Trash2
+    Trash2,
+    Save
 } from 'lucide-react';
 import { format, addMonths } from 'date-fns';
 import { generateProductionBatchMasterPDF } from '../utils/pdfGenerator';
@@ -783,8 +784,8 @@ const CloneProduction: React.FC = () => {
                                 <button type="button" className="btn btn-secondary" onClick={() => setShowNewBatchModal(false)}>
                                     Cancel
                                 </button>
-                                <button type="submit" className="btn btn-primary">
-                                    Create Batch
+                                <button type="submit" className="btn btn-primary" style={{ display: 'inline-flex', alignItems: 'center', gap: '0.4rem' }}>
+                                    <Save size={16} /> Save Batch Record
                                 </button>
                             </div>
                         </form>
@@ -896,8 +897,8 @@ const CloneProduction: React.FC = () => {
                                 <button type="button" className="btn btn-secondary" onClick={() => setAdvancingBatch(null)}>
                                     Cancel
                                 </button>
-                                <button type="submit" className="btn btn-primary">
-                                    Confirm Stage Advancement
+                                <button type="submit" className="btn btn-primary" style={{ display: 'inline-flex', alignItems: 'center', gap: '0.4rem' }}>
+                                    <Save size={16} /> Save Stage Advancement
                                 </button>
                             </div>
                         </form>

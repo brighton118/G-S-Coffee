@@ -15,7 +15,8 @@ import {
     Trash2,
     AlertTriangle,
     Mail,
-    PlusCircle
+    Edit3,
+    Save
 } from 'lucide-react';
 import { generateSalesReceiptPDF, generateSalesSummaryPDF, getSalesOrderItems } from '../utils/pdfGenerator';
 import { formatUGX } from '../utils/calculations';
@@ -751,10 +752,10 @@ const Sales: React.FC = () => {
                                                         type="button"
                                                         className="btn btn-secondary"
                                                         style={{ padding: '0.35rem 0.6rem', fontSize: '0.8rem', display: 'inline-flex', alignItems: 'center', gap: '0.3rem', borderColor: '#bbf7d0', backgroundColor: '#f0fdf4', color: '#166534' }}
-                                                        title="Record another variety on this customer's receipt"
+                                                        title="Edit order or record another variety on this customer's receipt"
                                                         onClick={() => handleOpenAddVarietyToOrder(order)}
                                                     >
-                                                        <PlusCircle size={14} /> + Variety
+                                                        <Edit3 size={14} /> Edit / + Variety
                                                     </button>
                                                 )}
                                                 <button 
@@ -855,10 +856,10 @@ const Sales: React.FC = () => {
                                         <button
                                             type="button"
                                             className="btn btn-secondary"
-                                            style={{ flex: 1, margin: 0, minWidth: '110px', borderColor: '#bbf7d0', backgroundColor: '#f0fdf4', color: '#166534' }}
+                                            style={{ flex: 1, margin: 0, minWidth: '110px', borderColor: '#bbf7d0', backgroundColor: '#f0fdf4', color: '#166534', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: '0.35rem' }}
                                             onClick={() => handleOpenAddVarietyToOrder(order)}
                                         >
-                                            <PlusCircle size={15} /> + Variety
+                                            <Edit3 size={15} /> Edit / + Variety
                                         </button>
                                     )}
                                     <button
@@ -1144,13 +1145,13 @@ const Sales: React.FC = () => {
                                 <button
                                     type="button"
                                     className="btn btn-secondary"
-                                    style={{ flex: 1, borderColor: '#86efac', backgroundColor: '#f0fdf4', color: '#166534', fontWeight: 600 }}
+                                    style={{ flex: 1, borderColor: '#86efac', backgroundColor: '#f0fdf4', color: '#166534', fontWeight: 600, display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: '0.4rem' }}
                                     onClick={() => void saveOrderRecord(false)}
                                 >
-                                    Save Recording (Issue Receipt Later)
+                                    <Save size={16} /> Save Order (Issue Later)
                                 </button>
-                                <button type="submit" className="btn btn-primary" style={{ flex: 1.3 }}>
-                                    <Receipt size={16} /> Complete All & Issue 1 Receipt
+                                <button type="submit" className="btn btn-primary" style={{ flex: 1.3, display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: '0.4rem' }}>
+                                    <Save size={16} /> Save &amp; Issue Receipt
                                 </button>
                             </div>
                         </form>

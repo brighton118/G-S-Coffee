@@ -15,7 +15,8 @@ import {
     EyeOff, 
     Trash2, 
     CheckCircle2, 
-    AlertCircle 
+    AlertCircle,
+    Save
 } from 'lucide-react';
 import { auth } from '../firebase';
 import { useUserRole } from '../context/UserRoleContext';
@@ -31,10 +32,10 @@ import {
 } from '../services/adminAccess';
 
 const AdminInvitations: React.FC = () => {
-    const { isSuperAdmin } = useUserRole();
+    const { isSuperAdmin, isAdmin, isManager } = useUserRole();
 
-    // Hard guard: this panel is strictly for Super Administrators only
-    if (!isSuperAdmin) return null;
+    // Guard: accessible to Administrators and Managers
+    if (!isSuperAdmin && !isAdmin && !isManager) return null;
 
     // Form state for creating accounts
     const [newName, setNewName] = useState('');
@@ -285,8 +286,8 @@ const AdminInvitations: React.FC = () => {
                             disabled={isSubmitting || !newName.trim() || !newEmail.trim() || !newPassword}
                             style={{ display: 'inline-flex', alignItems: 'center', gap: '0.4rem', padding: '0.6rem 1.4rem' }}
                         >
-                            <UserPlus size={16} />
-                            {isSubmitting ? 'Creating Account...' : `Create ${newRole.toUpperCase()} Account`}
+                            <Save size={16} />
+                            {isSubmitting ? 'Saving Account...' : `Save & Create ${newRole.toUpperCase()} Account`}
                         </button>
                     </div>
                 </form>

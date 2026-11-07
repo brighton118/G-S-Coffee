@@ -43,8 +43,8 @@ export async function assertAdminPermission(): Promise<void> {
         return;
     }
     const role = await getUserRole(current);
-    if (role !== 'admin') {
-        throw new Error('Permission denied: Only Administrators can create or manage user accounts.');
+    if (role !== 'admin' && role !== 'manager') {
+        throw new Error('Permission denied: Only Administrators and Managers can create or manage user accounts.');
     }
 }
 
