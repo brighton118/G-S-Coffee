@@ -14,12 +14,9 @@ import {
     CheckCircle2,
     Calendar,
     Radio,
-    Mail,
     FileText
 } from 'lucide-react';
 import { notificationService } from '../utils/notificationService';
-import { emailService } from '../services/emailService';
-import { smsService } from '../services/smsService';
 import './Dashboard.css';
 import './Notifications.css';
 
@@ -28,15 +25,25 @@ const Notifications: React.FC = () => {
     const [onlyUnread, setOnlyUnread] = useState<boolean>(false);
     const [isScanning, setIsScanning] = useState<boolean>(false);
     const [scanMessage, setScanMessage] = useState<string | null>(null);
-    const [isSendingDigest, setIsSendingDigest] = useState<boolean>(false);
-    const [emailNotice, setEmailNotice] = useState<{ text: string; type: 'success' | 'error' } | null>(null);
 
     // Live Query for notifications sorted latest first
     const notifications = useLiveQuery(() => db.notifications.orderBy('id').reverse().toArray()) || [];
 
-    // Trigger initial scan on page load
+    // Automated background checks and alerts (no manual action required)
     useEffect(() => {
-        notificationService.runAllNotificationChecks();
+        void notificationService.runAllNotificationChecks();
+
+        // Automatically request device notification permission if supported
+        if (typeof window !== 'undefined' && 'Notification' in window && Notification.permission === 'default') {
+            void Notification.requestPermission().catch(() => {});
+        }
+
+        // Automated periodic background checks every 60 seconds
+        const timer = setInterval(() => {
+            void notificationService.runAllNotificationChecks();
+        }, 60000);
+
+        return () => clearInterval(timer);
     }, []);
 
     const markAsRead = async (id: number) => {
@@ -80,56 +87,6 @@ const Notifications: React.FC = () => {
     };
 
 
-    const handleSendDigestEmail = async () => {
-        const unreadList = notifications.filter(n => !n.read);
-        if (unreadList.length === 0) {
-            alert('There are no unread notifications to email.');
-            return;
-        }
-
-        setIsSendingDigest(true);
-        setEmailNotice(null);
-
-        const summaryText = unreadList
-            .map((n, i) => `${i + 1}. [${n.type}] ${n.title}\n   ${n.message}`)
-            .join('\n\n');
-
-        try {
-            const res = await emailService.sendNotificationEmail({
-                subject: `Operations Digest: ${unreadList.length} Active System Alerts`,
-                title: `G&S FARMS Operational Digest (${unreadList.length} Alerts)`,
-                message: `The following ${unreadList.length} unread operational alerts require attention:\n\n${summaryText}`,
-                category: 'General',
-                details: {
-                    'Total Alerts': unreadList.length,
-                    'Stock Alerts': unreadList.filter(n => n.type === 'Inventory Low').length,
-                    'Chamber Alerts': unreadList.filter(n => n.type === 'Chamber Overdue').length,
-                    'Overtime Alerts': unreadList.filter(n => n.type === 'Pending Overtime').length,
-                    'Attendance Alerts': unreadList.filter(n => n.type === 'EOD_ATTENDANCE').length
-                }
-            });
-
-            if (res.success) {
-                setEmailNotice({
-                    type: 'success',
-                    text: `Operations digest containing ${unreadList.length} alerts successfully queued to: ${res.recipients.join(', ')}`
-                });
-            } else {
-                setEmailNotice({
-                    type: 'error',
-                    text: `Failed to dispatch digest: ${res.error || 'Unknown error'}`
-                });
-            }
-        } catch (err: any) {
-            setEmailNotice({
-                type: 'error',
-                text: `Error dispatching digest: ${err?.message || err}`
-            });
-        } finally {
-            setIsSendingDigest(false);
-            setTimeout(() => setEmailNotice(null), 7000);
-        }
-    };
 
     // Filter Notifications
     const filteredNotifications = notifications.filter(n => {
@@ -190,39 +147,10 @@ const Notifications: React.FC = () => {
                         {isScanning ? 'Scanning...' : 'Scan System for Alerts'}
                     </button>
                     {unreadCount > 0 && (
-                        <button 
-                            className="btn btn-primary" 
-                            onClick={handleSendDigestEmail} 
-                            disabled={isSendingDigest}
-                            style={{ display: 'inline-flex', alignItems: 'center', gap: '0.4rem', backgroundColor: '#1e3a8a', borderColor: '#1e3a8a' }}
-                            title="Send all active unread alerts as an email digest to managers"
-                        >
-                            <Mail size={16} /> 
-                            {isSendingDigest ? 'Dispatching Digest...' : `Email Digest (${unreadCount})`}
-                        </button>
-                    )}
-                    {unreadCount > 0 && (
                         <button className="btn btn-secondary" onClick={markAllAsRead} style={{ display: 'inline-flex', alignItems: 'center', gap: '0.4rem' }}>
                             <CheckSquare size={16} /> Mark All Read
                         </button>
                     )}
-                    <button 
-                        className="btn btn-secondary" 
-                        onClick={async () => {
-                            const granted = await smsService.requestNotificationPermission();
-                            if (granted) {
-                                smsService.showDevicePush('Live Alerts Active', 'Device screen notifications are enabled for G&S FARMS.');
-                                setEmailNotice({ type: 'success', text: '✅ Device screen notifications successfully activated!' });
-                                setTimeout(() => setEmailNotice(null), 5000);
-                            } else {
-                                alert('Please allow notifications in your browser permission prompt.');
-                            }
-                        }}
-                        style={{ display: 'inline-flex', alignItems: 'center', gap: '0.4rem' }}
-                        title="Enable screen notifications for this device"
-                    >
-                        <Bell size={16} /> Enable Device Push
-                    </button>
                     {notifications.some(n => !!n.read) && (
                         <button className="btn btn-secondary" onClick={clearAllRead} style={{ display: 'inline-flex', alignItems: 'center', gap: '0.4rem' }}>
                             <Trash2 size={16} /> Clear Read
@@ -231,22 +159,6 @@ const Notifications: React.FC = () => {
                 </div>
             </div>
 
-            {/* Email Dispatch Feedback Banner */}
-            {emailNotice && (
-                <div className="card" style={{ 
-                    padding: '0.85rem 1.25rem', 
-                    backgroundColor: emailNotice.type === 'success' ? '#f0fdf4' : '#fef2f2', 
-                    borderLeft: `4px solid ${emailNotice.type === 'success' ? '#22c55e' : '#ef4444'}`, 
-                    color: emailNotice.type === 'success' ? '#166534' : '#991b1b', 
-                    display: 'flex', 
-                    alignItems: 'center', 
-                    gap: '0.5rem',
-                    fontSize: '0.92rem'
-                }}>
-                    <Mail size={18} />
-                    <span>{emailNotice.text}</span>
-                </div>
-            )}
 
             {/* Scan Feedback Banner */}
             {scanMessage && (
