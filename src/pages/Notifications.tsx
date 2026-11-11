@@ -15,9 +15,6 @@ import {
     Calendar,
     Radio,
     Mail,
-    Smartphone,
-    MessageSquare,
-    ExternalLink,
     FileText
 } from 'lucide-react';
 import { notificationService } from '../utils/notificationService';
@@ -31,7 +28,6 @@ const Notifications: React.FC = () => {
     const [onlyUnread, setOnlyUnread] = useState<boolean>(false);
     const [isScanning, setIsScanning] = useState<boolean>(false);
     const [scanMessage, setScanMessage] = useState<string | null>(null);
-    const [sendingEmailId, setSendingEmailId] = useState<number | null>(null);
     const [isSendingDigest, setIsSendingDigest] = useState<boolean>(false);
     const [emailNotice, setEmailNotice] = useState<{ text: string; type: 'success' | 'error' } | null>(null);
 
@@ -83,45 +79,6 @@ const Notifications: React.FC = () => {
         }
     };
 
-    const handleSendSingleEmail = async (notif: typeof notifications[0]) => {
-        if (!notif.id) return;
-        setSendingEmailId(notif.id);
-        setEmailNotice(null);
-
-        try {
-            const res = await emailService.sendNotificationEmail({
-                subject: notif.title,
-                title: notif.title,
-                message: notif.message,
-                category: notif.type,
-                details: {
-                    'Alert Type': notif.type,
-                    'Date Logged': notif.date,
-                    'Target Recipient': notif.recipient || 'Farm Management'
-                }
-            });
-
-            if (res.success) {
-                setEmailNotice({
-                    type: 'success',
-                    text: `Email dispatched successfully to: ${res.recipients.join(', ')} (Queued in Cloud Mail)`
-                });
-            } else {
-                setEmailNotice({
-                    type: 'error',
-                    text: `Failed to queue email: ${res.error || 'Unknown error'}`
-                });
-            }
-        } catch (err: any) {
-            setEmailNotice({
-                type: 'error',
-                text: `Error sending email: ${err?.message || err}`
-            });
-        } finally {
-            setSendingEmailId(null);
-            setTimeout(() => setEmailNotice(null), 7000);
-        }
-    };
 
     const handleSendDigestEmail = async () => {
         const unreadList = notifications.filter(n => !n.read);
@@ -411,66 +368,18 @@ const Notifications: React.FC = () => {
                                     </p>
                                 </div>
 
-                                {/* Actions Toolbar - Dedicated row below paragraph */}
-                                <div className="notification-actions-bar">
-                                    <div className="notification-action-buttons">
-                                        <button 
-                                            className="btn btn-secondary notification-action-btn"
-                                            onClick={() => handleSendSingleEmail(notif)}
-                                            disabled={sendingEmailId === notif.id}
-                                            title="Send alert email to gs.farms.ug@gmail.com"
-                                        >
-                                            <Mail size={13} /> 
-                                            {sendingEmailId === notif.id ? 'Sending...' : 'Email'}
-                                        </button>
-
-                                        <button 
-                                            className="btn btn-secondary notification-action-btn"
-                                            onClick={() => emailService.openGmailWeb({
-                                                subject: notif.title,
-                                                title: notif.title,
-                                                message: notif.message,
-                                                category: notif.type
-                                            })}
-                                            title="Open pre-filled in Gmail Web"
-                                        >
-                                            <ExternalLink size={13} /> Gmail
-                                        </button>
-
-                                        <button 
-                                            className="btn btn-secondary notification-action-btn"
-                                            style={{ color: '#16a34a' }}
-                                            onClick={() => smsService.openWhatsAppAlert({
-                                                title: notif.title,
-                                                message: notif.message,
-                                                category: notif.type
-                                            })}
-                                            title="Send alert directly via WhatsApp to 0788945330"
-                                        >
-                                            <MessageSquare size={13} /> WhatsApp
-                                        </button>
-
-                                        <button 
-                                            className="btn btn-secondary notification-action-btn"
-                                            onClick={() => smsService.openNativeSMS({
-                                                message: `[G&S FARMS Alert] ${notif.title}\n${notif.message}`
-                                            })}
-                                            title="Open native SMS message app for 0788945330"
-                                        >
-                                            <Smartphone size={13} /> SMS
-                                        </button>
-                                    </div>
-
-                                    {!notif.read && (
+                                {/* Mark Read Action for unread notifications */}
+                                {!notif.read && (
+                                    <div className="notification-actions-bar">
                                         <button 
                                             className="btn btn-secondary notification-action-btn notification-mark-read-btn" 
                                             onClick={() => markAsRead(notif.id!)}
                                             title="Mark as Read"
                                         >
-                                            <CheckSquare size={13} /> Mark Read
+                                            <CheckSquare size={14} /> Mark Read
                                         </button>
-                                    )}
-                                </div>
+                                    </div>
+                                )}
                             </div>
                         );
                     })

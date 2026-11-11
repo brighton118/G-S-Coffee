@@ -91,28 +91,20 @@
     text-align: left;
 }
 
-/* Actions toolbar - wraps nicely below message */
+/* Actions bar for Mark Read */
 .notification-actions-bar {
     display: flex;
     align-items: center;
-    justify-content: space-between;
-    flex-wrap: wrap;
+    justify-content: flex-end;
     gap: 0.5rem;
-    padding-top: 0.75rem;
+    padding-top: 0.65rem;
     border-top: 1px solid rgba(0, 0, 0, 0.06);
     width: 100%;
 }
 
-.notification-action-buttons {
-    display: flex;
-    gap: 0.4rem;
-    flex-wrap: wrap;
-    align-items: center;
-}
-
 .notification-action-btn {
-    padding: 0.35rem 0.65rem;
-    font-size: 0.8rem;
+    padding: 0.4rem 0.85rem;
+    font-size: 0.82rem;
     display: inline-flex;
     align-items: center;
     gap: 0.35rem;
@@ -137,29 +129,16 @@
     }
 
     .notification-actions-bar {
-        flex-direction: column;
-        align-items: stretch;
-        gap: 0.6rem;
-    }
-
-    .notification-action-buttons {
-        width: 100%;
-        display: grid;
-        grid-template-columns: repeat(2, 1fr);
-        gap: 0.4rem;
-    }
-
-    .notification-action-btn {
-        justify-content: center;
-        padding: 0.45rem 0.5rem;
-        font-size: 0.8rem;
+        display: flex;
+        justify-content: flex-end;
+        align-items: center;
         width: 100%;
     }
 
     .notification-mark-read-btn {
         width: 100%;
         justify-content: center;
-        padding: 0.45rem 0.5rem;
+        padding: 0.5rem 0.75rem;
+        font-size: 0.85rem;
     }
 }
-
