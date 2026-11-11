@@ -6,7 +6,6 @@ import { Link } from 'react-router-dom';
 import {
     Sprout,
     AlertTriangle,
-    TrendingUp,
     Clock,
     Package,
     QrCode,
@@ -238,37 +237,30 @@ const Dashboard = () => {
 
             {/* Operational Quick Actions - Appears First */}
             <section className="card">
-                <h3 style={{ margin: '0 0 1rem 0', fontSize: '1.1rem', color: 'var(--color-primary-dark)', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                    <TrendingUp size={20} /> Operational Quick Actions
+                <h3 style={{ margin: '0 0 1rem 0', fontSize: '1.1rem', color: 'var(--color-primary-dark)' }}>
+                    Operational Quick Actions
                 </h3>
                 <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(140px, 1fr))', gap: '0.75rem' }}>
-                    <Link to="/scan" className="btn btn-secondary" style={{ padding: '0.75rem', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '0.4rem', textAlign: 'center' }}>
-                        <QrCode size={20} color="var(--color-primary)" />
+                    <Link to="/scan" className="btn btn-secondary" style={{ padding: '0.75rem 0.5rem', display: 'flex', alignItems: 'center', justifyContent: 'center', textAlign: 'center', minHeight: '44px' }}>
                         <span style={{ fontSize: '0.85rem', fontWeight: 600 }}>Scan QR Attendance</span>
                     </Link>
-                    <Link to="/clones" className="btn btn-secondary" style={{ padding: '0.75rem', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '0.4rem', textAlign: 'center' }}>
-                        <Sprout size={20} color="#15803d" />
+                    <Link to="/clones" className="btn btn-secondary" style={{ padding: '0.75rem 0.5rem', display: 'flex', alignItems: 'center', justifyContent: 'center', textAlign: 'center', minHeight: '44px' }}>
                         <span style={{ fontSize: '0.85rem', fontWeight: 600 }}>Clone Batch Registry</span>
                     </Link>
-                    <Link to="/sales" className="btn btn-secondary" style={{ padding: '0.75rem', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '0.4rem', textAlign: 'center' }}>
-                        <span style={{ fontSize: '1.25rem' }}>💰</span>
+                    <Link to="/sales" className="btn btn-secondary" style={{ padding: '0.75rem 0.5rem', display: 'flex', alignItems: 'center', justifyContent: 'center', textAlign: 'center', minHeight: '44px' }}>
                         <span style={{ fontSize: '0.85rem', fontWeight: 600 }}>Record Sales Order</span>
                     </Link>
-                    <Link to="/inventory" className="btn btn-secondary" style={{ padding: '0.75rem', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '0.4rem', textAlign: 'center' }}>
-                        <Package size={20} color="#b45309" />
+                    <Link to="/inventory" className="btn btn-secondary" style={{ padding: '0.75rem 0.5rem', display: 'flex', alignItems: 'center', justifyContent: 'center', textAlign: 'center', minHeight: '44px' }}>
                         <span style={{ fontSize: '0.85rem', fontWeight: 600 }}>Inventory Stock-In</span>
                     </Link>
-                    <Link to="/payroll" className="btn btn-secondary" style={{ padding: '0.75rem', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '0.4rem', textAlign: 'center' }}>
-                        <span style={{ fontSize: '1.25rem' }}>💵</span>
+                    <Link to="/payroll" className="btn btn-secondary" style={{ padding: '0.75rem 0.5rem', display: 'flex', alignItems: 'center', justifyContent: 'center', textAlign: 'center', minHeight: '44px' }}>
                         <span style={{ fontSize: '0.85rem', fontWeight: 600 }}>Monthly Payroll</span>
                     </Link>
-                    <Link to="/reports" className="btn btn-secondary" style={{ padding: '0.75rem', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '0.4rem', textAlign: 'center' }}>
-                        <span style={{ fontSize: '1.25rem' }}>📊</span>
+                    <Link to="/reports" className="btn btn-secondary" style={{ padding: '0.75rem 0.5rem', display: 'flex', alignItems: 'center', justifyContent: 'center', textAlign: 'center', minHeight: '44px' }}>
                         <span style={{ fontSize: '0.85rem', fontWeight: 600 }}>Export PDF Reports</span>
                     </Link>
                     {isSuperAdmin && (
-                        <a href="#team-accounts" className="btn btn-secondary" style={{ padding: '0.75rem', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '0.4rem', textAlign: 'center', background: '#fefce8', borderColor: '#fde047' }}>
-                            <UserPlus size={20} color="#854d0e" />
+                        <a href="#team-accounts" className="btn btn-secondary" style={{ padding: '0.75rem 0.5rem', display: 'flex', alignItems: 'center', justifyContent: 'center', textAlign: 'center', minHeight: '44px', background: '#fefce8', borderColor: '#fde047' }}>
                             <span style={{ fontSize: '0.85rem', fontWeight: 600, color: '#854d0e' }}>Team Accounts</span>
                         </a>
                     )}

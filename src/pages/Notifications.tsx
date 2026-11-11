@@ -5,16 +5,10 @@ import {
     Bell, 
     CheckSquare, 
     AlertTriangle, 
-    Clock, 
-    Package, 
-    Sprout, 
-    DollarSign, 
     RefreshCw, 
     Trash2, 
     CheckCircle2,
-    Calendar,
-    Radio,
-    FileText
+    Radio
 } from 'lucide-react';
 import { notificationService } from '../utils/notificationService';
 import './Dashboard.css';
@@ -103,24 +97,24 @@ const Notifications: React.FC = () => {
 
     const unreadCount = notifications.filter(n => !n.read).length;
 
-    // Helper for category icons & styling
+    // Helper for category styling & badges
     const getCategoryDetails = (type: string) => {
         switch (type) {
             case 'Manager Entry':
-                return { icon: <FileText size={20} color="#2563eb" />, bg: '#eff6ff', border: '#3b82f6', label: 'Manager Entry' };
+                return { bg: '#eff6ff', border: '#3b82f6', label: 'Manager Entry' };
             case 'EOD_ATTENDANCE':
-                return { icon: <Calendar size={20} color="#2563eb" />, bg: '#eff6ff', border: '#3b82f6', label: 'Attendance' };
+                return { bg: '#eff6ff', border: '#3b82f6', label: 'Attendance' };
             case 'Inventory Low':
             case 'Expiry Warning':
-                return { icon: <Package size={20} color="#ea580c" />, bg: '#fff7ed', border: '#f97316', label: 'Inventory' };
+                return { bg: '#fff7ed', border: '#f97316', label: 'Inventory' };
             case 'Pending Overtime':
-                return { icon: <Clock size={20} color="#ca8a04" />, bg: '#fefce8', border: '#eab308', label: 'Overtime' };
+                return { bg: '#fefce8', border: '#eab308', label: 'Overtime' };
             case 'Chamber Overdue':
-                return { icon: <Sprout size={20} color="#16a34a" />, bg: '#f0fdf4', border: '#22c55e', label: 'Clones' };
+                return { bg: '#f0fdf4', border: '#22c55e', label: 'Clones' };
             case 'Payroll Approval':
-                return { icon: <DollarSign size={20} color="#9333ea" />, bg: '#faf5ff', border: '#a855f7', label: 'Payroll' };
+                return { bg: '#faf5ff', border: '#a855f7', label: 'Payroll' };
             default:
-                return { icon: <Bell size={20} color="#475569" />, bg: '#f8fafc', border: '#64748b', label: 'General' };
+                return { bg: '#f8fafc', border: '#64748b', label: 'General' };
         }
     };
 
@@ -239,7 +233,7 @@ const Notifications: React.FC = () => {
                     </div>
                 ) : (
                     filteredNotifications.map(notif => {
-                        const { icon, bg, border, label } = getCategoryDetails(notif.type);
+                        const { bg, border, label } = getCategoryDetails(notif.type);
 
                         return (
                             <div 
@@ -250,11 +244,8 @@ const Notifications: React.FC = () => {
                                     borderLeft: `5px solid ${border}`
                                 }}
                             >
-                                {/* Notification Header: Icon, Category Badge, Title, and Timestamp Metadata */}
+                                {/* Notification Header: Category Badge, Title, and Timestamp Metadata */}
                                 <div className="notification-header">
-                                    <div className="notification-icon-container">
-                                        {icon}
-                                    </div>
                                     <div className="notification-title-container">
                                         <div className="notification-badge-row">
                                             <span className="notification-type-badge">
