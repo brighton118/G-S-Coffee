@@ -24,6 +24,7 @@ import { notificationService } from '../utils/notificationService';
 import { emailService } from '../services/emailService';
 import { smsService } from '../services/smsService';
 import './Dashboard.css';
+import './Notifications.css';
 
 const Notifications: React.FC = () => {
     const [selectedCategory, setSelectedCategory] = useState<string>('All');
@@ -361,7 +362,7 @@ const Notifications: React.FC = () => {
             </div>
 
             {/* Notifications Feed */}
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+            <div className="notifications-feed-list">
                 {filteredNotifications.length === 0 ? (
                     <div className="card text-center text-light" style={{ padding: '3rem' }}>
                         <AlertTriangle size={36} style={{ opacity: 0.3, marginBottom: '0.5rem' }} />
@@ -374,56 +375,47 @@ const Notifications: React.FC = () => {
                         return (
                             <div 
                                 key={notif.id} 
-                                className="card" 
+                                className="card notification-card" 
                                 style={{ 
-                                    display: 'flex', 
-                                    justifyContent: 'space-between', 
-                                    alignItems: 'flex-start',
-                                    padding: '1.25rem',
                                     backgroundColor: notif.read ? 'var(--color-surface)' : bg,
-                                    borderLeft: `5px solid ${border}`,
-                                    gap: '1rem',
-                                    transition: 'all 0.2s ease'
+                                    borderLeft: `5px solid ${border}`
                                 }}
                             >
-                                <div style={{ display: 'flex', gap: '1rem', alignItems: 'flex-start', flex: 1 }}>
-                                    <div style={{ paddingTop: '0.2rem' }}>
+                                {/* Notification Header: Icon, Category Badge, Title, and Timestamp Metadata */}
+                                <div className="notification-header">
+                                    <div className="notification-icon-container">
                                         {icon}
                                     </div>
-                                    <div style={{ flex: 1 }}>
-                                        <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', flexWrap: 'wrap', marginBottom: '0.35rem' }}>
-                                            <span style={{ 
-                                                fontSize: '0.75rem', 
-                                                fontWeight: 700, 
-                                                textTransform: 'uppercase', 
-                                                padding: '0.15rem 0.45rem', 
-                                                borderRadius: '4px',
-                                                backgroundColor: 'rgba(0,0,0,0.06)',
-                                                color: 'var(--color-text)'
-                                            }}>
+                                    <div className="notification-title-container">
+                                        <div className="notification-badge-row">
+                                            <span className="notification-type-badge">
                                                 {label}
                                             </span>
-                                            <strong style={{ fontSize: '1.05rem', color: 'var(--color-primary-dark)' }}>
+                                            <strong className="notification-title-heading">
                                                 {notif.title}
                                             </strong>
                                             {!notif.read && (
                                                 <span className="badge badge-warning" style={{ fontSize: '0.7rem' }}>NEW</span>
                                             )}
                                         </div>
-                                        <div style={{ fontSize: '0.8rem', color: 'var(--color-text-light)', marginBottom: '0.5rem' }}>
+                                        <div className="notification-meta-details">
                                             Date: {notif.date} • Recipient: {notif.recipient || 'Farm Management'} • Channel: {notif.channel || 'In-App'}
                                         </div>
-                                        <p style={{ margin: 0, fontSize: '0.925rem', lineHeight: 1.5, color: 'var(--color-text)' }}>
-                                            {notif.message}
-                                        </p>
                                     </div>
                                 </div>
 
-                                <div style={{ display: 'flex', flexDirection: 'column', gap: '0.4rem', alignItems: 'flex-end', flexShrink: 0 }}>
-                                    <div style={{ display: 'flex', gap: '0.35rem', flexWrap: 'wrap', justifyContent: 'flex-end' }}>
+                                {/* Full-Width Paragraph Message - Spans full width on phones and desktop */}
+                                <div className="notification-message-box">
+                                    <p className="notification-message-paragraph">
+                                        {notif.message}
+                                    </p>
+                                </div>
+
+                                {/* Actions Toolbar - Dedicated row below paragraph */}
+                                <div className="notification-actions-bar">
+                                    <div className="notification-action-buttons">
                                         <button 
-                                            className="btn btn-secondary"
-                                            style={{ padding: '0.3rem 0.55rem', fontSize: '0.78rem', display: 'inline-flex', alignItems: 'center', gap: '0.3rem', whiteSpace: 'nowrap' }}
+                                            className="btn btn-secondary notification-action-btn"
                                             onClick={() => handleSendSingleEmail(notif)}
                                             disabled={sendingEmailId === notif.id}
                                             title="Send alert email to gs.farms.ug@gmail.com"
@@ -433,8 +425,7 @@ const Notifications: React.FC = () => {
                                         </button>
 
                                         <button 
-                                            className="btn btn-secondary"
-                                            style={{ padding: '0.3rem 0.55rem', fontSize: '0.78rem', display: 'inline-flex', alignItems: 'center', gap: '0.3rem', whiteSpace: 'nowrap' }}
+                                            className="btn btn-secondary notification-action-btn"
                                             onClick={() => emailService.openGmailWeb({
                                                 subject: notif.title,
                                                 title: notif.title,
@@ -447,8 +438,8 @@ const Notifications: React.FC = () => {
                                         </button>
 
                                         <button 
-                                            className="btn btn-secondary"
-                                            style={{ padding: '0.3rem 0.55rem', fontSize: '0.78rem', display: 'inline-flex', alignItems: 'center', gap: '0.3rem', whiteSpace: 'nowrap', color: '#16a34a' }}
+                                            className="btn btn-secondary notification-action-btn"
+                                            style={{ color: '#16a34a' }}
                                             onClick={() => smsService.openWhatsAppAlert({
                                                 title: notif.title,
                                                 message: notif.message,
@@ -460,8 +451,7 @@ const Notifications: React.FC = () => {
                                         </button>
 
                                         <button 
-                                            className="btn btn-secondary"
-                                            style={{ padding: '0.3rem 0.55rem', fontSize: '0.78rem', display: 'inline-flex', alignItems: 'center', gap: '0.3rem', whiteSpace: 'nowrap' }}
+                                            className="btn btn-secondary notification-action-btn"
                                             onClick={() => smsService.openNativeSMS({
                                                 message: `[G&S FARMS Alert] ${notif.title}\n${notif.message}`
                                             })}
@@ -473,8 +463,7 @@ const Notifications: React.FC = () => {
 
                                     {!notif.read && (
                                         <button 
-                                            className="btn btn-secondary" 
-                                            style={{ padding: '0.3rem 0.65rem', fontSize: '0.78rem', display: 'inline-flex', alignItems: 'center', gap: '0.35rem', whiteSpace: 'nowrap' }}
+                                            className="btn btn-secondary notification-action-btn notification-mark-read-btn" 
                                             onClick={() => markAsRead(notif.id!)}
                                             title="Mark as Read"
                                         >
