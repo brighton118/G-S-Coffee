@@ -540,7 +540,7 @@ const ScanAttendance = () => {
                                 <>
                                     <Sunset size={20} color="#1d4ed8" />
                                     <div>
-                                        <strong>🌇 AFTERNOON TIME-OUT ACTIVE (Window: {schedule.attendanceTimeOutStart} – {schedule.attendanceTimeOutEnd})</strong>
+                                        <strong>AFTERNOON TIME-OUT ACTIVE (Window: {schedule.attendanceTimeOutStart} – {schedule.attendanceTimeOutEnd})</strong>
                                         <div style={{ fontSize: '0.8rem', opacity: 0.9 }}>
                                             Departure scans taken now will record on-time Time-Out.
                                         </div>
@@ -551,7 +551,7 @@ const ScanAttendance = () => {
                             <>
                                 <Sun size={20} color="#15803d" />
                                 <div>
-                                    <strong>🌅 MORNING TIME-IN ACTIVE (Target: {schedule.attendanceTimeInStart} – {schedule.attendanceTimeInEnd})</strong>
+                                    <strong>MORNING TIME-IN ACTIVE (Target: {schedule.attendanceTimeInStart} – {schedule.attendanceTimeInEnd})</strong>
                                     <div style={{ fontSize: '0.8rem', opacity: 0.9 }}>
                                         All cards scanned now will record Time-In. The scanner remains ready for the next card immediately.
                                     </div>
@@ -562,7 +562,7 @@ const ScanAttendance = () => {
                         <>
                             <Sun size={20} color="#15803d" />
                             <div>
-                                <strong>🌅 FORCED TIME-IN MODE ACTIVE</strong>
+                                <strong>FORCED TIME-IN MODE ACTIVE</strong>
                                 <div style={{ fontSize: '0.8rem', opacity: 0.9 }}>All scans will be recorded as morning Time-In.</div>
                             </div>
                         </>
@@ -570,7 +570,7 @@ const ScanAttendance = () => {
                         <>
                             <Sunset size={20} color="#1d4ed8" />
                             <div>
-                                <strong>🌇 FORCED TIME-OUT MODE ACTIVE</strong>
+                                <strong>FORCED TIME-OUT MODE ACTIVE</strong>
                                 <div style={{ fontSize: '0.8rem', opacity: 0.9 }}>All scans will be recorded as afternoon Time-Out (threshold: {schedule.attendanceTimeOutEnd}).</div>
                             </div>
                         </>
@@ -585,9 +585,9 @@ const ScanAttendance = () => {
                         onChange={(e) => setScanMode(e.target.value as any)}
                         style={{ fontSize: '0.8rem', padding: '0.25rem 0.5rem', borderRadius: '4px', border: '1px solid #cbd5e1' }}
                     >
-                        <option value="auto">⚡ Auto (By Schedule)</option>
-                        <option value="timeIn">🌅 Force Time-In</option>
-                        <option value="timeOut">🌇 Force Time-Out</option>
+                        <option value="auto">Auto (By Schedule)</option>
+                        <option value="timeIn">Force Time-In</option>
+                        <option value="timeOut">Force Time-Out</option>
                     </select>
                 </div>
             </div>
@@ -636,7 +636,7 @@ const ScanAttendance = () => {
                         <div>
                             <div id="reader"></div>
                             <p style={{ textAlign: 'center', color: 'var(--color-text-light)', fontSize: '0.82rem', margin: '0.75rem 0 0 0' }}>
-                                💡 <strong>Continuous Scanning:</strong> Hold worker QR card in front of camera. When recorded, immediately present the next card.
+                                <strong>Continuous Scanning:</strong> Hold worker QR card in front of camera. When recorded, immediately present the next card.
                             </p>
                         </div>
                     ) : (

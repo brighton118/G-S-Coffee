@@ -280,7 +280,7 @@ const Dashboard = () => {
                         </div>
                     </div>
                     <span className="badge badge-warning" style={{ fontWeight: 700, padding: '0.35rem 0.75rem' }}>
-                        👑 ADMIN OVERSIGHT
+                        ADMIN OVERSIGHT
                     </span>
                 </div>
             )}
@@ -346,7 +346,7 @@ const Dashboard = () => {
                                     </div>
                                     <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', fontSize: '0.78rem', color: '#6b7280' }}>
                                         <span style={{ fontWeight: 500, color: '#15803d' }}>
-                                            👤 {item.user}
+                                            {item.user}
                                         </span>
                                         {item.date && (
                                             <span>
@@ -380,7 +380,7 @@ const Dashboard = () => {
                         </div>
                     </div>
                     <span className="badge badge-success" style={{ fontWeight: 700, padding: '0.35rem 0.75rem' }}>
-                        💼 MANAGER (OPERATIONS)
+                        MANAGER (OPERATIONS)
                     </span>
                 </div>
             )}
@@ -397,7 +397,7 @@ const Dashboard = () => {
                         </div>
                     </div>
                     <span className="badge badge-info" style={{ fontWeight: 700, padding: '0.35rem 0.75rem' }}>
-                        👁️ STAFF (VIEW ONLY)
+                        STAFF (VIEW ONLY)
                     </span>
                 </div>
             )}
@@ -499,7 +499,7 @@ const Dashboard = () => {
                     <span className="text-light" style={{ fontSize: '0.82rem', marginTop: '4px', display: 'flex', justifyContent: 'space-between' }}>
                         <span>Net: {formatUGX(totalPayrollNet)}</span>
                         <span style={{ color: totalPayrollBalance > 0 ? '#d97706' : '#059669', fontWeight: 600 }}>
-                            {totalPayrollBalance > 0 ? `Due: ${formatUGX(totalPayrollBalance)}` : '✓ All Settled'}
+                            {totalPayrollBalance > 0 ? `Due: ${formatUGX(totalPayrollBalance)}` : 'All Settled'}
                         </span>
                     </span>
                 </div>
@@ -610,8 +610,8 @@ const Dashboard = () => {
                                     aria-label="Sort attendance roster"
                                 >
                                     <option value="recent">⏱️ Most Recent First</option>
-                                    <option value="name">🔤 Worker Name (A-Z)</option>
-                                    <option value="id">🔢 Worker ID Number</option>
+                                    <option value="name">Worker Name (A-Z)</option>
+                                    <option value="id">Worker ID Number</option>
                                 </select>
                             </div>
                             <Link to="/attendance" className="btn btn-secondary" style={{ fontSize: '0.82rem', padding: '0.35rem 0.75rem', display: 'inline-flex', alignItems: 'center', gap: '0.35rem' }}>

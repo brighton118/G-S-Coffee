@@ -238,7 +238,7 @@ const AdminInvitations: React.FC = () => {
                                 onClick={generateRandomPassword}
                                 style={{ background: 'none', border: 'none', color: 'var(--color-primary)', fontSize: '0.72rem', cursor: 'pointer', fontWeight: 600, padding: 0 }}
                             >
-                                ⚡ Generate
+                                Generate
                             </button>
                         </div>
                         <div style={{ position: 'relative' }}>
@@ -273,9 +273,9 @@ const AdminInvitations: React.FC = () => {
                             onChange={e => setNewRole(e.target.value as UserRole)}
                             style={{ width: '100%', height: 'auto', padding: '0.55rem' }}
                         >
-                            <option value="manager">💼 Manager (Data Entry)</option>
-                            <option value="staff">👁️ Staff (View Only)</option>
-                            <option value="admin">👑 Co-Administrator (Full Access)</option>
+                            <option value="manager">Manager (Data Entry)</option>
+                            <option value="staff">Staff (View Only)</option>
+                            <option value="admin">Co-Administrator (Full Access)</option>
                         </select>
                     </div>
 
@@ -418,9 +418,9 @@ const AdminInvitations: React.FC = () => {
                                             disabled={isCurrentUser}
                                             aria-label={`Change role for ${u.email}`}
                                         >
-                                            <option value="admin">👑 Administrator</option>
-                                            <option value="manager">💼 Manager</option>
-                                            <option value="staff">👁️ Staff</option>
+                                            <option value="admin">Administrator</option>
+                                            <option value="manager">Manager</option>
+                                            <option value="staff">Staff</option>
                                         </select>
 
                                         {!isCurrentUser && (

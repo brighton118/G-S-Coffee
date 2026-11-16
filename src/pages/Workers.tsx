@@ -8,11 +8,9 @@ import {
     X,
     Printer,
     FileDown,
-    CheckCircle2,
-    Edit3,
+        Edit3,
     QrCode,
-    Banknote,
-    Trash2,
+        Trash2,
     AlertTriangle,
     ShieldCheck,
     Lock,
@@ -408,7 +406,7 @@ const Workers: React.FC = () => {
                 <div className="stat-card card">
                     <div className="stat-header">
                         <span className="stat-title">ESTIMATED MONTHLY BASE PAYROLL</span>
-                        <Banknote className="stat-icon text-primary" size={20} />
+                        
                     </div>
                     <div className="stat-value workers-payroll-total">{formatUGX(monthlyPayroll)}</div>
                     <div className="stat-change text-light">Active workers · excludes overtime and deductions</div>
@@ -417,7 +415,7 @@ const Workers: React.FC = () => {
                 <div className="stat-card card">
                     <div className="stat-header">
                         <span className="stat-title">ACTIVE WORKERS</span>
-                        <CheckCircle2 className="stat-icon text-success" size={20} />
+                        
                     </div>
                     <div className="stat-value" style={{ color: '#16a34a' }}>{activeCount}</div>
                     <div className="stat-change text-light">Included in the base payroll estimate</div>
@@ -426,7 +424,7 @@ const Workers: React.FC = () => {
                 <div className="stat-card card">
                     <div className="stat-header">
                         <span className="stat-title">INACTIVE WORKERS</span>
-                        <X className="stat-icon text-warning" size={20} />
+                        
                     </div>
                     <div className="stat-value">
                         {inactiveCount}

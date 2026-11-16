@@ -124,7 +124,7 @@ class SMSService {
      */
     public openWhatsAppAlert(payload: SMSPayload): void {
         const phone = this.normalizeUgandaPhone(payload.to || this.getTargetPhone()).replace('+', '');
-        const text = encodeURIComponent(`*🌿 G&S FARMS ALERT*\n\n*${payload.title || 'Farm Alert'}*\n${payload.message}\n\n_Time: ${new Date().toLocaleTimeString()}_\nhttps://gsfarm.farm`);
+        const text = encodeURIComponent(`*G&S FARMS ALERT*\n\n*${payload.title || 'Farm Alert'}*\n${payload.message}\n\n_Time: ${new Date().toLocaleTimeString()}_\nhttps://gsfarm.farm`);
         
         const url = `https://wa.me/${phone}?text=${text}`;
         window.open(url, '_blank');

@@ -231,8 +231,8 @@ const Settings: React.FC = () => {
 
         setSaveNotice(
             effectiveRole === 'manager'
-                ? '✅ Operational thresholds and shift settings saved! Live update sent to Admin Dashboard.'
-                : '✅ Global farm identity and communication parameters saved and synced across all devices!'
+                ? 'Operational thresholds and shift settings saved! Live update sent to Admin Dashboard.'
+                : 'Global farm identity and communication parameters saved and synced across all devices!'
         );
 
         // Keep save button permanently active: release saving state in 350ms so user can immediately save subsequent updates
@@ -366,18 +366,18 @@ const Settings: React.FC = () => {
                                 value={activeSection}
                                 onChange={e => handleSelectSection(e.target.value as SettingsSectionKey)}
                             >
-                                <option value="all">📂 All Pages (Full Settings Overview)</option>
+                                <option value="all">All Pages (Full Settings Overview)</option>
                                 {effectiveRole === 'admin' && (
-                                    <option value="farm_info">🏢 Farm Info, Location &amp; Contacts</option>
+                                    <option value="farm_info">Farm Info, Location &amp; Contacts</option>
                                 )}
                                 {effectiveRole === 'admin' && (
-                                    <option value="notifications">🔔 Notifications &amp; Alert Routing</option>
+                                    <option value="notifications">Notifications &amp; Alert Routing</option>
                                 )}
                                 <option value="thresholds">⏰ Operational &amp; Attendance Thresholds</option>
                                 {canManageTeam && (
-                                    <option value="invitations">👥 Team Access &amp; Staff Invitations</option>
+                                    <option value="invitations">Team Access &amp; Staff Invitations</option>
                                 )}
-                                <option value="security">🔑 Account Password &amp; Security</option>
+                                <option value="security">Account Password &amp; Security</option>
                             </select>
                             <ChevronDown size={17} className="settings-select-chevron" />
                         </div>
@@ -1018,7 +1018,7 @@ const Settings: React.FC = () => {
                                             </div>
                                             <div>
                                                 <span style={{ color: '#64748b' }}>System Role:</span> <strong style={{ color: effectiveRole === 'admin' ? '#854d0e' : effectiveRole === 'manager' ? '#15803d' : '#1d4ed8' }}>
-                                                    {effectiveRole === 'admin' ? '👑 Administrator (Full Governance)' : effectiveRole === 'manager' ? '💼 Farm Manager (Data Entry & Operations)' : '👁️ Staff Member (View-Only)'}
+                                                    {effectiveRole === 'admin' ? 'Administrator (Full Governance)' : effectiveRole === 'manager' ? 'Farm Manager (Data Entry & Operations)' : 'Staff Member (View-Only)'}
                                                 </strong>
                                             </div>
                                             <div>
@@ -1030,7 +1030,7 @@ const Settings: React.FC = () => {
                                         </div>
                                         {effectiveRole === 'manager' && (
                                             <div style={{ fontSize: '0.78rem', color: '#15803d', background: '#f0fdf4', padding: '0.45rem 0.75rem', borderRadius: '6px', border: '1px solid #bbf7d0' }}>
-                                                💼 <strong>Manager Operational Purview:</strong> You are actively managing Field Workers, QR Attendance, Clone Nursery, Stock &amp; Inventory, Sales Orders, and Shift Cutoff Thresholds. All your entries stream directly to the Administrator Dashboard.
+                                                <strong>Manager Operational Purview:</strong> You are actively managing Field Workers, QR Attendance, Clone Nursery, Stock &amp; Inventory, Sales Orders, and Shift Cutoff Thresholds. All your entries stream directly to the Administrator Dashboard.
                                             </div>
                                         )}
                                     </div>

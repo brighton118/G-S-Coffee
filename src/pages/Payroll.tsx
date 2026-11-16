@@ -79,12 +79,12 @@ const Payroll: React.FC = () => {
             });
 
             if (res.success) {
-                setPayrollNotice(`✅ Payroll summary for ${selectedMonth} sent via Brevo to ${res.recipients.join(', ')}!`);
+                setPayrollNotice(`Payroll summary for ${selectedMonth} sent via Brevo to ${res.recipients.join(', ')}!`);
             } else {
-                setPayrollNotice(`❌ Could not email payroll summary: ${res.error || 'Check Brevo status'}`);
+                setPayrollNotice(`Could not email payroll summary: ${res.error || 'Check Brevo status'}`);
             }
         } catch (err: any) {
-            setPayrollNotice(`❌ Error dispatching payroll email: ${err?.message || err}`);
+            setPayrollNotice(`Error dispatching payroll email: ${err?.message || err}`);
         } finally {
             setIsEmailingSummary(false);
             setTimeout(() => setPayrollNotice(null), 6000);
@@ -114,12 +114,12 @@ const Payroll: React.FC = () => {
             });
 
             if (res.success) {
-                setPayrollNotice(`✅ Payslip for ${record.workerName} sent via Brevo to ${res.recipients.join(', ')}!`);
+                setPayrollNotice(`Payslip for ${record.workerName} sent via Brevo to ${res.recipients.join(', ')}!`);
             } else {
-                setPayrollNotice(`❌ Could not email payslip: ${res.error || 'Check Brevo status'}`);
+                setPayrollNotice(`Could not email payslip: ${res.error || 'Check Brevo status'}`);
             }
         } catch (err: any) {
-            setPayrollNotice(`❌ Error dispatching payslip: ${err?.message || err}`);
+            setPayrollNotice(`Error dispatching payslip: ${err?.message || err}`);
         } finally {
             setIsEmailingPayslip(false);
             setTimeout(() => setPayrollNotice(null), 6000);
@@ -421,7 +421,7 @@ const Payroll: React.FC = () => {
             </div>
 
             {payrollNotice && (
-                <div className="card" style={{ padding: '0.85rem 1.25rem', backgroundColor: payrollNotice.startsWith('✅') ? '#f0fdf4' : '#fef2f2', borderLeft: `4px solid ${payrollNotice.startsWith('✅') ? '#22c55e' : '#ef4444'}`, color: payrollNotice.startsWith('✅') ? '#166534' : '#b91c1c', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                <div className="card" style={{ padding: '0.85rem 1.25rem', backgroundColor: !payrollNotice.toLowerCase().includes('error') && !payrollNotice.toLowerCase().includes('could not') ? '#f0fdf4' : '#fef2f2', borderLeft: `4px solid ${!payrollNotice.toLowerCase().includes('error') && !payrollNotice.toLowerCase().includes('could not') ? '#22c55e' : '#ef4444'}`, color: !payrollNotice.toLowerCase().includes('error') && !payrollNotice.toLowerCase().includes('could not') ? '#166534' : '#b91c1c', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
                     <CheckCircle2 size={18} />
                     <span>{payrollNotice}</span>
                 </div>

@@ -6,13 +6,12 @@ import {
     Search, 
     Download, 
     CheckCircle2, 
-    DollarSign, 
+     
     Layers, 
     X, 
     Receipt, 
     Banknote, 
-    ShoppingCart,
-    Trash2,
+        Trash2,
     AlertTriangle,
     Mail,
     Edit3,
@@ -175,7 +174,7 @@ const Sales: React.FC = () => {
             }
             consolidatedCount++;
         }
-        setSalesNotice(`✅ Consolidated ${consolidatedCount} customer(s)' separate variety records into single receipts!`);
+        setSalesNotice(`Consolidated ${consolidatedCount} customer(s)' separate variety records into single receipts!`);
         setTimeout(() => setSalesNotice(null), 5000);
     };
 
@@ -302,12 +301,12 @@ const Sales: React.FC = () => {
             });
 
             if (res.success) {
-                setSalesNotice(`✅ Invoice #${inv} receipt sent via Brevo to ${res.recipients.join(', ')}!`);
+                setSalesNotice(`Invoice #${inv} receipt sent via Brevo to ${res.recipients.join(', ')}!`);
             } else {
-                setSalesNotice(`❌ Could not dispatch invoice receipt: ${res.error || 'Check Brevo configuration'}`);
+                setSalesNotice(`Could not dispatch invoice receipt: ${res.error || 'Check Brevo configuration'}`);
             }
         } catch (err: any) {
-            setSalesNotice(`❌ Error sending invoice: ${err?.message || err}`);
+            setSalesNotice(`Error sending invoice: ${err?.message || err}`);
         } finally {
             setEmailingOrderId(null);
             setTimeout(() => setSalesNotice(null), 6000);
@@ -470,9 +469,9 @@ const Sales: React.FC = () => {
 
         if (issueReceiptNow) {
             generateSalesReceiptPDF(savedOrder);
-            setSalesNotice(`✅ Receipt #${invoiceNum} issued for ${savedOrder.customerName} with ${finalItems.length} ${finalItems.length === 1 ? 'variety' : 'varieties'} (${varietiesDetailedLabel}).`);
+            setSalesNotice(`Receipt #${invoiceNum} issued for ${savedOrder.customerName} with ${finalItems.length} ${finalItems.length === 1 ? 'variety' : 'varieties'} (${varietiesDetailedLabel}).`);
         } else {
-            setSalesNotice(`✅ Recorded ${varietiesDetailedLabel} for ${savedOrder.customerName} on Invoice #${invoiceNum}. Click "+ Variety" to add more or "Issue Receipt" when done.`);
+            setSalesNotice(`Recorded ${varietiesDetailedLabel} for ${savedOrder.customerName} on Invoice #${invoiceNum}. Click "+ Variety" to add more or "Issue Receipt" when done.`);
         }
         setTimeout(() => setSalesNotice(null), 6000);
     };
@@ -581,7 +580,7 @@ const Sales: React.FC = () => {
             </div>
 
             {salesNotice && (
-                <div className="card" style={{ padding: '0.85rem 1.25rem', backgroundColor: salesNotice.startsWith('✅') ? '#f0fdf4' : '#fef2f2', borderLeft: `4px solid ${salesNotice.startsWith('✅') ? '#22c55e' : '#ef4444'}`, color: salesNotice.startsWith('✅') ? '#166534' : '#b91c1c', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                <div className="card" style={{ padding: '0.85rem 1.25rem', backgroundColor: !salesNotice.toLowerCase().includes('error') && !salesNotice.toLowerCase().includes('could not') ? '#f0fdf4' : '#fef2f2', borderLeft: `4px solid ${!salesNotice.toLowerCase().includes('error') && !salesNotice.toLowerCase().includes('could not') ? '#22c55e' : '#ef4444'}`, color: !salesNotice.toLowerCase().includes('error') && !salesNotice.toLowerCase().includes('could not') ? '#166534' : '#b91c1c', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
                     <CheckCircle2 size={18} />
                     <span>{salesNotice}</span>
                 </div>
@@ -592,7 +591,7 @@ const Sales: React.FC = () => {
                 <div className="stat-card card">
                     <div className="stat-header">
                         <span className="stat-title">TOTAL SALES VOLUME</span>
-                        <DollarSign className="stat-icon text-primary" size={20} />
+                        
                     </div>
                     <div className="stat-value" style={{ color: 'var(--color-primary)' }}>
                         {formatUGX(totalRevenue)}
@@ -603,7 +602,7 @@ const Sales: React.FC = () => {
                 <div className="stat-card card">
                     <div className="stat-header">
                         <span className="stat-title">CASH RECEIVED</span>
-                        <CheckCircle2 className="stat-icon text-success" size={20} />
+                        
                     </div>
                     <div className="stat-value" style={{ color: '#16a34a' }}>
                         {formatUGX(totalRevenue)}
@@ -614,7 +613,7 @@ const Sales: React.FC = () => {
                 <div className="stat-card card">
                     <div className="stat-header">
                         <span className="stat-title">CUSTOMER RECEIPTS</span>
-                        <ShoppingCart className="stat-icon text-primary" size={20} />
+                        
                     </div>
                     <div className="stat-value">
                         {totalTransactions}
@@ -625,7 +624,7 @@ const Sales: React.FC = () => {
                 <div className="stat-card card">
                     <div className="stat-header">
                         <span className="stat-title">PLANTLETS SOLD</span>
-                        <Layers className="stat-icon text-primary" size={20} />
+                        
                     </div>
                     <div className="stat-value">
                         {totalPlantletsSold.toLocaleString()}

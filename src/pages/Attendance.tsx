@@ -10,8 +10,7 @@ import {
     Clock, 
     CheckCircle2, 
     AlertTriangle, 
-    UserCheck,
-    ArrowRight,
+        ArrowRight,
     Mail
 } from 'lucide-react';
 import { format } from 'date-fns';
@@ -72,13 +71,13 @@ const Attendance: React.FC = () => {
 
     const handleSendMissedAttendanceAlert = async () => {
         if (isSelectedDateSunday) {
-            setAttendanceNotice('ℹ️ Sunday is a non-working day for G&S Farm. Attendance alerts are disabled on Sundays.');
+            setAttendanceNotice('Sunday is a non-working day for G&S Farm. Attendance alerts are disabled on Sundays.');
             setTimeout(() => setAttendanceNotice(null), 5000);
             return;
         }
 
         if (absentWorkers.length === 0) {
-            setAttendanceNotice('✅ All active workers have scanned in! Zero absences detected.');
+            setAttendanceNotice('All active workers have scanned in! Zero absences detected.');
             setTimeout(() => setAttendanceNotice(null), 4000);
             return;
         }
@@ -97,12 +96,12 @@ const Attendance: React.FC = () => {
             });
 
             if (res.success) {
-                setAttendanceNotice(`✅ Missed attendance alert for ${absentWorkers.length} worker(s) dispatched via Brevo to ${res.recipients.join(', ')}!`);
+                setAttendanceNotice(`Missed attendance alert for ${absentWorkers.length} worker(s) dispatched via Brevo to ${res.recipients.join(', ')}!`);
             } else {
-                setAttendanceNotice(`❌ Failed to dispatch alert: ${res.error || 'Check Brevo configuration'}`);
+                setAttendanceNotice(`Failed to dispatch alert: ${res.error || 'Check Brevo configuration'}`);
             }
         } catch (err: any) {
-            setAttendanceNotice(`❌ Error sending alert: ${err?.message || err}`);
+            setAttendanceNotice(`Error sending alert: ${err?.message || err}`);
         } finally {
             setIsSendingAlert(false);
             setTimeout(() => setAttendanceNotice(null), 6000);
@@ -156,7 +155,7 @@ const Attendance: React.FC = () => {
             </div>
 
             {attendanceNotice && (
-                <div className="card" style={{ padding: '0.85rem 1.25rem', backgroundColor: attendanceNotice.startsWith('✅') ? '#f0fdf4' : '#fef2f2', borderLeft: `4px solid ${attendanceNotice.startsWith('✅') ? '#22c55e' : '#ef4444'}`, color: attendanceNotice.startsWith('✅') ? '#166534' : '#b91c1c', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                <div className="card" style={{ padding: '0.85rem 1.25rem', backgroundColor: !attendanceNotice.toLowerCase().includes('error') && !attendanceNotice.toLowerCase().includes('fail') ? '#f0fdf4' : '#fef2f2', borderLeft: `4px solid ${!attendanceNotice.toLowerCase().includes('error') && !attendanceNotice.toLowerCase().includes('fail') ? '#22c55e' : '#ef4444'}`, color: !attendanceNotice.toLowerCase().includes('error') && !attendanceNotice.toLowerCase().includes('fail') ? '#166534' : '#b91c1c', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
                     <CheckCircle2 size={18} />
                     <span>{attendanceNotice}</span>
                 </div>
@@ -167,7 +166,7 @@ const Attendance: React.FC = () => {
                 <div className="stat-card card">
                     <div className="stat-header">
                         <span className="stat-title">PRESENT WORKERS</span>
-                        <CheckCircle2 className="stat-icon text-success" size={20} />
+                        
                     </div>
                     <div className="stat-value" style={{ color: '#16a34a' }}>
                         {presentToday}
@@ -178,7 +177,7 @@ const Attendance: React.FC = () => {
                 <div className="stat-card card">
                     <div className="stat-header">
                         <span className="stat-title">LATE ARRIVALS</span>
-                        <AlertTriangle className="stat-icon text-warning" size={20} />
+                        
                     </div>
                     <div className="stat-value" style={{ color: lateToday > 0 ? '#ea580c' : 'var(--color-text)' }}>
                         {lateToday}
@@ -189,7 +188,7 @@ const Attendance: React.FC = () => {
                 <div className="stat-card card">
                     <div className="stat-header">
                         <span className="stat-title">POTENTIAL OVERTIME</span>
-                        <Clock className="stat-icon text-primary" size={20} />
+                        
                     </div>
                     <div className="stat-value" style={{ color: 'var(--color-primary)' }}>
                         {otEligibleCount}
@@ -200,7 +199,7 @@ const Attendance: React.FC = () => {
                 <div className="stat-card card">
                     <div className="stat-header">
                         <span className="stat-title">TOTAL ACTIVE ROSTER</span>
-                        <UserCheck className="stat-icon text-primary" size={20} />
+                        
                     </div>
                     <div className="stat-value">
                         {activeWorkers.length}

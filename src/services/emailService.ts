@@ -324,7 +324,7 @@ class EmailService {
                             <h2 style="margin: 0; font-size: 20px; letter-spacing: 0.5px;">${estateName}</h2>
                             <p style="margin: 4px 0 0; font-size: 13px; color: #a7f3d0;">Manager Operational Activity Audit</p>
                             <div style="margin-top: 10px; display: inline-block; background: #166534; color: #ffffff; padding: 4px 12px; border-radius: 12px; font-size: 12px; font-weight: bold;">
-                                🚨 ${module} • ${action}
+                                ${module} • ${action}
                             </div>
                         </div>
                         <div style="padding: 24px; color: #1e293b; font-size: 14px; line-height: 1.6;">
@@ -1020,7 +1020,7 @@ class EmailService {
             subject,
             templateType: 'managerAudit',
             templateData: {
-                title: `🚨 Manager Activity Audit: ${actionClean}`,
+                title: `Manager Activity Audit: ${actionClean}`,
                 action: actionClean,
                 module: params.module,
                 manager: managerActor,

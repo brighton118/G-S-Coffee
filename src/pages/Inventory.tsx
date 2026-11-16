@@ -6,16 +6,12 @@ import {
     Search, 
     Download, 
     AlertTriangle, 
-    DollarSign, 
+     
     RefreshCw,
     X,
     ArrowDownRight,
     ArrowUpRight,
-    Wrench,
-    Bug,
-    Sparkles,
-    Sprout,
-    Trash2,
+        Trash2,
     Edit3,
     Save
 } from 'lucide-react';
@@ -33,10 +29,10 @@ import { auth } from '../firebase';
 import { useUserRole } from '../context/UserRoleContext';
 
 const CATEGORIES = [
-    { name: 'Fertilizers', icon: Sparkles, color: '#16a34a' },
-    { name: 'Pesticides', icon: Bug, color: '#ea580c' },
-    { name: 'Farm Tools', icon: Wrench, color: '#2563eb' },
-    { name: 'Nursery Supplies', icon: Sprout, color: '#0d9488' }
+    { name: 'Fertilizers' },
+    { name: 'Pesticides' },
+    { name: 'Farm Tools' },
+    { name: 'Nursery Supplies' }
 ];
 
 const PREDEFINED_NURSERY_SUPPLIES = [
@@ -628,12 +624,12 @@ const Inventory: React.FC = () => {
                 <>
                     <div className="stats-grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: '1rem' }}>
                         <div className="stat-card card">
-                            <div className="stat-header"><span className="stat-title">RECORDED FARM EXPENSES</span><DollarSign className="stat-icon text-primary" size={20} /></div>
+                            <div className="stat-header"><span className="stat-title">RECORDED FARM EXPENSES</span></div>
                             <div className="stat-value">{expenses.length}</div>
                             <div className="stat-change text-light">Transport and miscellaneous costs</div>
                         </div>
                         <div className="stat-card card">
-                            <div className="stat-header"><span className="stat-title">TOTAL EXPENSES</span><DollarSign className="stat-icon text-danger" size={20} /></div>
+                            <div className="stat-header"><span className="stat-title">TOTAL EXPENSES</span></div>
                             <div className="stat-value">UGX {totalMiscExpenses.toLocaleString()}</div>
                             <div className="stat-change text-light">All recorded miscellaneous expenses</div>
                         </div>
@@ -709,7 +705,7 @@ const Inventory: React.FC = () => {
                 <div className="stat-card card">
                     <div className="stat-header">
                         <span className="stat-title">Inventory Valuation</span>
-                        <DollarSign className="stat-icon text-success" size={20} />
+                        
                     </div>
                     <div className="stat-value" style={{ color: 'var(--color-primary)' }}>
                         UGX {totalValuation.toLocaleString()}
@@ -720,7 +716,7 @@ const Inventory: React.FC = () => {
                 <div className="stat-card card">
                     <div className="stat-header">
                         <span className="stat-title">Low Stock Alerts</span>
-                        <AlertTriangle className="stat-icon text-warning" size={20} />
+                        
                     </div>
                     <div className="stat-value" style={{ color: lowStockCount > 0 ? '#ea580c' : 'var(--color-text)' }}>
                         {lowStockCount}
@@ -731,7 +727,7 @@ const Inventory: React.FC = () => {
                 <div className="stat-card card">
                     <div className="stat-header">
                         <span className="stat-title">Stock Movements</span>
-                        <RefreshCw className="stat-icon text-primary" size={20} />
+                        
                     </div>
                     <div className="stat-value">
                         {transactions.length}
@@ -751,15 +747,13 @@ const Inventory: React.FC = () => {
                 </button>
                 {CATEGORIES.map(cat => {
                     const count = items.filter(i => i.category === cat.name).length;
-                    const IconComponent = cat.icon;
                     return (
                         <button 
                             key={cat.name}
                             className={`btn ${selectedCategory === cat.name ? 'btn-primary' : 'btn-secondary'}`}
                             onClick={() => setSelectedCategory(cat.name)}
-                            style={{ display: 'inline-flex', alignItems: 'center', gap: '0.4rem', padding: '0.4rem 0.85rem' }}
+                            style={{ padding: '0.4rem 0.85rem' }}
                         >
-                            <IconComponent size={16} />
                             {cat.name} ({count})
                         </button>
                     );

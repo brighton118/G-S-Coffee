@@ -7,9 +7,8 @@ import {
     XCircle, 
     Download, 
     Settings as SettingsIcon, 
-    AlertCircle, 
-    UserCheck,
-    Save
+     
+        Save
 } from 'lucide-react';
 import { format } from 'date-fns';
 import { generateOvertimePDF } from '../utils/pdfGenerator';
@@ -253,7 +252,7 @@ const Overtime: React.FC<OvertimeProps> = ({ embedded = false }) => {
                 <div className="stat-card card">
                     <div className="stat-header">
                         <span className="stat-title">Pending Approvals</span>
-                        <AlertCircle className="stat-icon text-warning" size={20} />
+                        
                     </div>
                     <div className="stat-value" style={{ color: pendingRecords.length > 0 ? '#ea580c' : 'var(--color-text)' }}>
                         {pendingRecords.length}
@@ -264,7 +263,7 @@ const Overtime: React.FC<OvertimeProps> = ({ embedded = false }) => {
                 <div className="stat-card card">
                     <div className="stat-header">
                         <span className="stat-title">Approved OT Hours</span>
-                        <CheckCircle2 className="stat-icon text-success" size={20} />
+                        
                     </div>
                     <div className="stat-value" style={{ color: '#16a34a' }}>
                         {totalApprovedHours.toFixed(1)} hrs
@@ -275,7 +274,7 @@ const Overtime: React.FC<OvertimeProps> = ({ embedded = false }) => {
                 <div className="stat-card card">
                     <div className="stat-header">
                         <span className="stat-title">Estimated OT Earnings</span>
-                        <UserCheck className="stat-icon text-primary" size={20} />
+                        
                     </div>
                     <div className="stat-value" style={{ color: 'var(--color-primary)' }}>
                         {formatUGX(totalEstimatedEarnings)}
@@ -286,7 +285,7 @@ const Overtime: React.FC<OvertimeProps> = ({ embedded = false }) => {
                 <div className="stat-card card">
                     <div className="stat-header">
                         <span className="stat-title">Claimed OT Hours</span>
-                        <Clock className="stat-icon text-muted" size={20} />
+                        
                     </div>
                     <div className="stat-value">
                         {totalPotentialHours.toFixed(1)} hrs

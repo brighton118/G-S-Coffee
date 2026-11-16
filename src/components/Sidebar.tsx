@@ -130,7 +130,7 @@ const Sidebar = ({ isOpen, setIsOpen, adminEmail, onSignOut }: SidebarProps) => 
                 </div>
                 <div className="sidebar-role-badge-wrap">
                     <span className={`sidebar-role-badge role-${role}`}>
-                        {role === 'admin' ? '👑 Admin (Full Access)' : role === 'manager' ? '💼 Manager (Operations)' : '👁️ Staff (View Only)'}
+                        {role === 'admin' ? 'Admin (Full Access)' : role === 'manager' ? 'Manager (Operations)' : 'Staff (View Only)'}
                     </span>
                 </div>
                 <div style={{ padding: '0.5rem 0.65rem', margin: '0.4rem 0', borderRadius: '6px', background: 'rgba(255, 255, 255, 0.06)', fontSize: '0.75rem', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>

@@ -7,8 +7,7 @@ import {
     AlertTriangle, 
     RefreshCw, 
     Trash2, 
-    CheckCircle2,
-    Radio
+    CheckCircle2
 } from 'lucide-react';
 import { notificationService } from '../utils/notificationService';
 import './Dashboard.css';
@@ -167,7 +166,7 @@ const Notifications: React.FC = () => {
                 <div className="stat-card card">
                     <div className="stat-header">
                         <span className="stat-title">UNREAD ALERTS</span>
-                        <Bell className="stat-icon text-warning" size={20} />
+                        
                     </div>
                     <div className="stat-value" style={{ color: unreadCount > 0 ? '#ea580c' : '#16a34a' }}>
                         {unreadCount}
@@ -178,7 +177,7 @@ const Notifications: React.FC = () => {
                 <div className="stat-card card">
                     <div className="stat-header">
                         <span className="stat-title">TOTAL LOGGED</span>
-                        <Radio className="stat-icon text-primary" size={20} />
+                        
                     </div>
                     <div className="stat-value">
                         {notifications.length}
@@ -189,7 +188,7 @@ const Notifications: React.FC = () => {
                 <div className="stat-card card">
                     <div className="stat-header">
                         <span className="stat-title">SYSTEM MONITOR</span>
-                        <CheckCircle2 className="stat-icon text-success" size={20} />
+                        
                     </div>
                     <div className="stat-value" style={{ color: '#16a34a', fontSize: '1.3rem' }}>
                         ACTIVE
