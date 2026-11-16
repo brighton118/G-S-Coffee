@@ -1,15 +1,173 @@
+/* ==========================================================================
+   Sales Page Responsive Layout & Section Distribution (PC & Mobile)
+   ========================================================================== */
+
+/* --------------------------------------------------------------------------
+   1. Header Section
+   -------------------------------------------------------------------------- */
+.sales-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 1rem;
+    width: 100%;
+}
+
+.sales-header-title {
+    flex: 1 1 300px;
+    min-width: 0;
+}
+
+.sales-header-title h1 {
+    margin: 0;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    font-size: 1.5rem;
+    font-weight: 700;
+}
+
+.sales-header-actions {
+    display: flex;
+    gap: 0.65rem;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: flex-end;
+}
+
+/* --------------------------------------------------------------------------
+   2. KPI Overview Grid (4 Metrics: Sales Volume, Cash, Receipts, Plantlets)
+   -------------------------------------------------------------------------- */
+.sales-kpi-grid {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 1rem;
+    width: 100%;
+}
+
+.sales-kpi-grid .stat-card {
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+    padding: 1.15rem;
+    min-width: 0;
+    background: var(--color-surface);
+    border: 1px solid var(--color-border);
+    border-radius: var(--border-radius);
+    transition: transform 0.15s ease, box-shadow 0.15s ease;
+}
+
+.sales-kpi-grid .stat-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 0.35rem;
+}
+
+.sales-kpi-grid .stat-title {
+    font-size: 0.76rem;
+    font-weight: 700;
+    letter-spacing: 0.04em;
+    color: var(--color-text-light);
+    text-transform: uppercase;
+}
+
+.sales-kpi-grid .stat-value {
+    font-size: 1.45rem;
+    font-weight: 700;
+    line-height: 1.25;
+    margin: 0.25rem 0;
+    overflow-wrap: break-word;
+    word-break: break-word;
+}
+
+.sales-kpi-grid .stat-change {
+    font-size: 0.78rem;
+    line-height: 1.3;
+}
+
+/* --------------------------------------------------------------------------
+   3. Search & Filter Bar
+   -------------------------------------------------------------------------- */
+.sales-filter-card {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 1rem;
+    align-items: center;
+    justify-content: space-between;
+    padding: 0.85rem 1.15rem !important;
+}
+
+.sales-search-wrap {
+    display: flex;
+    gap: 0.75rem;
+    flex: 1 1 320px;
+    min-width: 0;
+}
+
+.sales-filter-select-wrap {
+    display: flex;
+    gap: 0.75rem;
+    flex-wrap: wrap;
+    align-items: center;
+    flex-shrink: 0;
+}
+
+.sales-filter-select-wrap select {
+    min-width: 180px;
+}
+
+/* --------------------------------------------------------------------------
+   4. Desktop Orders Table
+   -------------------------------------------------------------------------- */
+.sales-desktop-table {
+    width: 100%;
+    min-width: 940px;
+    border-collapse: collapse;
+}
+
+.sales-desktop-table th,
+.sales-desktop-table td {
+    padding: 0.75rem 1rem;
+    vertical-align: middle;
+}
+
+.sales-desktop-table tbody tr {
+    border-bottom: 1px solid var(--color-border);
+    transition: background-color 0.15s ease;
+}
+
+.sales-desktop-table tbody tr:hover {
+    background-color: rgba(0, 0, 0, 0.02);
+}
+
+.sales-desktop-actions {
+    display: inline-flex;
+    gap: 0.4rem;
+    align-items: center;
+    justify-content: flex-end;
+    white-space: nowrap;
+}
+
+/* --------------------------------------------------------------------------
+   5. Mobile Orders Feed & Cards
+   -------------------------------------------------------------------------- */
 .sales-order-cards {
     flex-direction: column;
     width: 100%;
     min-width: 0;
-    gap: 0.5rem;
+    gap: 0.65rem;
 }
 
 .sales-order-card {
     display: flex;
     flex-direction: column;
-    gap: 0.35rem;
-    padding: 0.65rem !important;
+    gap: 0.5rem;
+    padding: 0.85rem !important;
+    border: 1px solid var(--color-border);
+    border-radius: var(--border-radius);
+    background: var(--color-surface);
 }
 
 .sales-order-heading {
@@ -19,17 +177,17 @@
     gap: 0.5rem;
 }
 
-.sales-order-heading > div {
+.sales-order-heading > div:first-child {
     display: flex;
-    flex-wrap: wrap;
-    align-items: baseline;
-    gap: 0.35rem;
+    flex-direction: column;
+    gap: 0.15rem;
     min-width: 0;
 }
 
 .sales-invoice {
     color: var(--color-primary);
-    font-size: 0.82rem;
+    font-size: 0.9rem;
+    font-weight: 700;
     overflow-wrap: anywhere;
 }
 
@@ -40,9 +198,13 @@
 .sales-customer {
     display: flex;
     flex-direction: column;
-    gap: 0.1rem;
-    font-size: 0.85rem;
+    gap: 0.15rem;
+    font-size: 0.88rem;
     overflow-wrap: anywhere;
+}
+
+.sales-customer strong {
+    color: var(--color-text);
 }
 
 .sales-customer .text-light {
@@ -52,56 +214,280 @@
 .sales-order-summary {
     display: grid;
     grid-template-columns: repeat(3, minmax(0, 1fr));
-    gap: 0.35rem;
-    padding: 0.4rem;
+    gap: 0.45rem;
+    padding: 0.55rem 0.65rem;
     border-radius: 6px;
     background: var(--color-background);
-    font-size: 0.75rem;
+    font-size: 0.78rem;
+    border: 1px solid rgba(0, 0, 0, 0.04);
 }
 
 .sales-order-summary > div {
     display: flex;
     flex-direction: column;
-    gap: 0.15rem;
+    gap: 0.2rem;
     min-width: 0;
 }
 
-.sales-order-summary strong {
+.sales-order-summary span.text-light {
+    font-size: 0.72rem;
     white-space: nowrap;
-    font-size: 0.75rem;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.sales-order-summary strong {
+    font-size: 0.82rem;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
 }
 
 .sales-cash-paid {
-    color: #16a34a;
+    color: #16a34a !important;
+}
+
+/* Structured 2-Row Mobile Action Buttons */
+.sales-card-actions {
+    display: flex;
+    flex-direction: column;
+    gap: 0.45rem;
+    margin-top: 0.35rem;
+    width: 100%;
+}
+
+.sales-card-actions-row {
+    display: flex;
+    gap: 0.45rem;
+    width: 100%;
+    align-items: stretch;
+}
+
+.sales-card-actions-row > .btn {
+    margin: 0;
+    font-size: 0.8rem;
+    padding: 0.45rem 0.65rem;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.35rem;
+    min-height: 38px;
 }
 
 .sales-receipt-button {
-    align-self: flex-start;
-    min-height: 40px;
-    padding: 0.4rem 0.65rem;
-    font-size: 0.8rem;
+    flex: 1 1 50%;
+}
+
+.sales-email-button {
+    flex: 1 1 50%;
+    background-color: #15803d !important;
+    border-color: #15803d !important;
+}
+
+.sales-edit-button {
+    flex: 1 1 auto;
+    border-color: #bbf7d0 !important;
+    background-color: #f0fdf4 !important;
+    color: #166534 !important;
+    font-weight: 600;
+}
+
+.sales-delete-button {
+    flex-shrink: 0;
+    padding: 0.45rem 0.75rem !important;
 }
 
 .sales-empty-state {
-    padding: 1rem !important;
+    padding: 2rem 1rem !important;
     color: var(--color-text-light);
     text-align: center;
 }
 
-@media (max-width: 560px) {
-    .sales-variety-row {
-        grid-template-columns: 1fr 1fr !important;
+/* --------------------------------------------------------------------------
+   6. Modal Responsive Distribution
+   -------------------------------------------------------------------------- */
+.sales-modal-content {
+    max-width: 640px;
+    width: 100%;
+    max-height: 90vh;
+    overflow-y: auto;
+    padding: 1.25rem !important;
+}
+
+.sales-modal-row {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 0.85rem;
+}
+
+.sales-variety-box {
+    border: 1px solid var(--color-border);
+    border-radius: 8px;
+    padding: 0.85rem;
+    background-color: #fafafa;
+}
+
+.sales-variety-row {
+    display: grid;
+    grid-template-columns: 1.15fr 1fr 1.15fr auto;
+    gap: 0.55rem;
+    align-items: end;
+    background: #ffffff;
+    padding: 0.65rem;
+    border-radius: 6px;
+    border: 1px solid #e5e7eb;
+}
+
+.sales-modal-footer {
+    display: flex;
+    gap: 0.65rem;
+    margin-top: 0.5rem;
+    flex-wrap: wrap;
+    align-items: stretch;
+}
+
+.sales-btn-save-later {
+    flex: 1 1 180px;
+    border-color: #86efac !important;
+    background-color: #f0fdf4 !important;
+    color: #166534 !important;
+    font-weight: 600;
+}
+
+.sales-btn-save-issue {
+    flex: 1.3 1 200px;
+}
+
+/* ==========================================================================
+   Responsive Breakpoints
+   ========================================================================== */
+
+/* Tablets & Small Laptops (641px to 1024px) */
+@media (max-width: 1024px) {
+    .sales-kpi-grid {
+        grid-template-columns: repeat(2, 1fr);
+        gap: 0.85rem;
     }
 }
 
+/* Mobile Phones (max-width: 640px) */
+@media (max-width: 640px) {
+    .sales-header {
+        flex-direction: column;
+        align-items: stretch;
+        gap: 0.75rem;
+    }
+
+    .sales-header-title h1 {
+        font-size: 1.25rem;
+    }
+
+    .sales-header-actions {
+        flex-direction: column;
+        width: 100%;
+        gap: 0.5rem;
+    }
+
+    .sales-header-actions > .btn {
+        width: 100%;
+        justify-content: center;
+    }
+
+    /* 2x2 Compact KPI Grid on Mobile to prevent tall vertical stacks */
+    .sales-kpi-grid {
+        grid-template-columns: repeat(2, 1fr);
+        gap: 0.65rem;
+    }
+
+    .sales-kpi-grid .stat-card {
+        padding: 0.75rem;
+    }
+
+    .sales-kpi-grid .stat-title {
+        font-size: 0.68rem;
+    }
+
+    .sales-kpi-grid .stat-value {
+        font-size: 1.15rem;
+        margin: 0.2rem 0;
+    }
+
+    .sales-kpi-grid .stat-change {
+        font-size: 0.7rem;
+    }
+
+    /* Filter card stacks cleanly on phone */
+    .sales-filter-card {
+        flex-direction: column;
+        align-items: stretch;
+        gap: 0.65rem;
+        padding: 0.75rem !important;
+    }
+
+    .sales-search-wrap {
+        width: 100%;
+        min-width: 0;
+    }
+
+    .sales-filter-select-wrap {
+        width: 100%;
+    }
+
+    .sales-filter-select-wrap select {
+        width: 100%;
+        min-width: 0;
+    }
+
+    /* Modal Form Single-Column on Phone */
+    .sales-modal-content {
+        max-height: calc(100dvh - 1.5rem);
+        padding: 0.85rem !important;
+    }
+
+    .sales-modal-row {
+        grid-template-columns: 1fr;
+        gap: 0.65rem;
+    }
+
+    .sales-variety-row {
+        grid-template-columns: 1fr 1fr;
+        gap: 0.5rem;
+    }
+
+    .sales-variety-row > div:last-child {
+        grid-column: span 2;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        padding-top: 0.25rem;
+        border-top: 1px dashed #e5e7eb;
+    }
+
+    .sales-modal-footer {
+        flex-direction: column;
+        gap: 0.5rem;
+    }
+
+    .sales-modal-footer > .btn {
+        width: 100%;
+        justify-content: center;
+    }
+}
+
+/* Small phones (max-width: 380px) */
 @media (max-width: 380px) {
     .sales-order-summary {
-        font-size: 0.7rem;
+        font-size: 0.72rem;
         gap: 0.25rem;
-        padding: 0.35rem;
+        padding: 0.45rem;
     }
 
     .sales-order-summary strong {
-        font-size: 0.7rem;
+        font-size: 0.75rem;
+    }
+
+    .sales-card-actions-row > .btn {
+        font-size: 0.75rem;
+        padding: 0.4rem 0.5rem;
     }
 }

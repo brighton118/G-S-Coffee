@@ -1,17 +1,17 @@
 import React, { useState, useMemo } from 'react';
 import { useLiveQuery } from 'dexie-react-hooks';
 import { db, SalesOrder, SalesOrderItem } from '../db';
-import { 
-    Plus, 
-    Search, 
-    Download, 
-    CheckCircle2, 
-     
-    Layers, 
-    X, 
-    Receipt, 
-    Banknote, 
-        Trash2,
+import {
+    Plus,
+    Search,
+    Download,
+    CheckCircle2,
+
+    Layers,
+    X,
+    Receipt,
+    Banknote,
+    Trash2,
     AlertTriangle,
     Mail,
     Edit3,
@@ -317,12 +317,12 @@ const Sales: React.FC = () => {
     const filteredOrders = orders.filter(order => {
         const items = getSalesOrderItems(order);
         const varietyStr = items.map(i => i.variety).join(', ');
-        const matchesSearch = 
+        const matchesSearch =
             (order.customerName || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
             (order.invoiceNumber || order.orderId || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
             (order.customerPhone || '').includes(searchTerm) ||
             varietyStr.toLowerCase().includes(searchTerm.toLowerCase());
-        
+
         const matchesVariety =
             selectedVariety === 'All' ||
             items.some(i => i.variety === selectedVariety) ||
@@ -529,8 +529,8 @@ const Sales: React.FC = () => {
     return (
         <div className="page-wrapper" style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
             {/* Header */}
-            <div className="header-action" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '1rem' }}>
-                <div>
+            <div className="header-action sales-header">
+                <div className="sales-header-title">
                     <h1 style={{ margin: 0, display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
                         <Banknote size={28} color="var(--color-primary)" /> Plantlet Sales & Cash Invoicing
                     </h1>
@@ -538,7 +538,7 @@ const Sales: React.FC = () => {
                         Record all coffee clone varieties per individual customer on a single consolidated cash receipt.
                     </p>
                 </div>
-                <div style={{ display: 'flex', gap: '0.75rem', flexWrap: 'wrap' }}>
+                <div className="sales-header-actions">
                     {canEdit && duplicateCustomerGroups.length > 0 && (
                         <button
                             type="button"
@@ -550,9 +550,9 @@ const Sales: React.FC = () => {
                         </button>
                     )}
                     {isAdmin && orders.length > 0 && (
-                        <button 
-                            type="button" 
-                            className="btn btn-outline-danger" 
+                        <button
+                            type="button"
+                            className="btn btn-outline-danger"
                             onClick={() => {
                                 setDeleteError('');
                                 setShowDeleteAllModal(true);
@@ -561,8 +561,8 @@ const Sales: React.FC = () => {
                             <Trash2 size={16} /> Delete All Sales
                         </button>
                     )}
-                    <button 
-                        className="btn btn-secondary" 
+                    <button
+                        className="btn btn-secondary"
                         onClick={() => generateSalesSummaryPDF(orders)}
                     >
                         <Download size={16} /> Export Sales Summary (PDF)
@@ -587,11 +587,11 @@ const Sales: React.FC = () => {
             )}
 
             {/* KPI Cards (No Dues) */}
-            <div className="stats-grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: '1rem' }}>
+            <div className="sales-kpi-grid">
                 <div className="stat-card card">
                     <div className="stat-header">
                         <span className="stat-title">TOTAL SALES VOLUME</span>
-                        
+
                     </div>
                     <div className="stat-value" style={{ color: 'var(--color-primary)' }}>
                         {formatUGX(totalRevenue)}
@@ -602,7 +602,7 @@ const Sales: React.FC = () => {
                 <div className="stat-card card">
                     <div className="stat-header">
                         <span className="stat-title">CASH RECEIVED</span>
-                        
+
                     </div>
                     <div className="stat-value" style={{ color: '#16a34a' }}>
                         {formatUGX(totalRevenue)}
@@ -613,7 +613,7 @@ const Sales: React.FC = () => {
                 <div className="stat-card card">
                     <div className="stat-header">
                         <span className="stat-title">CUSTOMER RECEIPTS</span>
-                        
+
                     </div>
                     <div className="stat-value">
                         {totalTransactions}
@@ -624,7 +624,7 @@ const Sales: React.FC = () => {
                 <div className="stat-card card">
                     <div className="stat-header">
                         <span className="stat-title">PLANTLETS SOLD</span>
-                        
+
                     </div>
                     <div className="stat-value">
                         {totalPlantletsSold.toLocaleString()}
@@ -634,13 +634,13 @@ const Sales: React.FC = () => {
             </div>
 
             {/* Search and Filters */}
-            <div className="card" style={{ padding: '1rem', display: 'flex', flexWrap: 'wrap', gap: '1rem', alignItems: 'center', justifyContent: 'space-between' }}>
-                <div style={{ display: 'flex', gap: '0.75rem', flex: 1, minWidth: '260px' }}>
+            <div className="card sales-filter-card">
+                <div className="sales-search-wrap">
                     <div style={{ position: 'relative', width: '100%' }}>
                         <Search size={18} style={{ position: 'absolute', left: '10px', top: '50%', transform: 'translateY(-50%)', color: 'var(--color-text-light)' }} />
-                        <input 
-                            type="text" 
-                            className="form-input" 
+                        <input
+                            type="text"
+                            className="form-input"
                             style={{ paddingLeft: '2.25rem', width: '100%' }}
                             placeholder="Search by customer name, phone, variety, or invoice #..."
                             value={searchTerm}
@@ -649,12 +649,11 @@ const Sales: React.FC = () => {
                     </div>
                 </div>
 
-                <div style={{ display: 'flex', gap: '0.75rem', flexWrap: 'wrap', alignItems: 'center' }}>
-                    <select 
-                        className="form-input" 
-                        value={selectedVariety} 
+                <div className="sales-filter-select-wrap">
+                    <select
+                        className="form-input"
+                        value={selectedVariety}
                         onChange={e => setSelectedVariety(e.target.value)}
-                        style={{ minWidth: '160px' }}
                     >
                         <option value="All">All Clone Varieties</option>
                         {VARIETIES.map(v => (
@@ -666,7 +665,7 @@ const Sales: React.FC = () => {
 
             {/* Orders Table (Cash Only, No Dues) */}
             <div className="card table-responsive desktop-only">
-                <table className="data-table" style={{ width: '100%', borderCollapse: 'collapse' }}>
+                <table className="data-table sales-desktop-table">
                     <thead>
                         <tr>
                             <th style={{ whiteSpace: 'nowrap', padding: '0.75rem 1rem' }}>Invoice #</th>
@@ -697,7 +696,7 @@ const Sales: React.FC = () => {
                                     : `${uniquePrices.length} rates`;
 
                                 return (
-                                    <tr key={order.id} style={{ borderBottom: '1px solid var(--color-border)' }}>
+                                    <tr key={order.id}>
                                         <td style={{ whiteSpace: 'nowrap', padding: '0.75rem 1rem' }}>
                                             <strong style={{ color: 'var(--color-primary)' }}>{inv}</strong>
                                             <div style={{ marginTop: '0.2rem' }}>
@@ -745,7 +744,7 @@ const Sales: React.FC = () => {
                                             <strong style={{ color: '#16a34a' }}>{formatUGX(order.totalAmount)}</strong>
                                         </td>
                                         <td style={{ whiteSpace: 'nowrap', textAlign: 'right', padding: '0.75rem 1rem' }}>
-                                            <div style={{ display: 'inline-flex', gap: '0.4rem', alignItems: 'center' }}>
+                                            <div className="sales-desktop-actions">
                                                 {canEdit && (
                                                     <button
                                                         type="button"
@@ -757,16 +756,16 @@ const Sales: React.FC = () => {
                                                         <Edit3 size={14} /> Edit / + Variety
                                                     </button>
                                                 )}
-                                                <button 
-                                                    className="btn btn-secondary" 
+                                                <button
+                                                    className="btn btn-secondary"
                                                     style={{ padding: '0.35rem 0.65rem', fontSize: '0.8rem', display: 'inline-flex', alignItems: 'center', gap: '0.35rem' }}
                                                     title="Issue Official Consolidated Cash Receipt for All Recorded Varieties"
                                                     onClick={() => handleIssueReceiptForOrder(order)}
                                                 >
                                                     <Receipt size={14} /> {order.receiptIssued === false ? 'Issue Receipt' : 'Cash Receipt'}
                                                 </button>
-                                                <button 
-                                                    className="btn btn-primary" 
+                                                <button
+                                                    className="btn btn-primary"
                                                     style={{ padding: '0.35rem 0.65rem', fontSize: '0.8rem', display: 'inline-flex', alignItems: 'center', gap: '0.35rem', backgroundColor: '#15803d', borderColor: '#15803d' }}
                                                     title="Email Official Sales Receipt via Brevo"
                                                     disabled={emailingOrderId === (order.id || order.invoiceNumber)}
@@ -774,8 +773,8 @@ const Sales: React.FC = () => {
                                                 >
                                                     <Mail size={14} /> {emailingOrderId === (order.id || order.invoiceNumber) ? 'Sending...' : 'Email'}
                                                 </button>
-                                                <button 
-                                                    className="btn btn-outline-danger" 
+                                                <button
+                                                    className="btn btn-outline-danger"
                                                     style={{ padding: '0.35rem 0.5rem', fontSize: '0.8rem', display: 'inline-flex', alignItems: 'center' }}
                                                     title="Delete Sale"
                                                     aria-label={`Delete sale ${inv}`}
@@ -850,46 +849,46 @@ const Sales: React.FC = () => {
                                     </div>
                                 </div>
 
-                                <div style={{ display: 'flex', gap: '0.5rem', marginTop: '0.75rem', flexWrap: 'wrap' }}>
-                                    {canEdit && (
+                                <div className="sales-card-actions">
+                                    <div className="sales-card-actions-row">
                                         <button
-                                            type="button"
-                                            className="btn btn-secondary"
-                                            style={{ flex: 1, margin: 0, minWidth: '110px', borderColor: '#bbf7d0', backgroundColor: '#f0fdf4', color: '#166534', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: '0.35rem' }}
-                                            onClick={() => handleOpenAddVarietyToOrder(order)}
+                                            className="btn btn-secondary sales-receipt-button"
+                                            onClick={() => handleIssueReceiptForOrder(order)}
                                         >
-                                            <Edit3 size={15} /> Edit / + Variety
+                                            <Receipt size={15} /> {order.receiptIssued === false ? 'Issue Receipt' : 'Cash Receipt'}
                                         </button>
-                                    )}
-                                    <button
-                                        className="btn btn-secondary sales-receipt-button"
-                                        style={{ flex: 1, margin: 0, minWidth: '120px' }}
-                                        onClick={() => handleIssueReceiptForOrder(order)}
-                                    >
-                                        <Receipt size={15} /> {order.receiptIssued === false ? 'Issue Receipt' : 'Cash Receipt'}
-                                    </button>
-                                    <button
-                                        className="btn btn-primary"
-                                        style={{ flex: 1, margin: 0, minWidth: '120px', backgroundColor: '#15803d', borderColor: '#15803d', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: '0.35rem' }}
-                                        disabled={emailingOrderId === (order.id || order.invoiceNumber)}
-                                        onClick={() => handleEmailReceipt(order)}
-                                    >
-                                        <Mail size={15} /> {emailingOrderId === (order.id || order.invoiceNumber) ? 'Sending...' : 'Email Receipt'}
-                                    </button>
-                                    {isAdmin && (
                                         <button
-                                            className="btn btn-outline-danger"
-                                            style={{ padding: '0.5rem 0.75rem', display: 'inline-flex', alignItems: 'center', justifyContent: 'center' }}
-                                            title="Delete Sale"
-                                            aria-label={`Delete sale ${inv}`}
-                                            onClick={() => {
-                                                setDeleteError('');
-                                                setOrderToDelete(order);
-                                            }}
+                                            className="btn btn-primary sales-email-button"
+                                            disabled={emailingOrderId === (order.id || order.invoiceNumber)}
+                                            onClick={() => handleEmailReceipt(order)}
                                         >
-                                            <Trash2 size={16} />
+                                            <Mail size={15} /> {emailingOrderId === (order.id || order.invoiceNumber) ? 'Sending...' : 'Email Receipt'}
                                         </button>
-                                    )}
+                                    </div>
+                                    <div className="sales-card-actions-row">
+                                        {canEdit && (
+                                            <button
+                                                type="button"
+                                                className="btn btn-secondary sales-edit-button"
+                                                onClick={() => handleOpenAddVarietyToOrder(order)}
+                                            >
+                                                <Edit3 size={15} /> Edit / + Variety
+                                            </button>
+                                        )}
+                                        {isAdmin && (
+                                            <button
+                                                className="btn btn-outline-danger sales-delete-button"
+                                                title="Delete Sale"
+                                                aria-label={`Delete sale ${inv}`}
+                                                onClick={() => {
+                                                    setDeleteError('');
+                                                    setOrderToDelete(order);
+                                                }}
+                                            >
+                                                <Trash2 size={16} />
+                                            </button>
+                                        )}
+                                    </div>
                                 </div>
                             </article>
                         );
@@ -900,7 +899,7 @@ const Sales: React.FC = () => {
             {/* New / Edit Order Modal (Multi-Variety Consolidated Receipt per Individual) */}
             {showNewOrderModal && (
                 <div className="modal-overlay">
-                    <div className="modal-content card" style={{ maxWidth: '640px', width: '100%', maxHeight: '92vh', overflowY: 'auto' }}>
+                    <div className="modal-content card sales-modal-content">
                         <div className="modal-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
                             <div>
                                 <h2 style={{ margin: 0, display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
@@ -926,13 +925,13 @@ const Sales: React.FC = () => {
                         </div>
 
                         <form onSubmit={handleCreateOrder} style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
-                            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
+                            <div className="sales-modal-row">
                                 <div className="form-group">
                                     <label className="form-label">Customer Name *</label>
-                                    <input 
-                                        type="text" 
-                                        required 
-                                        className="form-input" 
+                                    <input
+                                        type="text"
+                                        required
+                                        className="form-input"
                                         placeholder="e.g., Mukasa David"
                                         value={formData.customerName}
                                         onChange={e => setFormData({ ...formData, customerName: e.target.value })}
@@ -940,10 +939,10 @@ const Sales: React.FC = () => {
                                 </div>
                                 <div className="form-group">
                                     <label className="form-label">Phone Number *</label>
-                                    <input 
-                                        type="tel" 
-                                        required 
-                                        className="form-input" 
+                                    <input
+                                        type="tel"
+                                        required
+                                        className="form-input"
                                         placeholder="+256 700 000000"
                                         value={formData.customerPhone}
                                         onChange={e => setFormData({ ...formData, customerPhone: e.target.value })}
@@ -951,12 +950,12 @@ const Sales: React.FC = () => {
                                 </div>
                             </div>
 
-                            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
+                            <div className="sales-modal-row">
                                 <div className="form-group">
                                     <label className="form-label">Location / Farm</label>
-                                    <input 
-                                        type="text" 
-                                        className="form-input" 
+                                    <input
+                                        type="text"
+                                        className="form-input"
                                         placeholder="District / Town"
                                         value={formData.customerLocation}
                                         onChange={e => setFormData({ ...formData, customerLocation: e.target.value })}
@@ -964,9 +963,9 @@ const Sales: React.FC = () => {
                                 </div>
                                 <div className="form-group">
                                     <label className="form-label">Email (Optional)</label>
-                                    <input 
-                                        type="email" 
-                                        className="form-input" 
+                                    <input
+                                        type="email"
+                                        className="form-input"
                                         placeholder="customer@email.com"
                                         value={formData.customerEmail}
                                         onChange={e => setFormData({ ...formData, customerEmail: e.target.value })}
@@ -995,7 +994,7 @@ const Sales: React.FC = () => {
                             )}
 
                             {/* Multi-Variety Recording Section */}
-                            <div style={{ border: '1px solid var(--color-border)', borderRadius: '8px', padding: '0.9rem', backgroundColor: '#fafafa' }}>
+                            <div className="sales-variety-box">
                                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.75rem', flexWrap: 'wrap', gap: '0.5rem' }}>
                                     <div>
                                         <strong style={{ fontSize: '0.95rem', color: 'var(--color-text)' }}>
@@ -1022,16 +1021,6 @@ const Sales: React.FC = () => {
                                             <div
                                                 key={idx}
                                                 className="sales-variety-row"
-                                                style={{
-                                                    display: 'grid',
-                                                    gridTemplateColumns: '1.1fr 1fr 1.1fr auto',
-                                                    gap: '0.6rem',
-                                                    alignItems: 'end',
-                                                    background: '#ffffff',
-                                                    padding: '0.6rem',
-                                                    borderRadius: '6px',
-                                                    border: '1px solid #e5e7eb'
-                                                }}
                                             >
                                                 <div className="form-group" style={{ margin: 0 }}>
                                                     <label className="form-label" style={{ fontSize: '0.78rem' }}>
@@ -1130,7 +1119,7 @@ const Sales: React.FC = () => {
                                 )}
                             </div>
 
-                            <div style={{ display: 'flex', gap: '0.75rem', marginTop: '0.5rem', flexWrap: 'wrap' }}>
+                            <div className="sales-modal-footer">
                                 <button
                                     type="button"
                                     className="btn btn-secondary"
@@ -1143,13 +1132,12 @@ const Sales: React.FC = () => {
                                 </button>
                                 <button
                                     type="button"
-                                    className="btn btn-secondary"
-                                    style={{ flex: 1, borderColor: '#86efac', backgroundColor: '#f0fdf4', color: '#166534', fontWeight: 600, display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: '0.4rem' }}
+                                    className="btn btn-secondary sales-btn-save-later"
                                     onClick={() => void saveOrderRecord(false)}
                                 >
                                     <Save size={16} /> Save Order (Issue Later)
                                 </button>
-                                <button type="submit" className="btn btn-primary" style={{ flex: 1.3, display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: '0.4rem' }}>
+                                <button type="submit" className="btn btn-primary sales-btn-save-issue">
                                     <Save size={16} /> Save &amp; Issue Receipt
                                 </button>
                             </div>
