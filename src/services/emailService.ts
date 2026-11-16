@@ -48,7 +48,7 @@ export const SUPER_ADMIN_EMAILS: string[] = [
 
 class EmailService {
     /**
-     * Retrieve verified Administrator recipients (Super Admins, Estate Admins, Primary Reporting)
+     * Retrieve verified Administrator recipients (Super Admins, Farm Admins, Primary Reporting)
      * Receives: Sales Invoices, Cash Receipts, Payroll Wage Bill, Manager Activity Audits, System Reports
      */
     public getAdminRecipients(): string[] {

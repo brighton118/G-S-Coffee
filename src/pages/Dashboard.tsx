@@ -275,7 +275,7 @@ const Dashboard = () => {
                         <div>
                             <strong style={{ color: '#854d0e', fontSize: '0.95rem' }}>Administrator Governance Session</strong>
                             <div style={{ color: '#713f12', fontSize: '0.82rem' }}>
-                                Master administrative oversight. All entries and edits made by the Estate Manager stream directly to this dashboard in real time.
+                                Master administrative oversight. All entries and edits made by the Farm Manager stream directly to this dashboard in real time.
                             </div>
                         </div>
                     </div>
@@ -296,13 +296,13 @@ const Dashboard = () => {
                             </h3>
                         </div>
                         <span className="badge badge-success" style={{ fontSize: '0.75rem', fontWeight: 600 }}>
-                            Direct Stream from Estate Manager
+                            Direct Stream from Farm Manager
                         </span>
                     </div>
 
                     {recentManagerActivities.length === 0 ? (
                         <div style={{ padding: '1.25rem', textAlign: 'center', color: '#6b7280', fontSize: '0.9rem', background: '#f9fafb', borderRadius: '6px' }}>
-                            No manager operations logged yet. When the Estate Manager records or edits workers, clones, inventory, sales, expenses, or shifts, entries stream directly here in real time.
+                            No manager operations logged yet. When the Farm Manager records or edits workers, clones, inventory, sales, expenses, or shifts, entries stream directly here in real time.
                         </div>
                     ) : (
                         <div style={{ display: 'flex', flexDirection: 'column', gap: '0.65rem' }}>

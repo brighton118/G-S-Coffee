@@ -86,7 +86,7 @@ const Settings: React.FC = () => {
         farmName: 'G&S FARMS',
         farmLocation: 'BUBAARE, KASHARI MBARARA UGANDA',
         farmRegion: 'Kashari, Mbarara District, Western Region',
-        farmLandmark: 'Main Farm Gate, G&S Coffee Estate, Bubaare',
+        farmLandmark: 'Main Farm Gate, G&S Coffee Farm, Bubaare',
         contactPerson: 'Farm Administrator',
         contactEmail: 'gs.farms.ug@gmail.com',
         notificationEmails: 'brightonkato317@gmail.com',
@@ -334,7 +334,7 @@ const Settings: React.FC = () => {
                     </div>
                 ) : effectiveRole === 'manager' ? (
                     <div className="settings-role-badge manager">
-                        <UserCheck size={16} color="#2563eb" /> Estate Manager Mode (Operational &amp; Threshold Edit Rights)
+                        <UserCheck size={16} color="#2563eb" /> Farm Manager Mode (Operational &amp; Threshold Edit Rights)
                     </div>
                 ) : (
                     <div className="settings-role-badge staff">
@@ -552,7 +552,7 @@ const Settings: React.FC = () => {
                                                 disabled={!canEditFarmInfo}
                                                 value={settings.farmLandmark || ''} 
                                                 onChange={e => setSettings({ ...settings, farmLandmark: e.target.value })} 
-                                                placeholder="Main Estate Gate / GPS"
+                                                placeholder="Main Farm Gate / GPS"
                                             />
                                         </div>
                                     </div>
@@ -749,7 +749,7 @@ const Settings: React.FC = () => {
 
                                         <div className="form-group" style={{ marginBottom: '0.25rem' }}>
                                             <label className="form-label" style={{ fontSize: '0.85rem' }}>
-                                                Estate Timezone (for Attendance Deadlines &amp; Scheduled Monitors)
+                                                Farm Timezone (for Attendance Deadlines &amp; Scheduled Monitors)
                                                 <span className="settings-perm-pill manager-access">Manager &amp; Admin</span>
                                             </label>
                                             <select 
@@ -815,7 +815,7 @@ const Settings: React.FC = () => {
                                 <div className="settings-accordion-body">
                                     {effectiveRole === 'staff' ? (
                                         <div className="settings-role-badge staff" style={{ margin: '0.25rem 0 0.5rem 0', width: '100%' }}>
-                                            <Lock size={14} /> Official estate attendance schedule &amp; shift cutoffs (Read-only reference for Staff accounts).
+                                            <Lock size={14} /> Official farm attendance schedule &amp; shift cutoffs (Read-only reference for Staff accounts).
                                         </div>
                                     ) : effectiveRole === 'manager' ? (
                                         <div className="settings-role-badge manager" style={{ margin: '0.25rem 0 0.5rem 0', width: '100%' }}>
@@ -937,7 +937,7 @@ const Settings: React.FC = () => {
                                             </button>
                                         ) : (
                                             <span style={{ fontSize: '0.82rem', color: '#166534', background: '#f0fdf4', border: '1px solid #bbf7d0', padding: '0.45rem 0.75rem', borderRadius: '6px' }}>
-                                                Shift thresholds and daily work windows are maintained by the Estate Manager. Changes made by the Manager appear directly on your Admin Dashboard.
+                                                Shift thresholds and daily work windows are maintained by the Farm Manager. Changes made by the Manager appear directly on your Admin Dashboard.
                                             </span>
                                         )}
                                     </div>
@@ -994,7 +994,7 @@ const Settings: React.FC = () => {
                                 </div>
                                 <div className="settings-accordion-meta">
                                     <span className="settings-accordion-badge">
-                                        {effectiveRole === 'admin' ? 'Administrator' : effectiveRole === 'manager' ? 'Estate Manager' : 'Staff Member'}
+                                        {effectiveRole === 'admin' ? 'Administrator' : effectiveRole === 'manager' ? 'Farm Manager' : 'Staff Member'}
                                     </span>
                                     <ChevronDown size={18} className={`settings-chevron-icon ${!isCollapsed('security') ? 'rotated' : ''}`} />
                                 </div>
@@ -1018,11 +1018,11 @@ const Settings: React.FC = () => {
                                             </div>
                                             <div>
                                                 <span style={{ color: '#64748b' }}>System Role:</span> <strong style={{ color: effectiveRole === 'admin' ? '#854d0e' : effectiveRole === 'manager' ? '#15803d' : '#1d4ed8' }}>
-                                                    {effectiveRole === 'admin' ? '👑 Administrator (Full Governance)' : effectiveRole === 'manager' ? '💼 Estate Manager (Data Entry & Operations)' : '👁️ Staff Member (View-Only)'}
+                                                    {effectiveRole === 'admin' ? '👑 Administrator (Full Governance)' : effectiveRole === 'manager' ? '💼 Farm Manager (Data Entry & Operations)' : '👁️ Staff Member (View-Only)'}
                                                 </strong>
                                             </div>
                                             <div>
-                                                <span style={{ color: '#64748b' }}>Assigned Estate:</span> <strong>{settings.farmName || 'G&S FARMS'}</strong>
+                                                <span style={{ color: '#64748b' }}>Assigned Farm:</span> <strong>{settings.farmName || 'G&S FARMS'}</strong>
                                             </div>
                                             <div>
                                                 <span style={{ color: '#64748b' }}>Location:</span> <strong>{settings.farmLocation}</strong>
