@@ -64,6 +64,23 @@ export async function runAttendanceDeadlineCheck(
     const deadlineTime = prefs.attendanceTimeInEnd || '07:20';
 
     // Verify whether the morning clock-in window has elapsed
+    // Verify day of the week in farm timezone: Sunday is a non-working day
+    const dayOfWeek = new Intl.DateTimeFormat('en-US', { timeZone: timezone, weekday: 'long' }).format(now);
+    if (dayOfWeek === 'Sunday' && !forceRun) {
+        console.log(`[Attendance Monitor] Today is Sunday in ${timezone}. G&S Farm does not operate on Sundays. Skipping attendance checks and email alerts.`);
+        return {
+            checkedAt: now.toISOString(),
+            todayDate: today,
+            currentTime,
+            deadlineTime,
+            isPastDeadline: false,
+            activeWorkersCount: 0,
+            missedWorkersCount: 0,
+            alertsDispatched: 0,
+            details: []
+        };
+    }
+
     const isPastDeadline = currentTime > deadlineTime;
 
     if (!isPastDeadline && !forceRun) {

@@ -913,6 +913,17 @@ class EmailService {
         timeInWindow?: string;
         notes?: string;
     }): Promise<EmailDispatchResult> {
+        // G&S Farm does not work on Sunday; skip attendance alert emails on Sundays
+        const dateParts = data.date ? data.date.split('-').map(Number) : [];
+        const isSunday = dateParts.length === 3 
+            ? new Date(dateParts[0], dateParts[1] - 1, dateParts[2]).getDay() === 0 
+            : new Date().getDay() === 0;
+
+        if (isSunday) {
+            console.log(`[Email Service] Attendance email skipped: ${data.date} is Sunday (non-working day).`);
+            return { success: true, channel: 'Skipped (Sunday)', recipients: [], error: 'Sunday is a non-working day. Attendance alerts are disabled on Sundays.' };
+        }
+
         // Route specifically to Farm Manager for morning shift action on the ground
         return this.dispatchTransactional({
             to: this.getManagerRecipients(),
@@ -1034,6 +1045,15 @@ class EmailService {
      * Backward-compatible General Notification Method with intelligent role targeting
      */
     public async sendNotificationEmail(payload: EmailNotificationPayload): Promise<EmailDispatchResult> {
+        // Suppress attendance email reports on Sundays (G&S Farm does not work on Sunday)
+        if (payload.category === 'EOD_ATTENDANCE' || payload.category === 'Missing Attendance' || (payload.title && payload.title.toLowerCase().includes('attendance'))) {
+            const now = new Date();
+            if (now.getDay() === 0) {
+                console.log('[Email Service] Attendance email report suppressed: Sunday is a non-working day for G&S Farm.');
+                return { success: true, channel: 'Skipped (Sunday)', recipients: [], message: 'Sunday is a non-working day for G&S Farm. Attendance email suppressed.' };
+            }
+        }
+
         let targets = payload.to;
         if (!targets) {
             // Role targeting based on operational category

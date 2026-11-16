@@ -57,10 +57,26 @@ const Attendance: React.FC = () => {
     const otEligibleCount = dayRecords.filter(r => (r.overtimeHours || 0) > 0 || r.overtimeStatus === 'Pending' || r.overtimeStatus === 'Approved').length;
     const absentWorkers = activeWorkers.filter(w => !dayRecords.some(r => r.workerId === w.workerId));
 
+    const isSelectedDateSunday = (() => {
+        if (!selectedDate) return false;
+        const parts = selectedDate.split('-').map(Number);
+        if (parts.length === 3) {
+            const d = new Date(parts[0], parts[1] - 1, parts[2]);
+            return d.getDay() === 0;
+        }
+        return false;
+    })();
+
     const [isSendingAlert, setIsSendingAlert] = useState<boolean>(false);
     const [attendanceNotice, setAttendanceNotice] = useState<string | null>(null);
 
     const handleSendMissedAttendanceAlert = async () => {
+        if (isSelectedDateSunday) {
+            setAttendanceNotice('ℹ️ Sunday is a non-working day for G&S Farm. Attendance alerts are disabled on Sundays.');
+            setTimeout(() => setAttendanceNotice(null), 5000);
+            return;
+        }
+
         if (absentWorkers.length === 0) {
             setAttendanceNotice('✅ All active workers have scanned in! Zero absences detected.');
             setTimeout(() => setAttendanceNotice(null), 4000);
@@ -130,11 +146,11 @@ const Attendance: React.FC = () => {
                     <button 
                         className="btn btn-secondary"
                         onClick={handleSendMissedAttendanceAlert}
-                        disabled={isSendingAlert || absentWorkers.length === 0}
-                        style={{ display: 'inline-flex', alignItems: 'center', gap: '0.4rem', backgroundColor: '#fef2f2', color: '#b91c1c', borderColor: '#fca5a5' }}
-                        title="Dispatch missed attendance alert via Brevo to farm management"
+                        disabled={isSendingAlert || absentWorkers.length === 0 || isSelectedDateSunday}
+                        style={{ display: 'inline-flex', alignItems: 'center', gap: '0.4rem', backgroundColor: isSelectedDateSunday ? '#f1f5f9' : '#fef2f2', color: isSelectedDateSunday ? '#64748b' : '#b91c1c', borderColor: isSelectedDateSunday ? '#cbd5e1' : '#fca5a5' }}
+                        title={isSelectedDateSunday ? 'Sunday is a non-working day. Attendance alerts are disabled.' : 'Dispatch missed attendance alert via Brevo to farm management'}
                     >
-                        <Mail size={16} /> {isSendingAlert ? 'Dispatching...' : `Alert Absences (${absentWorkers.length})`}
+                        <Mail size={16} /> {isSendingAlert ? 'Dispatching...' : isSelectedDateSunday ? 'Sunday (Non-Working Day)' : `Alert Absences (${absentWorkers.length})`}
                     </button>
                 </div>
             </div>

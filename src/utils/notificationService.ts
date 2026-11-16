@@ -89,7 +89,7 @@ class NotificationService {
                     if (type === 'Inventory Low' && parsed.notifyLowStock) shouldEmail = true;
                     if (type === 'Chamber Overdue' && parsed.notifyChamberOverdue) shouldEmail = true;
                     if (type === 'Pending Overtime' && parsed.notifyPendingOvertime) shouldEmail = true;
-                    if (type === 'EOD_ATTENDANCE' && parsed.notifyEODAttendance) shouldEmail = true;
+                    if (type === 'EOD_ATTENDANCE' && parsed.notifyEODAttendance && new Date().getDay() !== 0) shouldEmail = true;
                     if (type === 'Manager Entry' && parsed.notifyManagerEntry !== false) shouldEmail = true;
                     if (type === 'General') shouldEmail = true;
                 }
@@ -220,6 +220,10 @@ class NotificationService {
      */
     public async checkEODAttendanceReport(): Promise<boolean> {
         const now = new Date();
+        // Skip Sundays: G&S Farm does not operate on Sundays
+        if (now.getDay() === 0) {
+            return false;
+        }
         // Check if past 17:00 (5:00 PM)
         if (now.getHours() >= 17) {
             const today = format(now, 'yyyy-MM-dd');
