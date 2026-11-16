@@ -78,7 +78,7 @@ export async function getAdminRecipients(db: admin.firestore.Firestore): Promise
                 ...parseEmailList(data.adminEmail)
             ];
             for (const email of configuredList) {
-                recipientsMap.set(email, data.contactPerson || 'Estate Administrator');
+                recipientsMap.set(email, data.contactPerson || 'Farm Administrator');
             }
         }
 

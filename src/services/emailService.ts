@@ -190,7 +190,7 @@ class EmailService {
                 };
 
                 addIfValid(parsed.contactEmail, 'Primary Contact', 'Farm Settings');
-                addIfValid(parsed.adminEmail, 'Estate Admin', 'Farm Settings');
+                addIfValid(parsed.adminEmail, 'Farm Administrator', 'Farm Settings');
                 addIfValid(parsed.notificationEmails, 'Notification List', 'Settings Alert Routing');
                 addIfValid(parsed.managerNotificationEmails, 'Manager Alerts', 'Settings Manager Routing');
             }
@@ -284,7 +284,7 @@ class EmailService {
      * Client-side HTML template renderer to guarantee high-quality branded email output
      */
     private renderTemplateHtml(type: string, data: Record<string, any>): { html: string; text: string } {
-        const estateName = 'G&S COFFEE FARMS &amp; ESTATE';
+        const estateName = 'G&S COFFEE FARMS';
         const location = 'BUBAARE, KASHARI MBARARA UGANDA';
         const appUrl = 'https://gs-coffee-3d022.web.app';
 
@@ -1019,7 +1019,7 @@ class EmailService {
                     'Operational Module': params.module,
                     'Action Performed': actionClean,
                     'Submitted By': managerActor,
-                    'Estate Location': 'BUBAARE, KASHARI MBARARA UGANDA',
+                    'Farm Location': 'BUBAARE, KASHARI MBARARA UGANDA',
                     'Dispatched At': new Date().toLocaleString('en-GB', { timeZone: 'Africa/Kampala' }),
                     ...(params.details || {})
                 },
@@ -1082,7 +1082,7 @@ class EmailService {
                 message: 'This is a verified test email sent from the G&S Coffee Farm Management System. Transactional emails, payslips, sales receipts, and operational alerts are now configured and connected to Brevo (Sendinblue).',
                 category: 'System Test',
                 details: {
-                    'Farm Estate': 'G&S Coffee Farms (BUBAARE, KASHARI MBARARA UGANDA)',
+                    'Farm Location': 'G&S Coffee Farms (BUBAARE, KASHARI MBARARA UGANDA)',
                     'Email Provider': 'Brevo SMTP Transactional API v3',
                     'Target Recipient(s)': recipients.join(', '),
                     'Dispatched At': new Date().toLocaleString('en-GB')
@@ -1103,7 +1103,7 @@ class EmailService {
             : this.getRecipients().join(',');
 
         const subject = encodeURIComponent(payload.subject.startsWith('[G&S') ? payload.subject : `[G&S Alert] ${payload.subject}`);
-        const bodyText = encodeURIComponent(`${payload.title}\n\n${payload.message}\n\nEstate: BUBAARE, KASHARI MBARARA UGANDA\nPortal: https://gs-coffee-3d022.web.app\n--\nG&S Coffee Farm Management`);
+        const bodyText = encodeURIComponent(`${payload.title}\n\n${payload.message}\n\nLocation: BUBAARE, KASHARI MBARARA UGANDA\nPortal: https://gs-coffee-3d022.web.app\n--\nG&S Coffee Farm Management`);
 
         const gmailUrl = `https://mail.google.com/mail/?view=cm&fs=1&to=${encodeURIComponent(recipients)}&su=${subject}&body=${bodyText}`;
         window.open(gmailUrl, '_blank');

@@ -294,7 +294,7 @@ class NotificationService {
                 'Action': params.action,
                 'Entered By': userLabel,
                 'Timestamp': new Date().toLocaleString('en-GB'),
-                'Estate Location': 'BUBAARE, KASHARI MBARARA UGANDA',
+                'Farm Location': 'BUBAARE, KASHARI MBARARA UGANDA',
                 ...(params.details || {})
             }
         );
